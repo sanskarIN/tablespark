@@ -15,3 +15,14 @@ test('Hindi interface selection persists across reload', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'सेटिंग्स' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'hi');
 });
+
+test('About exposes version 2.0.12 in English and Hindi', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'About' }).click();
+  await expect(page.getByText('2.0.12', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('combobox', { name: 'Language / भाषा' }).selectOption('hi');
+  await page.getByRole('button', { name: 'परिचय' }).click();
+  await expect(page.getByText('2.0.12', { exact: true })).toBeVisible();
+});
