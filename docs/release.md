@@ -32,7 +32,9 @@ npm run check
 npm run test:e2e
 ```
 
-Do not release with failing formatting, lint, types, tests, build, or primary browser journeys.
+`npm run check` verifies formatting, linting, strict types, application tests, repository security-scanner tests, repository secret scanning, and the production build.
+
+Do not release with failing formatting, lint, types, tests, security checks, build, or primary browser journeys.
 
 ## 4. Review production dependencies
 
@@ -41,6 +43,8 @@ npm audit --omit=dev --audit-level=high
 ```
 
 A high-severity production finding requires investigation before release. Do not hide an audit failure by lowering the severity threshold without documenting the risk decision.
+
+Also ensure `npm run secret:scan` is clean. A clean pattern scan does not prove the repository never contained a secret; if a real secret was exposed, revoke/rotate it and remediate history separately.
 
 ## 5. Preview the production build
 
@@ -53,17 +57,24 @@ The `build` command type-checks and creates production assets under `dist/`. The
 
 Manually review:
 
-- initial load;
-- table generation;
+- initial load and onboarding dismissal;
+- custom table generation and the 5,000-row guard;
+- solved study sheet and blank practice worksheet;
+- print preview including blank Name/Date lines and no automatic active-profile name;
+- random default practice seed selection;
+- deterministic replay using a known seed;
+- New random drill and Repeat this seed flows;
 - timed and untimed practice;
-- mistake review;
-- progress dashboard;
-- profile creation/deletion;
-- backup export/import;
+- deduplicated mistake review;
+- progress dashboard, mastery rule, search, and filters;
+- profile creation/deletion and profile-capacity behavior;
+- backup export/import and destructive-import confirmation;
+- invalid/oversized backup rejection;
+- user-visible storage-failure state where practical to simulate;
 - theme changes;
 - large text and reduced motion;
 - text-to-speech where available;
-- print preview;
+- disabled speech fallback in an unsupported browser/profile;
 - offline reload after service-worker caching;
 - About/contact/funding links.
 
@@ -77,6 +88,14 @@ git log -5 --oneline
 ```
 
 The working tree should contain no accidental generated files or uncommitted release changes.
+
+Also confirm the commit identity expected by this repository:
+
+```bash
+git config user.email
+```
+
+The intended project commit email is `sanskarin@outlook.in`.
 
 ## 7. Create the tag
 
@@ -101,9 +120,9 @@ A `v*.*.*` tag starts `.github/workflows/release.yml`.
 The workflow:
 
 1. checks out the tagged commit;
-2. installs Node.js 22;
+2. installs the supported Node.js runtime;
 3. installs dependencies;
-4. runs `npm run check`;
+4. runs `npm run check`, including security utility tests and repository secret scanning;
 5. builds the production PWA;
 6. packages `dist/` as `tablespark-web.zip`;
 7. creates a GitHub release with generated notes and attaches the artifact.
@@ -116,8 +135,9 @@ After the release appears on GitHub:
 - download and inspect the attached ZIP;
 - deploy through the chosen static host if deployment is part of the release plan;
 - verify the final secure deployment origin;
-- capture real release screenshots;
+- capture real release screenshots in light/dark and compact/wide layouts;
 - confirm PWA installability from the release origin;
+- verify one offline reload from the deployed production origin;
 - update `what_changed.md` with the release result.
 
 ## Rollback
