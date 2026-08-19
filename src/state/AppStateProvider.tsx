@@ -4,6 +4,7 @@ import type { AppSettings, PersistedState, Profile } from '../domain/types';
 import {
   importState as parseImportedState,
   loadState,
+  MAX_PROFILES,
   saveState,
 } from '../infrastructure/storage';
 import { AppStateContext, type AppStateValue } from './AppStateContext';
@@ -39,8 +40,11 @@ function makeDefaultState(): PersistedState {
 
 export function AppStateProvider({ children }: { readonly children: ReactNode }) {
   const [state, setState] = useState<PersistedState>(() => loadState() ?? makeDefaultState());
+  const [persistenceAvailable, setPersistenceAvailable] = useState(true);
 
-  useEffect(() => saveState(state), [state]);
+  useEffect(() => {
+    setPersistenceAvailable(saveState(state));
+  }, [state]);
 
   const activeProfile =
     state.profiles.find((profile) => profile.id === state.activeProfileId) ?? state.profiles[0];
@@ -50,6 +54,7 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
     () => ({
       state,
       activeProfile,
+      persistenceAvailable,
       setActiveProfile: (id) => {
         if (state.profiles.some((profile) => profile.id === id)) {
           setState((current) => ({ ...current, activeProfileId: id }));
@@ -57,7 +62,7 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
       },
       addProfile: (name) => {
         const trimmed = name.trim().slice(0, 40);
-        if (!trimmed) return;
+        if (!trimmed || state.profiles.length >= MAX_PROFILES) return;
         const profile = makeProfile(trimmed);
         setState((current) => ({
           ...current,
@@ -99,7 +104,7 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
           ),
         })),
     }),
-    [activeProfile, state],
+    [activeProfile, persistenceAvailable, state],
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
