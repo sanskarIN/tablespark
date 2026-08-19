@@ -13,7 +13,10 @@ const DEFAULT_IGNORED_DIRECTORIES = new Set([
 const MAX_FILE_BYTES = 1_000_000;
 
 export const secretPatterns = [
-  { name: 'private key', pattern: /-----BEGIN\s+(?:RSA\s+|EC\s+|OPENSSH\s+)?PRIVATE KEY-----/g },
+  {
+    name: 'private key',
+    pattern: /-----BEGIN\s+(?:RSA\s+|EC\s+|OPENSSH\s+)?PRIVATE KEY-----/g,
+  },
   { name: 'GitHub token', pattern: /gh[pousr]_[A-Za-z0-9]{20,}/g },
   { name: 'AWS access key', pattern: /AKIA[0-9A-Z]{16}/g },
   { name: 'Google API key', pattern: /AIza[0-9A-Za-z_-]{35}/g },
