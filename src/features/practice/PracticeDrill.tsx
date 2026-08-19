@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { difficultyPresets, type DifficultyLevel } from '../../domain/difficulty';
-import { generateQuestions } from '../../domain/questions';
+import { generateQuestions, MAX_SEED } from '../../domain/questions';
 import type { DrillMode, Question } from '../../domain/types';
+import { createPracticeSeed } from '../../infrastructure/random';
 import { speak } from '../../infrastructure/speech';
 import { useAppState } from '../../state/useAppState';
 
@@ -14,22 +15,22 @@ interface Setup {
   seconds: number;
 }
 
-const defaultSetup: Setup = {
+const defaultSetup = {
   min: 2,
   max: 12,
   count: 10,
-  seed: 2026,
-  mode: 'untimed',
+  mode: 'untimed' as const,
   seconds: 60,
 };
 
 export function PracticeDrill() {
   const { activeProfile, recordAttempt, state } = useAppState();
-  const [setup, setSetup] = useState<Setup>({
+  const [setup, setSetup] = useState<Setup>(() => ({
     ...defaultSetup,
+    seed: createPracticeSeed(),
     count: state.settings.defaultQuestionCount,
     seconds: state.settings.defaultTimeLimitSeconds,
-  });
+  }));
   const [questions, setQuestions] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
   const [response, setResponse] = useState('');
@@ -71,6 +72,12 @@ export function PracticeDrill() {
       count: preset.count,
     }));
     setFeedback(`${preset.label}: ${preset.description}`);
+  };
+
+  const chooseNewSeed = () => {
+    const seed = createPracticeSeed();
+    setSetup((value) => ({ ...value, seed }));
+    setFeedback(`New random seed: ${seed}`);
   };
 
   const start = (nextQuestions?: Question[]) => {
@@ -135,6 +142,14 @@ export function PracticeDrill() {
     }
   };
 
+  const resetSession = (randomize: boolean) => {
+    setQuestions([]);
+    setFeedback('');
+    if (randomize) {
+      setSetup((value) => ({ ...value, seed: createPracticeSeed() }));
+    }
+  };
+
   return (
     <section className="page-stack" aria-labelledby="practice-title">
       <div className="hero-card">
@@ -142,8 +157,8 @@ export function PracticeDrill() {
           <p className="eyebrow">Focused practice</p>
           <h2 id="practice-title">Drill your multiplication skills</h2>
           <p>
-            Choose a progression preset or custom range, use a reproducible seed, and review
-            recent mistakes.
+            Start with a random mix, or reuse the visible seed to replay exactly the same session.
+            Difficulty presets and mistake review help target the right facts.
           </p>
         </div>
         {setup.mode === 'timed' && isRunning ? (
@@ -211,16 +226,24 @@ export function PracticeDrill() {
               }
             />
           </label>
-          <label>
-            Seed
-            <input
-              type="number"
-              value={setup.seed}
-              onChange={(event) =>
-                setSetup((value) => ({ ...value, seed: Number(event.target.value) }))
-              }
-            />
-          </label>
+          <div>
+            <label>
+              Seed
+              <input
+                type="number"
+                min={0}
+                max={MAX_SEED}
+                step={1}
+                value={setup.seed}
+                onChange={(event) =>
+                  setSetup((value) => ({ ...value, seed: Number(event.target.value) }))
+                }
+              />
+            </label>
+            <button className="text-button" type="button" onClick={chooseNewSeed}>
+              New random seed
+            </button>
+          </div>
           <label>
             Mode
             <select
@@ -292,9 +315,15 @@ export function PracticeDrill() {
         <div className="drill-card center">
           <h3>Session complete</h3>
           <p className="question">{summary}</p>
-          <button className="primary-button" type="button" onClick={() => setQuestions([])}>
-            Practice again
-          </button>
+          <p>Seed {setup.seed} can be reused for the same generated drill.</p>
+          <div className="button-row">
+            <button className="primary-button" type="button" onClick={() => resetSession(true)}>
+              New random drill
+            </button>
+            <button className="secondary-button" type="button" onClick={() => resetSession(false)}>
+              Repeat this seed
+            </button>
+          </div>
         </div>
       ) : null}
       {feedback ? (
