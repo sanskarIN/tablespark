@@ -6,12 +6,14 @@ Use this document as the release-candidate evidence checklist. Do not mark an it
 
 | Field | Value |
 | --- | --- |
-| Candidate version | Not yet assigned |
-| Commit SHA | Record at release-candidate freeze |
-| Pull request | Record current verified PR |
-| Verification date | Not yet recorded |
+| Candidate version | `2.0.12` |
+| Commit SHA | Record at final 2.0.12 release-candidate freeze |
+| Pull request | PR `#4` — `feat: continue TableSpark roadmap refinement` |
+| Verification date | Not yet recorded for final 2.0.12 head |
 | Tester/reviewer | Not yet recorded |
 | Production origin | Not yet selected |
+
+The source/package/UI version is already prepared as `2.0.12`, but the `v2.0.12` tag must not be created until the exact final candidate passes the required automated and manual gates below.
 
 ## Automated repository gates
 
@@ -19,12 +21,13 @@ Record the exact workflow run or check URL/result after the candidate commit sto
 
 | Gate | Required result | Evidence |
 | --- | --- | --- |
-| CI `quality` | Pass | Not yet recorded for frozen candidate |
-| CI `e2e` | Pass | Not yet recorded for frozen candidate |
-| CodeQL | Pass | Not yet recorded for frozen candidate |
-| Release Visual Evidence | Pass | Not yet recorded for frozen candidate |
+| CI `quality` | Pass | Not yet recorded for final 2.0.12 candidate |
+| CI `e2e` | Pass | Not yet recorded for final 2.0.12 candidate |
+| CodeQL | Pass | Not yet recorded for final 2.0.12 candidate |
+| Release Visual Evidence | Pass | Not yet recorded for final 2.0.12 candidate |
 | Production dependency audit | No blocking high-severity finding | Covered by CI; final run not yet recorded |
 | Repository secret scan | Clean | Covered by CI; final run not yet recorded |
+| Visible version consistency | Package + English UI + Hindi UI all `2.0.12` | Automated locale-catalog regression test added; final run not yet recorded |
 
 ## Real browser screenshots
 
@@ -39,7 +42,7 @@ Expected files:
 
 Before using screenshots as release evidence:
 
-1. Verify the workflow ran against the exact candidate commit.
+1. Verify the workflow ran against the exact final 2.0.12 candidate commit.
 2. Download the artifact from that workflow run.
 3. Inspect every image for clipping, overlap, unexpected banners, broken fonts, and incorrect theme state.
 4. Record the workflow run and reviewer result below.
@@ -67,7 +70,7 @@ Use the matrix in `docs/accessibility.md`. Record completed combinations only af
 
 ## Hindi interface review
 
-Automated tests verify catalog completeness, runtime switching, persistence, and browser rendering. They do not prove natural translation quality.
+Automated tests verify catalog completeness, runtime switching, persistence, browser rendering, localized failure paths, and version synchronization. They do not prove natural translation quality.
 
 Use `docs/hindi-review-checklist.md` with a fluent/native Hindi reviewer before making a strong public translation-quality claim.
 
@@ -95,11 +98,11 @@ Complete only after the repository owner approves a production host/origin.
 
 ## Release artifact evidence
 
-After an approved release tag is published:
+After the approved `v2.0.12` release tag is published:
 
 | Check | Result | Evidence/notes |
 | --- | --- | --- |
-| GitHub release points to intended tag/commit | Not run | — |
+| GitHub release points to intended `v2.0.12` tag/commit | Not run | — |
 | `tablespark-web.zip` attached | Not run | — |
 | `tablespark-web.zip.sha256` attached | Not run | — |
 | Downloaded ZIP passes SHA-256 verification | Not run | — |
@@ -109,7 +112,9 @@ After an approved release tag is published:
 ## Evidence rules
 
 - Never replace `Not run` with `Pass` based on source inspection alone.
+- Never use checks from an older candidate SHA as evidence for the final 2.0.12 head.
 - Never use repository preview illustrations as real release screenshots.
 - Never publish private learner data, backup JSON, or unreadable recovery files as evidence.
 - Keep evidence tied to an immutable commit SHA whenever possible.
 - If the candidate changes after a failure/fix, rerun the affected gates and record the new candidate SHA.
+- Do not create or move the `v2.0.12` tag merely to make a workflow start or pass.
