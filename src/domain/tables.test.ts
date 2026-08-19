@@ -27,6 +27,18 @@ describe('multiplication tables', () => {
     expect(() => validateTableConfig({ ...base, from: 8, to: 2 })).toThrow('must not exceed');
   });
 
+  it('rejects configurations that would overwhelm the rendered worksheet', () => {
+    expect(() =>
+      validateTableConfig({
+        from: -1000,
+        to: 1000,
+        multiplierFrom: -1000,
+        multiplierTo: 1000,
+        step: 1,
+      }),
+    ).toThrow('more than 5000 rows');
+  });
+
   it('formats equations consistently', () => {
     expect(formatEquation({ multiplicand: 7, multiplier: 8, product: 56 })).toBe('7 × 8 = 56');
   });
