@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -32,12 +33,55 @@ function ProfileCapacityHarness() {
 }
 
 function StorageStatusHarness() {
-  const { persistenceAvailable, unreadableStoredState } = useAppState();
+  const { persistenceAvailable, storageReadUnavailable, unreadableStoredState } = useAppState();
   return (
     <output aria-label="Storage status">
       {persistenceAvailable ? 'saving available' : 'saving unavailable'} · recovery{' '}
-      {unreadableStoredState ? 'required' : 'not required'}
+      {unreadableStoredState ? 'required' : 'not required'} · read{' '}
+      {storageReadUnavailable ? 'unavailable' : 'available'}
     </output>
+  );
+}
+
+const replacementBackup = JSON.stringify({
+  schemaVersion: 2,
+  activeProfileId: 'replacement',
+  profiles: [
+    {
+      id: 'replacement',
+      name: 'Imported learner',
+      createdAt: '2026-08-19T00:00:00.000Z',
+      mastery: {},
+      mistakes: [],
+      sessions: [],
+      masteredFactsGoal: null,
+    },
+  ],
+  settings: {
+    theme: 'system',
+    largeText: false,
+    reducedMotion: false,
+    speechEnabled: false,
+    defaultQuestionCount: 10,
+    defaultTimeLimitSeconds: 60,
+    sessionHistoryLimit: 25,
+  },
+});
+
+function BackupImportHarness() {
+  const { activeProfile, replaceFromBackup } = useAppState();
+  const [result, setResult] = useState('not attempted');
+  return (
+    <>
+      <output aria-label="Active profile">{activeProfile.name}</output>
+      <output aria-label="Import result">{result}</output>
+      <button
+        type="button"
+        onClick={() => setResult(replaceFromBackup(replacementBackup) ? 'imported' : 'failed')}
+      >
+        Replace from backup
+      </button>
+    </>
   );
 }
 
@@ -201,9 +245,49 @@ describe('learning records', () => {
 
     expect(screen.getByLabelText('Storage status')).toHaveTextContent('saving unavailable');
     expect(screen.getByLabelText('Storage status')).toHaveTextContent('recovery not required');
+    expect(screen.getByLabelText('Storage status')).toHaveTextContent('read unavailable');
     expect(setItem).not.toHaveBeenCalled();
 
     setItem.mockRestore();
     getItem.mockRestore();
+  });
+
+  it('commits a validated backup only after its replacement is saved successfully', async () => {
+    const user = userEvent.setup();
+    render(
+      <AppStateProvider>
+        <BackupImportHarness />
+      </AppStateProvider>,
+    );
+
+    await waitFor(() => expect(localStorage.getItem('tablespark.state.v1')).not.toBeNull());
+    await user.click(screen.getByRole('button', { name: 'Replace from backup' }));
+
+    expect(screen.getByLabelText('Import result')).toHaveTextContent('imported');
+    expect(screen.getByLabelText('Active profile')).toHaveTextContent('Imported learner');
+    const stored = JSON.parse(localStorage.getItem('tablespark.state.v1') ?? '{}') as {
+      activeProfileId?: string;
+    };
+    expect(stored.activeProfileId).toBe('replacement');
+  });
+
+  it('leaves current state unchanged when a backup replacement cannot be saved', async () => {
+    const user = userEvent.setup();
+    render(
+      <AppStateProvider>
+        <BackupImportHarness />
+      </AppStateProvider>,
+    );
+
+    await waitFor(() => expect(localStorage.getItem('tablespark.state.v1')).not.toBeNull());
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+      throw new DOMException('Blocked', 'SecurityError');
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Replace from backup' }));
+
+    expect(screen.getByLabelText('Import result')).toHaveTextContent('failed');
+    expect(screen.getByLabelText('Active profile')).toHaveTextContent('Learner');
+    setItem.mockRestore();
   });
 });
