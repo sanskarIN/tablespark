@@ -45,26 +45,32 @@ The app is designed as a Progressive Web App (PWA), so a single codebase works i
 - Choose a new random seed without changing the other setup controls.
 - Run timed or untimed drills with configurable ranges and question counts.
 - Use Starter, Builder, Challenge, or Custom difficulty ranges.
+- Keep entered practice responses inside an explicit safe whole-number range.
 - Review recent mistakes with equivalent commutative facts deduplicated.
+- Distinguish generated seeded sessions from mistake-review sessions at completion.
 - Receive immediate correctness feedback and keep deterministic sessions testable.
 
 ### Progress
 
 - Track attempts, accuracy, correct-answer streaks, and recent mistakes per offline profile.
-- Treat equivalent facts such as 4 × 7 and 7 × 4 as the same mastery key.
+- Treat equivalent facts such as 4 × 7 and 7 × 4 as the same canonical mastery key.
 - Classify a fact as mastered after at least three attempts with 90% or better accuracy.
 - Search practiced facts using `x` or `×` notation.
 - Filter progress by All practiced facts, Needs practice, or Mastered.
 
-### Offline data and privacy
+### Offline data, recovery, and privacy
 
-- Create multiple local learner profiles without sign-in, up to the supported local profile limit.
+- Create multiple local learner profiles without sign-in, up to the supported 100-profile limit.
 - Store current state locally in the browser.
-- Warn visibly when browser storage cannot persist changes.
+- Warn visibly when a normal browser-storage write cannot persist changes.
 - Export and import validated JSON backups.
 - Apply the same 2 MB byte budget to current persisted state and imported backups.
-- Validate profile identity, mastery counters, multiplication answers, and attempt correctness on backup import.
-- Confirm destructive backup replacement, profile deletion, and progress reset operations.
+- Validate profile identity, canonical mastery keys, mastery counters, multiplication answers, attempt correctness, and mistake-history semantics on backup import.
+- Preserve an existing unreadable local value rather than automatically overwriting it with defaults.
+- Pause automatic persistence while unreadable data awaits recovery.
+- Download unreadable raw local data privately as a recovery text artifact.
+- Replace unreadable data by importing a valid backup, or explicitly discard it after confirmation.
+- Confirm destructive backup replacement, profile deletion, progress reset, and unreadable-data discard operations.
 
 ### Appearance and accessibility
 
@@ -81,6 +87,7 @@ The app is designed as a Progressive Web App (PWA), so a single codebase works i
 - Install the PWA through a supported desktop browser.
 - Keep product UI strings centralized in `src/i18n/en.ts` for future locale-provider work.
 - Keep business/domain rules separate from React and browser adapters.
+- Keep non-runtime repository security utilities under `scripts/` with independent tests.
 
 ## Supported platforms
 
@@ -192,11 +199,11 @@ A tag matching `v*.*.*` triggers the release workflow, which verifies the releas
 
 TableSpark is a modular client application:
 
-- `src/domain/` — pure multiplication, deterministic question, mastery, review, progress-filter, worksheet, and data rules.
+- `src/domain/` — pure multiplication, answer, deterministic question, mastery, review, progress-filter, worksheet, and data rules.
 - `src/features/` — product screens grouped by user capability.
-- `src/state/` — explicit application state wiring for offline profiles, settings, and persistence-health state.
+- `src/state/` — explicit application state wiring for offline profiles, settings, persistence health, and unreadable-data recovery state.
 - `src/infrastructure/` — local persistence, migrations, speech, random-seed, browser-preference, and structured logging adapters.
-- `src/components/` — cross-cutting UI states such as onboarding, offline/persistence banners, and error handling.
+- `src/components/` — cross-cutting UI states such as onboarding, offline/persistence/recovery banners, and error handling.
 - `src/i18n/` — externalized English interface copy.
 - `scripts/` — repository-only quality/security utilities.
 - `e2e/` — browser-level journey verification.
@@ -204,21 +211,24 @@ TableSpark is a modular client application:
 
 Domain rules do not depend on React. Persisted JSON is versioned, bounded, and validated before use. Core learning workflows require no network connection or remote account.
 
+An existing stored value that fails validation is classified separately from empty storage. TableSpark uses a temporary in-memory state while preserving the original raw local value until the user imports a valid replacement or explicitly discards it. See [ADR 0004](docs/adr/0004-preserve-unreadable-local-state.md).
+
 Read [docs/architecture.md](docs/architecture.md) and [docs/adr/0001-typescript-react-pwa.md](docs/adr/0001-typescript-react-pwa.md).
 
 ## Data, security, and privacy
 
 TableSpark stores profiles, settings, mastery statistics, and recent mistake history in browser `localStorage`. It does not require a server account for core functionality.
 
-Backups are JSON files and may contain learner profile names and learning history. Treat exported backups as personal files and review them before sharing.
+Backups and raw recovery artifacts may contain learner profile names and learning history. Treat exported files as personal files and review them before sharing.
 
 The project:
 
 - validates imported state with a versioned schema;
 - rejects unsupported backup versions;
 - limits current persisted state and imports to a shared 2 MB byte budget;
-- validates profile IDs, active-profile identity, mastery counters, multiplication answers, and recorded correctness;
-- surfaces browser-storage failures in the UI;
+- validates profile IDs, active-profile identity, canonical mastery keys, mastery counters, multiplication answers, recorded correctness, and mistake-history semantics;
+- preserves unreadable existing local state instead of silently destroying it;
+- surfaces browser-storage failures and unreadable-state recovery needs in the UI;
 - avoids storing credentials because no credentials are needed;
 - redacts sensitive structured-log field names and recognizable sensitive values;
 - tests and runs a dependency-free repository secret scanner in CI;
@@ -248,6 +258,7 @@ TableSpark includes:
 - non-color-only text for important states;
 - responsive layouts;
 - optional speech synthesis where supported, with disabled fallback messaging otherwise;
+- explicit accessible recovery alerts/actions for unreadable local data;
 - print output designed not to automatically expose the active learner profile name.
 
 See [docs/accessibility.md](docs/accessibility.md) for the review checklist and known platform differences.
@@ -256,12 +267,12 @@ See [docs/accessibility.md](docs/accessibility.md) for the review checklist and 
 
 The test strategy includes:
 
-- unit tests for table generation, row budgets, validation, review selection, progress filtering, and worksheet modeling;
+- unit tests for table generation, row budgets, answer validation, review selection, progress filtering, and worksheet modeling;
 - deterministic question-generation and seed-validation tests;
 - property-based generated-range tests;
 - mastery and mistake-regression tests;
-- persistence, semantic backup validation, migration, browser-preference, logger, and speech tests;
-- React integration tests for navigation, table changes, print metadata, progress filtering, speech fallback, and persistence warnings;
+- persistence, semantic backup validation, unreadable-state preservation/recovery, migration, browser-preference, logger, and speech tests;
+- React integration tests for navigation, table changes, print metadata, progress filtering, mistake-review completion, speech fallback, persistence warnings, and unreadable-state recovery;
 - a Node test suite for the repository secret scanner;
 - Playwright browser tests for table generation, worksheet mode, practice, profiles, and accessibility settings.
 
@@ -277,7 +288,7 @@ Contributions are welcome. Please read:
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - [SECURITY.md](SECURITY.md)
 
-Use focused commits and add tests for behavior changes. Do not include credentials, private learner data, or generated secrets in issues, pull requests, fixtures, or commits.
+Use focused commits and add tests for behavior changes. Do not include credentials, private learner data, raw recovery data, or generated secrets in issues, pull requests, fixtures, or commits.
 
 ## Repository quality and branch protection
 
