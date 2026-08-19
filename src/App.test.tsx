@@ -21,6 +21,15 @@ describe('TableSpark application', () => {
     expect(screen.getByText('2 × 1 = 2')).toBeInTheDocument();
   });
 
+  it('includes printable learner metadata without exposing the active profile name', () => {
+    renderApp();
+    expect(
+      screen.getByRole('heading', { name: 'TableSpark multiplication study sheet' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Name: ______________________________')).toBeInTheDocument();
+    expect(screen.getByText('Date: ______________________________')).toBeInTheDocument();
+  });
+
   it('moves between major features with accessible navigation', async () => {
     const user = userEvent.setup();
     renderApp();
@@ -52,6 +61,9 @@ describe('TableSpark application', () => {
     );
     expect(screen.getByText('2 × 1 = ______')).toBeInTheDocument();
     expect(screen.queryByText('2 × 1 = 2')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'TableSpark multiplication worksheet' }),
+    ).toBeInTheDocument();
   });
 
   it('searches and filters practiced facts on the progress dashboard', async () => {
@@ -109,6 +121,14 @@ describe('TableSpark application', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Search facts' }), '6 × 8');
     expect(screen.getByText('6 × 8')).toBeInTheDocument();
     expect(screen.queryByText('4 × 7')).not.toBeInTheDocument();
+  });
+
+  it('disables speech controls when the browser has no speech synthesis support', async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(screen.getByRole('checkbox', { name: 'Text-to-speech controls' })).toBeDisabled();
+    expect(screen.getByText('Text-to-speech is not available in this browser.')).toBeInTheDocument();
   });
 
   it('warns when browser storage cannot persist changes', async () => {
