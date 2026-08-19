@@ -6,7 +6,7 @@ import { useAppState } from '../state/useAppState';
 const ONBOARDING_KEY = 'tablespark.onboarding.dismissed.v1';
 
 export function StatusBanners() {
-  const { persistenceAvailable } = useAppState();
+  const { persistenceAvailable, unreadableStoredState } = useAppState();
   const [online, setOnline] = useState(() => navigator.onLine);
   const [showWelcome, setShowWelcome] = useState(() => !readBooleanFlag(ONBOARDING_KEY));
 
@@ -28,7 +28,12 @@ export function StatusBanners() {
 
   return (
     <div className="banner-stack no-print">
-      {!persistenceAvailable ? (
+      {unreadableStoredState ? (
+        <div className="banner warning" role="alert">
+          <strong>{copy.status.recoveryTitle}</strong> {copy.status.recoveryBody}
+        </div>
+      ) : null}
+      {!persistenceAvailable && !unreadableStoredState ? (
         <div className="banner warning" role="alert">
           <strong>{copy.status.storageTitle}</strong> {copy.status.storageBody}
         </div>
