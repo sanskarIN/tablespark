@@ -17,15 +17,30 @@ The current application may store:
 - settings such as theme, text size, reduced motion, speech preference, and drill defaults;
 - a small first-run onboarding dismissal flag.
 
-Persisted learning state is stored under a versioned `localStorage` key in the browser.
+Persisted learning state is stored under a versioned `localStorage` key in the browser. The application limits serialized learning state to a 2 MB byte budget and limits the number of offline profiles to the supported application capacity.
+
+If a browser refuses a storage write, TableSpark keeps the current in-memory state usable for the tab and displays a warning that local saving is unavailable. Do not assume new progress is durable while that warning is visible.
 
 ## Backups
 
 The **Export backup** action creates a JSON file containing local application state. That file can include profile names and learning history. Treat it as a personal file.
 
-The **Import backup** action reads a selected JSON file locally, applies a file-size limit in the UI, validates the schema, checks the schema version, and replaces application state only after validation succeeds.
+The **Import backup** action reads a selected JSON file locally. Before replacement, TableSpark:
+
+- applies the same 2 MB byte budget used for current persisted state;
+- checks the persisted schema version;
+- validates required objects and numeric bounds;
+- verifies unique profile identities and a valid active-profile reference;
+- verifies mastery counters are internally consistent;
+- verifies stored multiplication answers match their operands;
+- verifies recorded correctness matches the saved response;
+- asks for confirmation before replacing current data.
 
 TableSpark does not automatically upload backup files.
+
+## Printed worksheets
+
+Printed worksheet headers provide blank Name and Date lines. TableSpark does not automatically insert the active offline profile name into printed worksheet metadata. This reduces accidental disclosure when a worksheet is printed or shared.
 
 ## Browser and platform behavior
 
@@ -37,13 +52,21 @@ If browser sync is enabled, browser-managed storage behavior may differ by vendo
 
 When text-to-speech is enabled, TableSpark calls the browser’s Web Speech synthesis interface. The exact voice implementation is controlled by the browser/operating system and may vary by platform. TableSpark does not intentionally transmit speech text to its own server.
 
+If the browser does not provide a usable synthesis API, the control is disabled. If a platform synthesis call fails unexpectedly, TableSpark treats the failure as non-fatal.
+
 ## Logging
 
-Application logging is intended for technical events only. The logger redacts fields whose names suggest tokens, secrets, passwords, authorization information, cookies, email addresses, or names. Contributors should still avoid logging personal data in the first place.
+Application logging is intended for technical events only. The structured logger redacts fields whose names suggest tokens, secrets, passwords, authorization information, cookies, email addresses, or names. It also redacts recognizable sensitive values such as email addresses and several common credential formats even when the field name is generic.
+
+Contributors should still avoid logging personal data in the first place. Redaction is defense in depth, not a reason to include learner content in logs.
+
+## Repository secret scanning
+
+The source repository includes a local credential-pattern scanner that runs in CI. It reports finding metadata without echoing the matched credential value. This protects the repository, not end-user learning data, and cannot recognize every possible secret format.
 
 ## Deleting local data
 
-You can reset the active profile’s learning progress from Settings. Deleting a browser profile or clearing TableSpark site storage can remove all locally stored application data. Export a backup first if you want to keep it.
+You can reset the active profile’s learning progress from Settings. You can also delete individual profiles when more than one exists. Deleting a browser profile or clearing TableSpark site storage can remove all locally stored application data. Export a backup first if you want to keep it.
 
 ## Accounts, advertising, and payments
 
