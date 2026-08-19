@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { generateQuestions, masteryKey } from './questions';
+import { generateQuestions, masteryKey, MAX_SEED } from './questions';
 
 describe('question generation', () => {
   it('is deterministic for the same seed', () => {
@@ -19,7 +19,7 @@ describe('question generation', () => {
       fc.property(
         fc.integer({ min: 0, max: 50 }),
         fc.integer({ min: 0, max: 50 }),
-        fc.integer(),
+        fc.integer({ min: 0, max: MAX_SEED }),
         (a, b, seed) => {
           const min = Math.min(a, b);
           const max = Math.max(a, b);
@@ -33,6 +33,18 @@ describe('question generation', () => {
           );
         },
       ),
+    );
+  });
+
+  it('rejects non-integer and out-of-range seeds', () => {
+    expect(() => generateQuestions({ min: 2, max: 12, count: 10, seed: -1 })).toThrow(
+      'Seed must be an integer',
+    );
+    expect(() =>
+      generateQuestions({ min: 2, max: 12, count: 10, seed: MAX_SEED + 1 }),
+    ).toThrow('Seed must be an integer');
+    expect(() => generateQuestions({ min: 2, max: 12, count: 10, seed: 1.5 })).toThrow(
+      'Seed must be an integer',
     );
   });
 
