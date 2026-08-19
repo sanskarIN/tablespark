@@ -17,9 +17,12 @@ The current application may store:
 - bounded practice-session summaries containing completion time, session kind/mode, question count, correct count, elapsed time, and the replay seed for generated drills;
 - an optional per-profile mastered-facts goal with no deadline or streak requirement;
 - settings such as theme, text size, reduced motion, speech preference, drill defaults, and session-history retention;
-- a small first-run onboarding dismissal flag.
+- a small first-run onboarding dismissal flag;
+- a small interface-language preference such as `en` or `hi`.
 
 Persisted learning state is stored under the existing versioned `localStorage` key in the browser. The key remains stable so older valid data can be migrated. The internal persisted schema is currently version 2. Schema-1 learning data is migrated locally by adding empty session history, no mastery goal, and the default retention setting before validation; the migration does not upload the old or new data.
+
+The interface-language preference is stored separately under `tablespark.locale.v1`. It is not included in exported learner-state JSON, does not contain mastery/answer data, and can be removed with other site data.
 
 The application limits serialized learning state to a 2 MB byte budget, limits the number of offline profiles to the supported application capacity, and caps session history at supported retention values. Reducing the retention setting immediately removes older session summaries from local application state.
 
@@ -45,6 +48,14 @@ A profile can store an optional target number of mastered facts. The goal:
 
 It is a progress reference only, not an account, ranking, or behavioral-scoring system.
 
+## Interface language
+
+TableSpark can remember the selected English/Hindi interface language in browser storage. This setting is deliberately outside learner backup data so exporting a learning backup does not implicitly copy the browser’s UI-language choice.
+
+If there is no valid stored language preference, TableSpark can use the browser language as a local fallback signal. This check is performed by the application in the browser; the current product does not send the browser-language value to a TableSpark backend.
+
+Changing language updates interface messages and the document language attribute. It does not change profile identity, mastery scores, session history, goals, or practice answers.
+
 ## Unreadable local-data recovery
 
 If a stored TableSpark value exists but cannot be parsed, migrated, or validated, TableSpark treats it differently from an empty installation.
@@ -65,7 +76,7 @@ Ordinary **Export backup** is disabled while unreadable data is being preserved 
 
 ## Backups
 
-The **Export backup** action creates a JSON file containing validated local application state. That file can include profile names, mastery records, recent mistakes, session summaries, optional mastery goals, and preferences. Treat it as a personal file.
+The **Export backup** action creates a JSON file containing validated local application state. That file can include profile names, mastery records, recent mistakes, session summaries, optional mastery goals, and learning preferences. The separate interface-language preference is not included. Treat the backup as a personal file.
 
 The **Import backup** action reads a selected JSON file locally. Before replacement, TableSpark:
 
@@ -106,6 +117,8 @@ If the browser does not provide a usable synthesis API, the control is disabled.
 
 The production service worker can cache the app shell for offline use. When a new app version is ready, TableSpark surfaces a non-blocking update notice and lets the user choose when to reload rather than forcing an update during an active task. Service-worker caching is controlled by the browser and can be removed by clearing site data.
 
+When a supporting browser provides an install-prompt event, TableSpark can display an optional install action. Dismissing or ignoring that action does not limit core learning features and does not create an account.
+
 ## Logging
 
 Application logging is intended for technical events only. The structured logger redacts fields whose names suggest tokens, secrets, passwords, authorization information, cookies, email addresses, or names. It also redacts recognizable sensitive values such as email addresses and several common credential formats even when the field name is generic.
@@ -120,7 +133,7 @@ The source repository includes a local credential-pattern scanner that runs in C
 
 ## Deleting local data
 
-You can reset the active profile’s learning progress from Settings. This clears its mastery statistics, recent mistakes, and session summaries. You can clear the optional mastery goal separately. You can also delete individual profiles when more than one exists. Deleting a browser profile or clearing TableSpark site storage can remove all locally stored application data. Export a backup first if you want to keep it.
+You can reset the active profile’s learning progress from Settings. This clears its mastery statistics, recent mistakes, and session summaries. You can clear the optional mastery goal separately. You can also delete individual profiles when more than one exists. Deleting a browser profile or clearing TableSpark site storage can remove all locally stored application data, including the separate interface-language preference. Export a backup first if you want to keep learner-state data.
 
 When TableSpark reports unreadable local data, use the dedicated recovery download before choosing **Discard unreadable local data** if there is any chance you may need the original value. Discarding is irreversible within TableSpark.
 
