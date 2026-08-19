@@ -5,6 +5,7 @@ import {
   isMastered,
   type MasteryFilter,
 } from '../../domain/progress';
+import { copy } from '../../i18n/en';
 import { useAppState } from '../../state/useAppState';
 
 export function ProgressDashboard() {
@@ -23,34 +24,31 @@ export function ProgressDashboard() {
     <section className="page-stack" aria-labelledby="progress-title">
       <div className="hero-card">
         <div>
-          <p className="eyebrow">Mastery</p>
-          <h2 id="progress-title">Progress for {activeProfile.name}</h2>
-          <p>
-            See accuracy, practice volume, streaks, and recent multiplication facts that need
-            another look.
-          </p>
+          <p className="eyebrow">{copy.progress.eyebrow}</p>
+          <h2 id="progress-title">{copy.progress.title(activeProfile.name)}</h2>
+          <p>{copy.progress.description}</p>
         </div>
       </div>
 
       <div className="metric-grid">
         <article className="metric-card">
-          <span>Accuracy</span>
+          <span>{copy.progress.accuracy}</span>
           <strong>{profileAccuracy(activeProfile)}%</strong>
         </article>
         <article className="metric-card">
-          <span>Attempts</span>
+          <span>{copy.progress.attempts}</span>
           <strong>{totalAttempts}</strong>
         </article>
         <article className="metric-card">
-          <span>Facts practiced</span>
+          <span>{copy.progress.factsPracticed}</span>
           <strong>{allStats.length}</strong>
         </article>
         <article className="metric-card">
-          <span>Mastered facts</span>
+          <span>{copy.progress.masteredFacts}</span>
           <strong>{masteredCount}</strong>
         </article>
         <article className="metric-card">
-          <span>Mistakes saved</span>
+          <span>{copy.progress.mistakesSaved}</span>
           <strong>{activeProfile.mistakes.length}</strong>
         </article>
       </div>
@@ -58,59 +56,60 @@ export function ProgressDashboard() {
       <div className="panel">
         <div className="section-heading">
           <div>
-            <h3>Fact mastery</h3>
-            <p>Mastered means at least three attempts with 90% or better accuracy.</p>
+            <h3>{copy.progress.factMastery}</h3>
+            <p>{copy.progress.masteryRule}</p>
           </div>
         </div>
         {allStats.length === 0 ? (
-          <p className="empty-state">
-            No progress yet. Complete a practice drill to start building mastery.
-          </p>
+          <p className="empty-state">{copy.progress.noProgress}</p>
         ) : (
           <>
             <div className="control-grid no-print">
               <label>
-                Search facts
+                {copy.progress.searchFacts}
                 <input
                   type="search"
-                  placeholder="e.g. 4 × 7"
+                  placeholder={copy.progress.searchPlaceholder}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
               </label>
               <label>
-                Show
+                {copy.progress.show}
                 <select
                   value={filter}
                   onChange={(event) => setFilter(event.target.value as MasteryFilter)}
                 >
-                  <option value="all">All practiced facts</option>
-                  <option value="needs-practice">Needs practice</option>
-                  <option value="mastered">Mastered</option>
+                  <option value="all">{copy.progress.allFacts}</option>
+                  <option value="needs-practice">{copy.progress.needsPractice}</option>
+                  <option value="mastered">{copy.progress.mastered}</option>
                 </select>
               </label>
             </div>
             {stats.length === 0 ? (
-              <p className="empty-state">No practiced facts match this search and filter.</p>
+              <p className="empty-state">{copy.progress.noMatches}</p>
             ) : (
               <div className="mastery-list">
-                {stats.map((stat) => (
-                  <div className="mastery-row" key={stat.key}>
-                    <div>
-                      <strong>{stat.key.replace('x', ' × ')}</strong>
-                      <small>
-                        {stat.correct}/{stat.attempts} correct · streak {stat.streak}
-                      </small>
+                {stats.map((stat) => {
+                  const percent = masteryPercent(stat);
+                  return (
+                    <div className="mastery-row" key={stat.key}>
+                      <div>
+                        <strong>{stat.key.replace('x', ' × ')}</strong>
+                        <small>
+                          {copy.progress.factStats(stat.correct, stat.attempts, stat.streak)}
+                        </small>
+                      </div>
+                      <div
+                        className="progress-track"
+                        aria-label={copy.progress.masteryPercent(percent)}
+                      >
+                        <span style={{ width: `${percent}%` }} />
+                      </div>
+                      <strong>{percent}%</strong>
                     </div>
-                    <div
-                      className="progress-track"
-                      aria-label={`${masteryPercent(stat)} percent mastery`}
-                    >
-                      <span style={{ width: `${masteryPercent(stat)}%` }} />
-                    </div>
-                    <strong>{masteryPercent(stat)}%</strong>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
@@ -118,9 +117,9 @@ export function ProgressDashboard() {
       </div>
 
       <div className="panel">
-        <h3>Recent mistakes</h3>
+        <h3>{copy.progress.recentMistakes}</h3>
         {activeProfile.mistakes.length === 0 ? (
-          <p className="empty-state">No mistakes recorded.</p>
+          <p className="empty-state">{copy.progress.noMistakes}</p>
         ) : (
           <ul className="mistake-list">
             {activeProfile.mistakes.slice(0, 12).map((attempt) => (
@@ -128,8 +127,8 @@ export function ProgressDashboard() {
                 <span>
                   {attempt.question.left} × {attempt.question.right}
                 </span>
-                <span>Your answer: {attempt.response ?? 'Skipped'}</span>
-                <strong>Correct: {attempt.question.answer}</strong>
+                <span>{copy.progress.yourAnswer(attempt.response)}</span>
+                <strong>{copy.progress.correctAnswer(attempt.question.answer)}</strong>
               </li>
             ))}
           </ul>
