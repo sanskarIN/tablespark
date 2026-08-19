@@ -8,7 +8,9 @@ test('generate a table and complete a deterministic practice question', async ({
   await page.getByRole('spinbutton', { name: 'Table start' }).fill('9');
   await expect(page.getByText('9 × 1 = 9')).toBeVisible();
 
-  await page.getByRole('checkbox', { name: 'Hide answers for practice worksheet' }).check();
+  await page
+    .getByRole('checkbox', { name: 'Hide answers for practice worksheet' })
+    .check();
   await expect(page.getByText('9 × 1 = ______')).toBeVisible();
 
   await page.getByRole('button', { name: 'Practice' }).click();
@@ -30,4 +32,27 @@ test('settings allow local profile creation and appearance controls', async ({ p
   await expect(page.getByTitle('Active offline profile')).toHaveText('Classroom');
   await page.getByRole('checkbox', { name: 'Large-text classroom mode' }).check();
   await expect(page.locator('html')).toHaveClass(/large-text/);
+});
+
+test('unreadable stored state remains intact until explicit discard', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('tablespark.state.v1', '{broken');
+  });
+  await page.goto('/');
+
+  await expect(page.getByRole('alert')).toContainText('Stored learning data needs recovery.');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('tablespark.state.v1')))
+    .toBe('{broken');
+
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await expect(page.getByRole('button', { name: 'Download unreadable local data' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Export backup' })).toBeDisabled();
+
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: 'Discard unreadable local data' }).click();
+  await expect(page.getByText('Unreadable local data discarded. Local saving has resumed.')).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('tablespark.state.v1')))
+    .not.toBe('{broken');
 });
