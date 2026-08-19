@@ -5,12 +5,19 @@ import { clearState, exportState, importState, loadState, saveState } from './st
 const state: PersistedState = {
   schemaVersion: 1,
   activeProfileId: 'p1',
-  profiles: [{ id: 'p1', name: 'Learner', createdAt: '2026-08-19T00:00:00.000Z', mastery: {}, mistakes: [] }],
+  profiles: [
+    {
+      id: 'p1',
+      name: 'Learner',
+      createdAt: '2026-08-19T00:00:00.000Z',
+      mastery: {},
+      mistakes: [],
+    },
+  ],
   settings: {
     theme: 'system',
     largeText: false,
     reducedMotion: false,
-    soundEnabled: true,
     speechEnabled: false,
     defaultQuestionCount: 10,
     defaultTimeLimitSeconds: 60,
