@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { generateTable } from '../../domain/tables';
 import type { TableConfig } from '../../domain/types';
 import { buildWorksheet, type WorksheetBlankStyle } from '../../domain/worksheet';
-import { copy } from '../../i18n/en';
+import { useLocale } from '../../i18n/LocaleContext';
 import { speak } from '../../infrastructure/speech';
 import { useAppState } from '../../state/useAppState';
 
@@ -25,6 +25,8 @@ function numberValue(value: string, fallback: number): number {
 
 export function TableGenerator() {
   const { state } = useAppState();
+  const { messages } = useLocale();
+  const { copy } = messages;
   const [config, setConfig] = useState<TableConfig>(initialConfig);
   const [output, setOutput] = useState<WorksheetOutput>('study');
   const [blankStyle, setBlankStyle] = useState<WorksheetBlankStyle>('line');
@@ -43,7 +45,7 @@ export function TableGenerator() {
         error: error instanceof Error ? error.message : copy.tables.invalidSettings,
       };
     }
-  }, [blankStyle, config]);
+  }, [blankStyle, config, copy.tables.invalidSettings]);
 
   const update = (key: keyof TableConfig, raw: string) => {
     setConfig((current) => ({ ...current, [key]: numberValue(raw, current[key]) }));
