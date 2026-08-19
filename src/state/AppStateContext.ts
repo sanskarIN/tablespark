@@ -12,6 +12,7 @@ export interface AppStateValue {
   readonly activeProfile: Profile;
   readonly persistenceAvailable: boolean;
   readonly unreadableStoredState: boolean;
+  readonly storageReadUnavailable: boolean;
   readonly setActiveProfile: (id: string) => void;
   readonly addProfile: (name: string) => void;
   readonly deleteProfile: (id: string) => void;
@@ -19,7 +20,7 @@ export interface AppStateValue {
   readonly recordAttempt: (attempt: Attempt) => void;
   readonly recordSession: (summary: SessionSummary) => void;
   readonly setMasteredFactsGoal: (goal: number | null) => void;
-  readonly replaceFromBackup: (raw: string) => void;
+  readonly replaceFromBackup: (raw: string) => boolean;
   readonly discardUnreadableState: () => boolean;
   readonly resetProgress: () => void;
 }
