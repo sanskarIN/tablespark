@@ -7,7 +7,7 @@ It is intentionally operational. Architecture decisions are explained elsewhere;
 # Maintenance principles
 
 1. Prefer small, reviewable commits.
-2. Keep source, tests, configuration, and documentation synchronized.
+2. Keep source, tests, configuration, automation, and documentation synchronized.
 3. Never mark a manual/external verification gate passed without evidence.
 4. Treat persisted-data compatibility as a release concern, not only a TypeScript concern.
 5. Treat GitHub workflow changes as executable supply-chain code.
@@ -33,7 +33,7 @@ Review:
 - documentation links/content;
 - release notes/changelog relevance.
 
-Required automated evidence should include current PR checks for the final head SHA.
+Required automated evidence should correspond to the final pull-request head SHA.
 
 ## Weekly
 
@@ -52,9 +52,10 @@ When update PRs exist:
 - review bundle/build output;
 - review privacy/security docs against current data fields;
 - inspect roadmap and remove completed/stale promises;
-- audit local links/documentation index;
+- run the formal documentation-link quality gate;
+- compare the recursive tracked-file list with the repository file reference;
 - inspect release evidence/manual-gate status;
-- review screenshots on current candidate rather than reusing old ones.
+- review screenshots on the current candidate rather than reusing old ones.
 
 ## Before every public release
 
@@ -134,7 +135,7 @@ Strictness options are deliberate safeguards.
 
 When a TypeScript upgrade reports new errors:
 
-- first determine whether the new diagnostic reveals a real issue;
+- first determine whether the diagnostic reveals a real issue;
 - prefer fixing code/types;
 - avoid broadly disabling strict rules;
 - update typed test fixtures when a domain schema intentionally changes;
@@ -159,8 +160,10 @@ When updating Prettier:
 
 1. run `npm run format:check` first;
 2. run `npm run format` intentionally;
-3. review the potentially large formatting diff separately from logic changes where possible;
+3. review potentially large formatting diffs separately from logic changes where practical;
 4. ensure formatting globs still cover newly added source/config file types.
+
+Markdown is not currently covered by package-level Prettier formatting. Review Markdown readability manually and rely on `npm run test:docs` for repository-local link integrity.
 
 # Domain rule maintenance
 
@@ -184,7 +187,7 @@ must include direct domain tests and review every dependent UI/storage/documenta
 
 The same seed currently reproduces the same sequence under the current algorithm.
 
-Changing `mulberry32` or question-generation order is a behavior compatibility change. Existing session summaries retain seeds, so a future algorithm change could make “replay this historical seed” produce a different sequence.
+Changing `mulberry32` or question-generation order is a behavior compatibility change. Existing session summaries retain seeds, so a future algorithm change could make historical seed replay produce a different sequence.
 
 If changing the generator:
 
@@ -286,7 +289,7 @@ See `docs/accessibility.md`.
 
 For every new control/state:
 
-- use semantic native element when possible;
+- use a semantic native element when possible;
 - provide visible label;
 - provide accessible name/description;
 - ensure keyboard operation;
@@ -424,33 +427,56 @@ scripts/link-checker.test.mjs
 scripts/link-check.mjs
 ```
 
+Formal command:
+
+```bash
+npm run test:docs
+```
+
+This command is part of `npm run check`, the CI `quality` job, and tagged release verification through `npm run check`.
+
 When adding new Markdown structure/path handling:
 
-- update checker tests;
-- run direct link-check command;
-- keep checks deterministic/offline for local repository paths.
+1. update checker implementation only if necessary;
+2. add/update checker tests;
+3. run `npm run test:docs`;
+4. fix broken repository-local links rather than weakening the checker;
+5. update command/testing/quality/CI docs if the gate behavior changes.
 
-If link checking becomes part of `npm run check`, update CI/quality/commands docs together.
+The checker verifies supported local link targets; it does not crawl every external URL and it does not replace the explicit every-tracked-file inventory review.
 
 # Documentation maintenance
 
 The documentation system has topic guides plus `docs/repository-file-reference.md` as a complete tracked-file map.
 
-Whenever adding/removing a tracked file:
+Whenever adding/removing/renaming a tracked file:
 
 - update the repository file reference;
 - update `docs/documentation-index.md` if it is a public documentation surface;
-- update README links if user/contributor discoverability changes.
+- update README links if user/contributor discoverability changes;
+- run `npm run test:docs`.
 
-Whenever changing product behavior:
-
-review at minimum:
+Whenever changing product behavior, review at minimum:
 
 - README;
 - user guide;
 - changelog;
 - what_changed;
 - relevant architecture/domain/state/security/privacy/accessibility/testing docs.
+
+## Documentation completeness review
+
+`npm run test:docs` checks link integrity, but “every tracked file is documented” is a different property.
+
+For completeness:
+
+```bash
+git ls-files
+```
+
+Compare the resulting tracked-file list with `docs/repository-file-reference.md`.
+
+When a local checkout is unavailable, use an equivalent recursive Git tree for the exact branch/commit.
 
 ## Avoiding documentation claims without evidence
 
@@ -548,19 +574,17 @@ tablespark-web.zip
 tablespark-web.zip.sha256
 ```
 
-If names/package layout change:
+If names/package layout change, update together:
 
 - release workflow;
 - release docs;
 - commands reference;
 - evidence template;
-- deployment procedure
-
-must change together.
+- deployment procedure.
 
 # Screenshot/evidence maintenance
 
-Real screenshot spec lives at:
+Real screenshot spec:
 
 ```text
 e2e/release-evidence.spec.ts
@@ -572,7 +596,7 @@ Workflow:
 .github/workflows/visual-evidence.yml
 ```
 
-When major UI surfaces change, consider adding representative evidence captures, but avoid creating huge artifact sets without a review need.
+When major UI surfaces change, consider representative evidence captures, but avoid creating huge artifact sets without a review need.
 
 Screenshots should be generated from the real built app and manually inspected.
 
@@ -629,7 +653,7 @@ npm run test:e2e
 A clean clone catches hidden dependencies on:
 
 - untracked files;
-- stale node_modules;
+- stale `node_modules`;
 - local environment variables;
 - cached build output;
 - editor-generated configuration.
@@ -641,7 +665,7 @@ A clean clone catches hidden dependencies on:
 - identify last known-good artifact/tag;
 - stop/rollback deployment as documented;
 - create a corrective patch release;
-- do not silently move public tag;
+- do not silently move a public tag;
 - document incident/fix.
 
 ## Corrupted learner-state regression
@@ -667,13 +691,14 @@ For a significant maintenance PR:
 - [ ] Scope is focused and explained.
 - [ ] Dependencies/config values synchronized.
 - [ ] Direct tests updated.
-- [ ] `npm run check` completed for final local candidate where possible.
+- [ ] `npm run check` completed for final local candidate where possible, including `test:docs`.
 - [ ] E2E completed when browser/build behavior changed.
 - [ ] CI/CodeQL final-head evidence reviewed.
 - [ ] Security/privacy impact reviewed.
 - [ ] Persistence compatibility reviewed.
 - [ ] Localization/accessibility impact reviewed.
 - [ ] Relevant docs updated.
+- [ ] `docs/repository-file-reference.md` updated for tracked-file additions/removals/renames.
 - [ ] `CHANGELOG.md` updated if release-visible.
 - [ ] `what_changed.md` updated.
 - [ ] Manual/external gates remain accurately marked pending when not executed.
