@@ -275,7 +275,6 @@ export function PracticeDrill() {
             <label className="answer-label">
               Your answer
               <input
-                autoFocus
                 inputMode="numeric"
                 type="number"
                 value={response}
