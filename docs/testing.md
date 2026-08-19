@@ -63,8 +63,25 @@ These cover:
 - unsupported schema versions;
 - migration boundary behavior;
 - safe lightweight browser preference flags;
+- browser install-prompt type guarding;
+- PWA lifecycle event dispatch;
 - structured log redaction;
 - progressive speech-synthesis behavior.
+
+### Localization unit/integration tests
+
+Localization-specific tests verify:
+
+- English/Hindi runtime catalog structural parity;
+- no blank static Hindi messages;
+- locale preference recognition and browser-language fallback;
+- blocked locale-storage failure containment;
+- English-to-Hindi runtime switching;
+- persisted Hindi restoration;
+- document `<html lang>` changes;
+- separation of locale preference from learner-state backup JSON.
+
+These checks catch missing/structurally inconsistent translated messages but do not evaluate natural Hindi language quality.
 
 ### React integration tests
 
@@ -113,6 +130,26 @@ npm run secret:scan
 
 The scanner is defense in depth, not a replacement for secret rotation or repository-history cleanup after an accidental real-secret commit.
 
+### Documentation integrity tests
+
+The repository includes an offline local-Markdown link checker.
+
+Run its formal package gate with:
+
+```bash
+npm run test:docs
+```
+
+This command:
+
+1. runs `scripts/link-checker.test.mjs` with Node's built-in test runner;
+2. runs `scripts/link-check.mjs` against the current repository checkout;
+3. fails when a supported local Markdown target cannot be resolved.
+
+This gate checks repository-local link/path integrity. It does not crawl or guarantee availability of external websites.
+
+The exhaustive file inventory in `docs/repository-file-reference.md` remains a review-maintained completeness artifact: link checking can prove linked local files exist but cannot automatically infer whether a newly added tracked source file has received an explanatory inventory entry.
+
 ### Browser end-to-end tests
 
 Location: `e2e/`
@@ -144,7 +181,13 @@ Playwright starts a production preview server and verifies user journeys in Chro
 - document-language update;
 - language persistence across reload.
 
-Run:
+`e2e/localized-errors.spec.ts` covers important Hindi error paths so table/practice/backup failures do not silently expose raw English domain/validation messages.
+
+`e2e/print.spec.ts` covers real Chromium print-media behavior for practice worksheet/answer-key output, metadata visibility, and configured paper/column state.
+
+`e2e/release-evidence.spec.ts` is an opt-in real-browser screenshot capture suite. It is normally skipped during ordinary E2E and enabled by `CAPTURE_RELEASE_EVIDENCE=1` in the dedicated visual-evidence workflow.
+
+Run all ordinary browser specs with:
 
 ```bash
 npm run test:e2e
@@ -168,7 +211,11 @@ Automated browser invariants intentionally do not claim WCAG conformance or succ
 
 ## Localization automation boundary
 
-Typed catalog shape checks and browser smoke tests catch missing keys, switching regressions, and persistence problems. They do not prove natural translation quality. A fluent/native-speaker terminology review remains a manual release-quality check for the Hindi interface.
+Typed catalog shape checks and browser tests catch missing keys, switching regressions, persistence problems, and selected localized error leaks. They do not prove natural translation quality. A fluent/native-speaker terminology review remains a manual release-quality check for the Hindi interface.
+
+## Print automation boundary
+
+Chromium print-media tests verify DOM/style state under print emulation. They do not prove physical printer output or every browser's print engine. Release review should still inspect actual print preview for A4/US Letter, columns, Hindi glyphs, page breaks, and learner metadata behavior.
 
 ## Coverage
 
@@ -194,9 +241,10 @@ This runs, in order:
 4. Vitest application tests;
 5. Node security-scanner tests;
 6. repository secret scan;
-7. production build.
+7. documentation-link checker tests + repository local-link check;
+8. production build.
 
-Browser E2E is intentionally a separate script because it requires a browser binary. Production dependency auditing is an additional CI/release gate because it depends on installed package metadata.
+Browser E2E is intentionally a separate script because it requires a browser binary. Production dependency auditing is an additional CI/release gate because it depends on installed package/advisory metadata.
 
 ## CI behavior
 
@@ -211,6 +259,7 @@ The CI workflow has two jobs.
 - runs Vitest;
 - tests the repository secret scanner;
 - scans repository files for supported credential patterns;
+- runs the documentation-link quality gate;
 - builds the PWA;
 - audits production dependencies for high-severity findings;
 - uploads the built `dist/` directory as an artifact.
@@ -219,13 +268,15 @@ The CI workflow has two jobs.
 
 - installs dependencies;
 - installs Chromium and required CI libraries;
-- runs Playwright against a production preview build, including smoke, accessibility-invariant, and localization specs.
+- runs Playwright against a production preview build, including smoke, accessibility, localization/localized-error and print specs; the release-evidence capture remains opt-in.
 
-CodeQL is maintained in a separate security workflow.
+CodeQL is maintained in a separate security workflow. Release visual evidence is maintained in a separate screenshot workflow.
 
 ## Release workflow verification
 
-The tagged release workflow runs `npm run check`, rebuilds the PWA, packages `dist/` as `tablespark-web.zip`, and generates `tablespark-web.zip.sha256`. This adds integrity metadata to the packaged artifact but does not replace normal CI/E2E/manual release-candidate review.
+The tagged release workflow runs `npm run check`, which now includes the documentation-link gate, rebuilds the PWA, packages `dist/` as `tablespark-web.zip`, and generates `tablespark-web.zip.sha256`.
+
+This adds integrity metadata to the packaged artifact but does not replace normal CI/E2E/manual release-candidate review.
 
 ## Regression-test rule
 
@@ -236,6 +287,8 @@ When fixing a bug:
 3. keep the regression test;
 4. run related tests;
 5. run the full quality suite before release-level work.
+
+For documentation path bugs, add/update the local-link-checker test if the failure is a checker parsing/resolution defect rather than simply correcting the broken Markdown link.
 
 ## Determinism
 
@@ -250,6 +303,8 @@ Tests must not depend on:
 Practice generation supports a seed specifically so sessions can be reproduced. Random-seed helper tests inject a deterministic random function instead of depending on `Math.random()` output.
 
 Locale tests set or use a controlled local preference rather than depending on an unknown developer-machine browser language.
+
+Documentation-link tests deliberately validate local repository targets rather than requiring network availability.
 
 ## Manual release checks
 
@@ -276,4 +331,4 @@ Automated tests do not replace final manual checks. Before a release, inspect:
 - manual assistive-technology matrix rows from `docs/accessibility.md`;
 - real light/dark and compact/wide browser screenshots from the verified release candidate.
 
-Record release-candidate results in `what_changed.md` without marking unexecuted checks as passed.
+Record release-candidate results in `docs/release-evidence.md` and `what_changed.md` without marking unexecuted checks as passed.
