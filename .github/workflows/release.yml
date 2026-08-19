@@ -28,7 +28,15 @@ jobs:
         run: npm run build
       - name: Package web artifact
         run: cd dist && zip -r ../tablespark-web.zip .
+      - name: Generate SHA-256 integrity metadata
+        run: sha256sum tablespark-web.zip > tablespark-web.zip.sha256
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" tablespark-web.zip --repo "$GITHUB_REPOSITORY" --generate-notes --verify-tag
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          tablespark-web.zip
+          tablespark-web.zip.sha256
+          --repo "$GITHUB_REPOSITORY"
+          --generate-notes
+          --verify-tag
