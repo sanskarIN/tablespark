@@ -6,7 +6,8 @@ This file is the detailed continuation record for the current TableSpark impleme
 
 ## Current repository checkpoint
 
-- Application version: `0.1.0`
+- Application version: `2.0.12`
+- Release state: **2.0.12 source/release candidate prepared; `v2.0.12` tag not yet created**.
 - Repository: `https://github.com/sanskarIN/tablespark`
 - Default branch: `main`
 - Current development/verification branch: `feat/roadmap-refinement-2026-08-19`
@@ -340,9 +341,12 @@ Implemented automated coverage includes:
 - document language metadata;
 - locale preference excluded from learner-state JSON;
 - browser-level Hindi navigation/reload;
-- browser-level Hindi table/practice/backup error paths.
+- browser-level Hindi table/practice/backup error paths;
+- visible English/Hindi version synchronization with `package.json`.
 
 The final hardening pass changed table generation, practice start/review, and invalid-backup feedback so these paths use localized catalog messages rather than embedding raw English parser/domain exceptions.
+
+The 2.0.12 preparation pass updates both English and Hindi Settings/About version strings and adds a regression assertion so package/UI version drift becomes a test failure.
 
 A fluent/native Hindi terminology review remains a **manual release-quality gate** and is documented in `docs/hindi-review-checklist.md`.
 
@@ -906,6 +910,8 @@ Runs on `v*.*.*` tags and:
 - creates SHA-256 metadata;
 - creates GitHub Release with generated notes and both assets.
 
+The current prepared tag name is `v2.0.12`, but it must not be created until the exact 2.0.12 release-candidate commit is verified.
+
 ## 40. Release Visual Evidence
 
 `.github/workflows/visual-evidence.yml`
@@ -994,7 +1000,16 @@ The final hardening pass synchronized:
 - `PRIVACY.md` with startup-read unavailability, disabled unsafe backup actions and durability-before-import-success behavior;
 - `docs/security-model.md` and `docs/state-and-persistence.md` with the same executable invariants.
 
-This is important because persistence behavior is part of the public privacy/data-loss contract, not merely an internal refactor.
+The 2.0.12 preparation pass additionally synchronizes:
+
+- `package.json` with version `2.0.12`;
+- English and Hindi Settings/About version copy with `2.0.12`;
+- `CHANGELOG.md` with a 2.0.12 release-candidate section rather than falsely claiming the tag already exists;
+- `docs/release.md` with the intended `v2.0.12` tag commands and verification requirements;
+- `docs/release-evidence.md` with candidate version 2.0.12 and PR #4 identity;
+- this handoff with the 2.0.12 release state.
+
+This is important because persistence behavior and release/version metadata are part of the public privacy/data-loss/release contract, not merely internal refactors.
 
 # Final reliability hardening in this continuation
 
@@ -1124,16 +1139,17 @@ GitHub Actions remains the authoritative executable verification path for the br
 
 ## 52. GitHub exact-final-head verification rule
 
-This handoff update itself changes the branch SHA. Prior workflow runs—even successful runs—cannot be used as final evidence for the exact SHA produced by this commit.
+Every source/documentation change creates a new candidate SHA. Prior workflow runs—even successful runs—cannot be used as final evidence for a later 2.0.12 candidate.
 
-After this commit:
+After the final 2.0.12 source/documentation commit:
 
 1. fetch PR #4 again and record its exact new head SHA externally;
 2. inspect CI for that exact SHA;
 3. inspect CodeQL for that exact SHA;
 4. inspect Release Visual Evidence for that exact SHA;
 5. if any exact-head job fails, inspect its job/steps/logs and make only focused fixes;
-6. after any fix, repeat the exact-head rule because the SHA changed again.
+6. after any fix, repeat the exact-head rule because the SHA changed again;
+7. create `v2.0.12` only after the intended automated/manual gates are actually satisfied.
 
 Do not edit this handoff merely to paste a green workflow status if doing so would create another unverified head.
 
@@ -1165,23 +1181,41 @@ These are intentionally **not** marked complete by source/documentation work alo
 - production PWA installability behavior;
 - online-load then offline-reload validation on production origin;
 - deployed update producing the expected non-blocking update notice;
-- final release tag creation;
+- final `v2.0.12` release tag creation;
 - downloaded release ZIP/checksum verification;
 - final deployment/rollback evidence.
 
 These gates are tracked in `docs/release-evidence.md`, `docs/accessibility.md`, `docs/hindi-review-checklist.md`, `docs/deployment-evaluation.md`, and `docs/release.md`.
 
+## 54. Version 2.0.12 preparation
+
+The continuation request explicitly selected version **2.0.12**. The release-candidate preparation therefore includes separate reviewable commits for:
+
+1. `package.json` version → `2.0.12`;
+2. English Settings/About visible version → `2.0.12`;
+3. Hindi Settings/About visible version → `2.0.12`;
+4. locale-catalog test asserting both visible versions and version summaries match `package.json`;
+5. changelog assignment to a 2.0.12 release candidate while keeping the tag/public release pending;
+6. release guide update to the intended `v2.0.12` annotated tag commands;
+7. release-evidence candidate identity assignment to `2.0.12` / PR #4;
+8. handoff synchronization.
+
+The version bump does **not** change learner-state schema version 2 or the existing `tablespark.state.v1` storage key. Product semantic versioning and persisted-data schema versioning are separate concepts.
+
+No `v2.0.12` tag is claimed to exist until it is actually created after candidate verification.
+
 # Next safe work
 
-Source/product/documentation scope is now at the final release-candidate/refinement checkpoint. The next work should be **verification and evidence**, not speculative feature expansion:
+Source/product/documentation scope is now at the **2.0.12 release-candidate/refinement checkpoint**. The next work should be verification and evidence, not speculative feature expansion:
 
-1. fetch final PR #4 head SHA;
+1. fetch the final PR #4 2.0.12 head SHA;
 2. inspect CI `quality` and `e2e` for that exact SHA;
 3. inspect CodeQL for that exact SHA;
 4. inspect Release Visual Evidence for that exact SHA;
-5. fix only real final-head failures with focused commits/tests;
+5. fix only real exact-head failures with focused commits/tests;
 6. if visual evidence succeeds, inspect the artifact before marking screenshots reviewed;
-7. keep assistive-technology/Hindi/production-origin/release gates pending until actually performed;
-8. do not merge PR #4 until required repository checks and intended review gates are satisfied.
+7. keep assistive-technology/Hindi/production-origin gates pending until actually performed;
+8. create `v2.0.12` only after the required automated and intended manual gates are satisfied;
+9. do not merge PR #4 based on older-SHA checks.
 
-No production deployment, native wrapper, app-store package, release tag, or manual assistive-technology/Hindi certification is claimed by this handoff.
+No production deployment, native wrapper, app-store package, `v2.0.12` tag, or manual assistive-technology/Hindi certification is claimed by this handoff.
