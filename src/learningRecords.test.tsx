@@ -3,12 +3,31 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import App from './App';
 import { AppStateProvider } from './state/AppStateProvider';
+import { useAppState } from './state/useAppState';
 
 function renderApp() {
   return render(
     <AppStateProvider>
       <App />
     </AppStateProvider>,
+  );
+}
+
+function ProfileCapacityHarness() {
+  const { addProfile, state } = useAppState();
+  return (
+    <>
+      <output aria-label="Profile count">{state.profiles.length}</output>
+      <button
+        type="button"
+        onClick={() => {
+          addProfile('Learner 100');
+          addProfile('Learner 101');
+        }}
+      >
+        Add two profiles
+      </button>
+    </>
   );
 }
 
@@ -110,5 +129,51 @@ describe('learning records', () => {
     await user.click(screen.getByRole('button', { name: 'Progress' }));
 
     expect(screen.getByText('10 saved locally · retention limit 10')).toBeInTheDocument();
+  });
+
+  it('enforces the profile capacity inside batched state updates', async () => {
+    const profiles = Array.from({ length: 99 }, (_, index) => ({
+      id: `profile-${index + 1}`,
+      name: `Learner ${index + 1}`,
+      createdAt: '2026-08-19T00:00:00.000Z',
+      mastery: {},
+      mistakes: [],
+      sessions: [],
+      masteredFactsGoal: null,
+    }));
+    localStorage.setItem(
+      'tablespark.state.v1',
+      JSON.stringify({
+        schemaVersion: 2,
+        activeProfileId: 'profile-1',
+        profiles,
+        settings: {
+          theme: 'system',
+          largeText: false,
+          reducedMotion: false,
+          speechEnabled: false,
+          defaultQuestionCount: 10,
+          defaultTimeLimitSeconds: 60,
+          sessionHistoryLimit: 25,
+        },
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(
+      <AppStateProvider>
+        <ProfileCapacityHarness />
+      </AppStateProvider>,
+    );
+
+    expect(screen.getByLabelText('Profile count')).toHaveTextContent('99');
+    await user.click(screen.getByRole('button', { name: 'Add two profiles' }));
+    expect(screen.getByLabelText('Profile count')).toHaveTextContent('100');
+
+    await waitFor(() => {
+      const raw = localStorage.getItem('tablespark.state.v1');
+      const stored = JSON.parse(raw ?? '{}') as { profiles?: unknown[] };
+      expect(stored.profiles).toHaveLength(100);
+    });
   });
 });
