@@ -13,7 +13,7 @@ Controls:
 - **Table step** — interval between tables. For example, start 2, end 10, step 2 produces tables 2, 4, 6, 8, and 10.
 - **Hide answers for practice worksheet** — changes solved equations into blank-answer prompts.
 
-TableSpark protects the interface from excessively large generated output. If a range would produce more than the supported worksheet-row budget, reduce the range or increase the table step.
+TableSpark protects the interface from excessively large generated output. If a range would produce more than 5,000 worksheet rows, reduce the range or increase the table step.
 
 ### Study sheet
 
@@ -77,11 +77,15 @@ Timed mode uses the configured time limit. The countdown appears in the practice
 
 ### Answering
 
-Enter a whole-number answer and choose **Check answer**. TableSpark records correctness, attempt time, and fact mastery for the active offline profile.
+Enter a whole-number answer and choose **Check answer**. New practice responses are bounded to the supported persisted-answer range so the UI cannot create numeric values that the product does not intend to store.
+
+TableSpark records correctness, attempt time, and fact mastery for the active offline profile.
 
 ### Review mistakes
 
 Choose **Review mistakes** to practice recent incorrect facts again. Repeated mistakes for the same commutative fact are deduplicated, so a review does not waste its limited question count repeating equivalent facts such as 4 × 7 and 7 × 4.
+
+A completed mistake review shows a review-specific completion note and returns to practice setup. Seed replay controls are reserved for generated seeded drills.
 
 If no mistakes exist yet, TableSpark explains that there is nothing to review.
 
@@ -108,7 +112,7 @@ Use the **Show** filter to switch among:
 - **Needs practice**;
 - **Mastered**.
 
-Mastery keys treat multiplication as commutative: practicing 4 × 7 and 7 × 4 contributes to the same fact key.
+Mastery keys treat multiplication as commutative: practicing 4 × 7 and 7 × 4 contributes to the same canonical fact key.
 
 ## 4. Settings
 
@@ -137,13 +141,15 @@ To create a profile:
 
 To switch profiles, choose a profile button.
 
-You cannot delete the last remaining profile. This keeps application state valid. TableSpark also shows local profile capacity and prevents creating more profiles than the supported persisted-state limit.
+You cannot delete the last remaining profile. This keeps application state valid. TableSpark shows local profile capacity and prevents creating more than 100 local profiles.
 
 ### Export backup
 
-Choose **Export backup** to download JSON containing profiles, learning history, and settings.
+Choose **Export backup** to download validated JSON containing profiles, learning history, and settings.
 
 Store the file carefully because profile names and learning history can be personal data.
+
+Ordinary backup export is disabled during the unreadable-data recovery state because the visible application state is then temporary rather than the original stored value.
 
 ### Import backup
 
@@ -154,14 +160,36 @@ Import can fail when:
 - JSON is malformed;
 - schema version is unsupported;
 - required fields are missing/invalid;
+- more than 100 profiles are present;
 - profile IDs are duplicated;
 - the active profile reference is invalid;
+- mastery fact keys are not canonical;
 - mastery counters are mathematically inconsistent;
 - a stored multiplication answer does not match its operands;
 - an attempt's correctness flag does not match its recorded response;
+- a correct attempt appears inside saved mistake history;
 - the backup exceeds the shared 2 MB persisted-state budget.
 
-Export your current state before importing if you may need to restore it afterward.
+Export your current validated state before importing if you may need to restore it afterward.
+
+### Recover unreadable local data
+
+If TableSpark starts with **Stored learning data needs recovery**, an existing local value failed parsing, migration, or validation. TableSpark preserves that value instead of overwriting it.
+
+While recovery is pending:
+
+- the app uses a temporary in-memory default state;
+- new changes are temporary and are not saved over the unreadable value;
+- ordinary **Export backup** is disabled;
+- a dedicated recovery section appears under **Data & privacy**.
+
+Recovery options:
+
+1. **Download unreadable local data** — saves the exact raw stored value as a `.txt` recovery artifact. Use this before discarding if you may need troubleshooting or manual recovery.
+2. **Import backup** — select a known-good TableSpark backup. If it validates and you confirm replacement, it becomes the new persisted state and recovery ends.
+3. **Discard unreadable local data** — permanently removes the unreadable value after confirmation, then normal local saving resumes using the current temporary state.
+
+The raw recovery file may contain learner names and learning history. Treat it as personal data and do not post it publicly without reviewing/redacting it.
 
 ### Reset active progress
 
@@ -169,9 +197,11 @@ This clears mastery and saved mistakes for the selected profile after confirmati
 
 ### Local-saving warning
 
-If browser storage rejects a write because of storage limits, browser policy, private-mode restrictions, or another storage error, TableSpark displays **Local saving is unavailable.**
+If browser storage rejects a normal write because of storage limits, browser policy, private-mode restrictions, or another storage error, TableSpark displays **Local saving is unavailable.**
 
 The app can continue operating in memory for the current tab, but changes may not survive reload. Address the browser storage problem before relying on new progress being durable.
+
+This warning is different from the unreadable-data recovery state: a normal write failure means TableSpark could read the current state but could not save a newer one; recovery means the pre-existing stored value itself could not be validated.
 
 ## 5. About
 
@@ -196,7 +226,8 @@ After production PWA assets have been cached, core functionality is designed to 
 - practice;
 - progress search/filtering;
 - profiles/settings;
-- local backup creation/import.
+- local backup creation/import;
+- local unreadable-data recovery actions.
 
 External links and initial asset download naturally require connectivity.
 
@@ -217,3 +248,5 @@ If the operating system/browser reserves one of these shortcuts, use normal keyb
 ## 8. Privacy reminder
 
 TableSpark has no required cloud account. Local data can still be lost if browser/site storage is cleared or becomes unavailable. Export a backup before browser cleanup, device migration, or other destructive storage maintenance.
+
+If TableSpark reports unreadable stored data, download the dedicated raw recovery artifact before discarding the value if there is any chance you may need it.
