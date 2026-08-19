@@ -1,21 +1,25 @@
 # TableSpark State and Persistence Lifecycle
 
-This document explains how application state moves between React, domain rules, browser storage, backup import/export, and unreadable-data recovery.
+This document is the maintainer reference for how TableSpark moves learner state between React, domain rules, browser storage, backup import/export, migrations, and recovery.
 
-The most important design principle is:
+The core safety principles are:
 
-> **A missing value and an existing-but-unreadable value are different states.**
+> **Missing data, invalid existing data, and unavailable browser storage are three different conditions.**
 
-TableSpark may create defaults for an empty installation. It must not automatically overwrite an existing local value that failed parsing, migration, or validation.
+> **A validated backup must be durably written before it is allowed to replace the current in-memory state.**
+
+TableSpark can create defaults for a genuinely empty installation. It must not overwrite a value that could not be validated, and it must not write temporary defaults when the browser prevented the application from reading storage at startup.
 
 See also:
 
-- `docs/data-schema-v2.md` — field-level persisted schema contract;
-- `docs/adr/0002-local-first-persistence.md` — local-first decision;
-- `docs/adr/0004-preserve-unreadable-local-state.md` — unreadable-state preservation decision;
-- `PRIVACY.md` — user-facing privacy implications.
+- [Data schema v2](data-schema-v2.md)
+- [Architecture](architecture.md)
+- [Security model](security-model.md)
+- [ADR 0002 — local-first persistence](adr/0002-local-first-persistence.md)
+- [ADR 0004 — preserve unreadable local state](adr/0004-preserve-unreadable-local-state.md)
+- [Privacy policy](../PRIVACY.md)
 
-# Main files
+## Main implementation files
 
 ```text
 src/state/AppStateContext.ts
@@ -30,9 +34,9 @@ src/features/settings/SettingsPage.tsx
 src/components/StatusBanners.tsx
 ```
 
-# Storage locations
+## Storage locations
 
-## Learner state
+### Learner state
 
 Browser key:
 
@@ -46,39 +50,36 @@ Current internal schema:
 schemaVersion: 2
 ```
 
-The storage-key suffix remains `v1` intentionally. The **key version** and **persisted schema version** are different concepts. Keeping the existing key lets TableSpark discover schema-1 data and migrate it.
+The key suffix and schema number intentionally differ. The stable key lets TableSpark find schema-1 state and migrate it instead of making older data appear missing.
 
-Do not rename the storage key simply because a schema version increments. A key rename can make existing data appear missing unless an explicit key migration is implemented.
+Do not rename the browser key merely because a schema version changes. A storage-key change needs its own explicit migration strategy.
 
-## Locale preference
-
-Browser key:
+### Locale preference
 
 ```text
 tablespark.locale.v1
 ```
 
-This is intentionally outside learner-state JSON and backup export.
+The locale preference is intentionally outside learner backup JSON. It controls interface presentation, not mastery state.
 
-## Onboarding preference
+### Onboarding preference
 
-A small separate browser preference records whether the first-run welcome message was dismissed.
+A separate Boolean browser preference records whether the first-run welcome notice was dismissed. It is also outside learner backup JSON.
 
-These lightweight UI preferences are independent of learner mastery/session data.
+## Startup lifecycle
 
-# Startup lifecycle
+`AppStateProvider` calls `loadStateResult()` once while creating its initial state.
 
-`AppStateProvider` calls `loadStateResult()` once when its initial state is created.
-
-`loadStateResult()` returns one of three states:
+`loadStateResult()` has four outcomes:
 
 ```ts
 { status: 'empty', state: null }
 { status: 'loaded', state: PersistedState }
 { status: 'invalid', state: null }
+{ status: 'unavailable', state: null }
 ```
 
-## Case 1 — `empty`
+### `empty`
 
 Meaning:
 
@@ -86,74 +87,88 @@ Meaning:
 localStorage.getItem('tablespark.state.v1') === null
 ```
 
-No learner-state value exists.
+The read itself succeeded and no learner-state value exists.
 
 Provider behavior:
 
-1. create one default local profile named `Learner`;
+1. create one local `Learner` profile;
 2. create default settings;
 3. use schema version 2;
-4. allow normal automatic persistence.
+4. permit automatic persistence.
 
-A new profile id is generated with `crypto.randomUUID()` and creation time with `new Date().toISOString()`.
+The new profile uses `crypto.randomUUID()` and a UTC ISO creation timestamp.
 
-## Case 2 — `loaded`
+### `loaded`
 
 Meaning:
 
+- browser storage read succeeded;
 - a value exists;
-- byte-budget check succeeds;
-- JSON parsing succeeds;
-- supported migration succeeds if needed;
-- schema-2 structural and semantic validation succeeds.
+- the byte budget passes;
+- JSON parsing passes;
+- a supported migration passes when required;
+- schema-2 structural validation passes;
+- schema-2 semantic validation passes.
 
 Provider behavior:
 
-- use the validated persisted state;
-- allow automatic persistence;
-- resolve the active profile from `activeProfileId`.
+- use the validated state;
+- resolve the active profile;
+- permit automatic persistence.
 
-If the active profile cannot exist after validation, that is a validator defect because storage validation explicitly requires the reference to match a profile.
+The validator requires the active profile to exist, so the provider's first-profile fallback is defensive rather than permission for invalid imports.
 
-## Case 3 — `invalid`
+### `invalid`
 
-Meaning: a value exists but one of these failed:
-
-- browser storage read;
-- size budget;
-- JSON parse;
-- schema migration;
-- schema validation;
-- semantic invariant validation.
+Meaning: the browser successfully returned an existing raw value, but that value could not safely become `PersistedState` because parsing, migration, size validation, schema validation, or semantic validation failed.
 
 Provider behavior:
 
-1. create a **temporary in-memory default state** so the interface can still render;
+1. create a temporary in-memory default so the interface remains usable;
 2. set `unreadableStoredState = true`;
 3. set persistence unavailable;
-4. **do not save the temporary default state over the existing raw value**;
-5. display recovery guidance;
-6. wait for explicit user recovery/replacement/discard action.
+4. pause automatic learner-state writes;
+5. preserve the original raw browser value;
+6. show recovery guidance;
+7. wait for explicit replacement or discard.
 
-This is the critical data-preservation behavior.
+`invalid` is never treated as `empty`.
 
-# Automatic persistence
+### `unavailable`
 
-`AppStateProvider` has an effect watching:
+Meaning: `localStorage.getItem()` itself threw, for example because browser policy, privacy mode, origin policy, or an implementation failure blocked access.
+
+This is deliberately **not** classified as invalid learner data because TableSpark never obtained a value to validate.
+
+Provider behavior:
+
+1. create a temporary in-memory default so core learning UI can still render;
+2. set `storageReadUnavailable = true`;
+3. leave `unreadableStoredState = false`;
+4. set persistence unavailable;
+5. do not attempt automatic writes, because an unreadable existing value could otherwise be overwritten without ever having been observed;
+6. show the ordinary local-saving warning rather than the corrupted-data recovery workflow.
+
+Backup export and import controls are disabled for this startup condition because the visible temporary state is not a trustworthy representation of whatever may exist in inaccessible browser storage, and TableSpark refuses to overwrite an unknown value.
+
+## Automatic persistence
+
+The provider persistence effect observes:
 
 - current state;
-- unreadable-state flag.
+- unreadable-existing-data state;
+- startup storage-read availability.
 
 Conceptually:
 
 ```text
 state changes
   ↓
-unreadableStoredState?
-  ├─ yes → do not save; persistenceAvailable = false
+unreadableStoredState OR storageReadUnavailable?
+  ├─ yes → do not write; persistenceAvailable = false
   └─ no  → saveState(state)
              ↓
-           boolean success
+           true / false
              ↓
            persistenceAvailable
 ```
@@ -161,53 +176,48 @@ unreadableStoredState?
 `saveState()`:
 
 1. serializes with `JSON.stringify`;
-2. verifies the 2,000,000-byte budget;
+2. enforces the 2,000,000-byte budget;
 3. calls `localStorage.setItem`;
 4. returns `true` on success;
-5. logs a technical warning and returns `false` on failure.
+5. logs a redacted technical event and returns `false` on failure.
 
-It does not throw storage errors into the React tree.
+Storage exceptions do not escape into the React tree.
 
-# Storage write failure vs unreadable stored state
+## Storage conditions are intentionally distinct
 
-These are different conditions.
+### Existing value is invalid
 
-## Normal write failure
+The application knows a raw value exists because the read succeeded. It preserves that exact value and exposes explicit recovery actions.
 
-Example causes:
-
-- browser quota;
-- restrictive browser mode;
-- storage permission/policy;
-- browser implementation failure.
-
-The current in-memory state can still be valid and usable.
-
-UI consequence:
-
-```text
-Local saving is unavailable.
-```
-
-The learner should understand that current changes may not survive reload.
-
-## Unreadable existing value
-
-A pre-existing value itself cannot be safely interpreted.
-
-UI consequence:
+User-facing state:
 
 ```text
 Stored learning data needs recovery.
 ```
 
-Automatic saving is paused because writing would risk destroying the original value.
+### Startup read is unavailable
 
-Do not merge these two states into one generic “storage error” flag; their safe recovery behavior is different.
+The application does not know whether a learner-state value exists because the browser blocked the read itself. It therefore refuses to write temporary defaults or perform backup replacement.
 
-# Default state
+User-facing state:
 
-Current default settings:
+```text
+Local saving is unavailable.
+```
+
+Recovery controls for a known invalid value are not shown because no raw value was successfully obtained.
+
+### Later write fails
+
+The application may have loaded valid state successfully, but a later `setItem()` can still fail because of quota or changing browser policy.
+
+The in-memory state remains usable and export can remain valuable because the loaded/current state is known. `persistenceAvailable` becomes false and the user is warned that current changes may not survive reload.
+
+Do not collapse these cases into one generic flag. Their safe write/export/recovery behavior differs.
+
+## Default state
+
+Default settings:
 
 ```text
 theme: system
@@ -219,155 +229,126 @@ defaultTimeLimitSeconds: 60
 sessionHistoryLimit: 25
 ```
 
-Default profile:
+Default profile learning fields:
 
 ```text
-name: Learner
 mastery: {}
 mistakes: []
 sessions: []
 masteredFactsGoal: null
 ```
 
-If these defaults change, review:
+Changes to defaults require review of:
 
-- UI expectations;
-- tests;
-- schema migration defaults;
-- user guide;
-- privacy docs where data semantics change.
+- migration defaults;
+- integration fixtures;
+- settings UI;
+- user/privacy documentation;
+- backup compatibility.
 
-# Active profile resolution
+## State actions
 
-The provider finds:
+Features use `AppStateContext` actions instead of mutating storage directly.
 
-```text
-profile.id === state.activeProfileId
-```
+### `setActiveProfile(id)`
 
-with a defensive fallback to the first profile.
+Changes the active profile only when the requested id exists in the current rendered profile collection.
 
-Storage validation requires at least one profile and a valid active-profile reference, so the fallback primarily protects runtime composition rather than legitimizing invalid imported JSON.
-
-The provider throws if no profile exists at all. That condition should be unreachable from validated persistence.
-
-# State actions
-
-`AppStateContext` exposes explicit application actions rather than allowing feature components to mutate persistence directly.
-
-## `setActiveProfile(id)`
-
-Changes the active id only when the requested id exists in current profiles.
-
-No profile data is modified.
-
-## `addProfile(name)`
-
-Behavior:
-
-1. trim whitespace;
-2. truncate to 40 characters;
-3. reject empty names;
-4. reject creation at the 100-profile capacity;
-5. create new id/timestamp/default learning state;
-6. append profile;
-7. make the new profile active.
-
-UI and import validation use the same overall profile-capacity concept.
-
-## `deleteProfile(id)`
+### `addProfile(name)`
 
 Rules:
 
-- last remaining profile cannot be deleted;
-- matching profile is removed;
-- if it was active, first remaining profile becomes active.
+1. trim surrounding whitespace;
+2. truncate to 40 characters;
+3. reject an empty result;
+4. enforce the 100-profile capacity **inside the functional React state updater**;
+5. create the profile only after the latest `current` state passes the capacity check;
+6. append it and make it active.
 
-The Settings UI provides user confirmation before invoking the destructive action.
+The capacity check intentionally lives inside `setState(current => ...)`. This prevents two batched additions from both observing a stale 99-profile render and creating 101 profiles.
 
-The provider itself enforces the “never zero profiles” invariant even if a caller bypasses the normal button flow.
+### `deleteProfile(id)`
 
-## `updateSettings(partialSettings)`
+Rules:
 
-Merges provided settings with current settings.
+- never delete the last remaining profile;
+- remove the matching profile;
+- if the removed profile was active, activate the first remaining profile.
 
-Special handling exists for session-history retention:
+The Settings UI asks for confirmation before invoking this destructive action.
 
-1. validate requested retention with `isSessionHistoryLimit()`;
-2. ignore unsupported retention values and keep current value;
-3. if valid, trim **every profile's** session history to the new limit;
-4. store the new settings/profile arrays together.
+### `updateSettings(partialSettings)`
 
-Therefore lowering retention is destructive immediately in application state, not deferred until display time.
+Merges supported settings into current state.
 
-## `recordAttempt(attempt)`
+Session-history retention receives additional handling:
 
-Updates only the active profile through:
+1. validate the requested limit with `isSessionHistoryLimit()`;
+2. ignore unsupported values;
+3. trim every profile's retained session summaries immediately when a lower valid limit is selected;
+4. commit settings and trimmed profile state together.
 
-```text
-applyAttempt(profile, attempt)
-```
+Supported session-history limits are 10, 25, 50, and 100.
 
-That domain function updates canonical fact mastery/streak and bounded recent mistakes.
+### `recordAttempt(attempt)`
 
-Other profiles remain unchanged.
+Updates only the active profile through the pure mastery-domain operation. This updates canonical fact mastery and bounded recent-mistake state.
 
-## `recordSession(summary)`
+### `recordSession(summary)`
 
-Uses the selected session-history limit if valid; otherwise defensively falls back to the default limit of 25.
+Prepends a compact session summary for the active profile and immediately enforces the selected retention limit. If state somehow contains an unsupported runtime limit, the provider defensively uses the default limit of 25.
 
-Only active profile is modified.
-
-The new summary is prepended and the array is sliced to retention in one domain operation.
-
-## `setMasteredFactsGoal(goal)`
+### `setMasteredFactsGoal(goal)`
 
 Accepted values:
 
 - `null`;
-- integer from 1 through 10,000.
+- integer 1 through 10,000.
 
-Invalid values are ignored.
+Invalid values are ignored. The goal is local to the active profile and does not alter mastery math, daily streaks, notifications, or session generation.
 
-Only the active profile's goal changes.
+### `replaceFromBackup(raw)`
 
-A goal does not alter mastery counters, session behavior, or notifications.
+Backup replacement is transactional.
 
-## `replaceFromBackup(raw)`
-
-Calls the storage import parser/validator:
+Pipeline:
 
 ```text
-raw string
-  → byte budget
+raw text
+  → byte-budget check
   → JSON.parse
-  → migratePersistedState
-  → schema-2 Zod validation
-  → PersistedState
+  → supported migration
+  → schema-2 structural validation
+  → semantic validation
+  → storage-read safety check
+  → save validated replacement
+  → only then replace React state
 ```
 
-Only after all validation succeeds does the provider replace current state.
+The action returns a Boolean durability result.
 
-A valid replacement also clears the unreadable-state flag, so automatic persistence can resume.
+Rules:
 
-The Settings UI asks the user to confirm destructive replacement before calling this action.
+- validation failure throws to the caller and current state remains unchanged;
+- if startup storage reads were unavailable, replacement returns `false` without writing because TableSpark will not overwrite unknown inaccessible state;
+- if the validated replacement cannot be saved, replacement returns `false`, marks persistence unavailable, and leaves current React state unchanged;
+- only after `saveState(replacement)` succeeds does the provider set the replacement state, clear unreadable-state recovery, and report success.
 
-## `discardUnreadableState()`
+This prevents the UI from saying a backup was imported successfully when it existed only in memory and could disappear on reload.
 
-Only meaningful while unreadable-state recovery is active.
+The Settings UI uses a localized generic failure message for validation/storage failure rather than leaking raw English schema-library or domain exception text into another locale.
 
-It calls `clearState()` to remove the raw browser value.
+### `discardUnreadableState()`
 
-If removal succeeds:
+Only relevant to a known `invalid` startup value.
 
-- unreadable-state flag becomes false;
-- current temporary in-memory state becomes eligible for normal persistence on the next effect cycle.
+It calls `clearState()` and clears the recovery flag only after browser removal succeeds. The temporary in-memory default can then become eligible for normal persistence.
 
-The Settings UI requires destructive confirmation and encourages downloading the raw value first.
+The UI requires explicit destructive confirmation and offers raw download first.
 
-## `resetProgress()`
+### `resetProgress()`
 
-For the active profile, clears:
+Clears, for the active profile only:
 
 ```text
 mastery
@@ -377,13 +358,13 @@ sessions
 
 It deliberately preserves:
 
-- profile identity/name/creation timestamp;
+- profile id/name/creation time;
 - optional mastered-facts goal;
 - global settings.
 
-Goal clearing is a separate explicit action.
+Goal removal is a separate explicit action.
 
-# Storage validator pipeline
+## Storage validator pipeline
 
 File:
 
@@ -391,104 +372,94 @@ File:
 src/infrastructure/storage.ts
 ```
 
-The validator protects both current local storage load and backup import.
+The same parser/validator protects browser-state loading and backup import.
 
-## Byte budget
+### Byte budget
 
-Maximum serialized/import text size:
+Maximum learner-state/import text size:
 
 ```text
 2,000,000 bytes
 ```
 
-Byte length uses `TextEncoder`, not JavaScript character count, so multibyte UTF-8 text is handled as actual encoded bytes.
+Byte length uses `TextEncoder` so UTF-8 multibyte content is counted as encoded bytes rather than JavaScript characters.
 
-The budget is checked **before** parsing imported/stored JSON.
+The budget is checked before JSON parsing.
 
-## Timestamp validation
+### Timestamp validation
 
-A timestamp must:
+Persisted timestamps must parse and round-trip exactly through `new Date(parsed).toISOString()`. This keeps runtime and persisted UTC representation aligned.
 
-1. parse with `Date.parse`;
-2. round-trip exactly through `new Date(parsed).toISOString()`.
-
-This keeps persisted timestamp representation consistent with runtime-generated UTC ISO strings.
-
-## Profile validation
+### Profile validation
 
 Includes:
 
 - id length;
-- nonblank trimmed name, max 40 characters;
-- creation timestamp;
+- nonblank name, maximum 40 characters;
+- canonical creation timestamp;
 - mastery record;
-- max 100 mistakes;
-- max 100 session summaries;
+- maximum 100 recent mistakes;
+- maximum 100 session summaries;
 - optional goal 1–10,000 or null.
 
-## Mastery semantic validation
+### Mastery validation
 
 Checks:
 
-- key format;
-- canonical commutative ordering;
-- operands represented by key stay within supported fact bounds;
-- correct <= attempts;
-- streak <= correct and attempts;
-- stored object property key equals `MasteryStat.key`.
+- canonical multiplication-fact key syntax;
+- commutative normalization;
+- supported operand range;
+- object key equals `MasteryStat.key`;
+- `correct <= attempts`;
+- `streak <= correct` and `streak <= attempts`.
 
-## Question semantic validation
+### Question and attempt validation
 
-Checks:
+Questions validate:
 
-- id length;
-- operands 0–1000;
-- answer 0–1,000,000;
-- answer exactly equals left × right.
+- bounded integer operands;
+- bounded integer product;
+- `answer === left * right`.
 
-## Attempt validation
-
-Checks:
+Attempts validate:
 
 - integer/null response;
-- correctness boolean;
 - canonical timestamp;
 - finite non-negative elapsed time;
-- `correct` exactly matches `response === question.answer`.
+- stored `correct` exactly matches the recorded response and answer.
 
-Saved mistake arrays additionally reject any `correct: true` attempt.
+Saved mistake arrays additionally reject correct attempts.
 
-## Session validation
+### Session-summary validation
 
 Checks:
 
-- id length;
-- kind generated/mistake-review;
-- mode timed/untimed;
+- id;
+- generated/mistake-review kind;
+- timed/untimed mode;
 - timestamp;
 - question count 1–200;
-- correct count 0–200 and <= question count;
+- correct count 0–200 and not greater than question count;
 - finite non-negative elapsed time;
-- seed null or unsigned supported seed;
-- generated session must have seed;
-- mistake-review must not have seed.
+- unsigned supported seed or null;
+- generated sessions require a seed;
+- mistake-review sessions require `seed: null`.
 
-## Top-level validation
+### Top-level validation
 
 Checks:
 
 - literal schema version 2;
-- active-profile id;
-- profiles array 1–100;
-- valid theme/preferences/default practice settings;
-- supported session retention;
-- active profile exists;
-- profile ids are unique;
-- every profile session count <= configured retention.
+- 1–100 profiles;
+- unique profile ids;
+- valid active-profile reference;
+- supported global settings;
+- supported session-retention value;
+- every profile's retained session count does not exceed the configured retention limit.
 
-This last rule means exported/imported state must already respect its own retention setting; the importer does not silently discard excess untrusted history to make invalid input pass.
+Import does not silently trim malformed/untrusted state just to make it pass validation.
 
-# Migration pipeline
+## Migration pipeline
 
 File:
 
@@ -496,184 +467,217 @@ File:
 src/infrastructure/migrations.ts
 ```
 
-Current schema version:
+### Schema 2
 
-```text
-2
-```
+Returned unchanged and then fully validated.
 
-## Current schema
+### Schema 1 → schema 2
 
-If candidate `schemaVersion === 2`, migration returns the candidate unchanged and normal validation continues.
-
-## Schema 1
-
-Migration adds to each object-shaped profile:
+For object-shaped legacy profiles, migration adds:
 
 ```text
 sessions: []
 masteredFactsGoal: null
 ```
 
-and to object-shaped settings:
+For object-shaped legacy settings, migration adds:
 
 ```text
 sessionHistoryLimit: 25
 ```
 
-Then sets:
+Then the candidate receives:
 
 ```text
 schemaVersion: 2
 ```
 
-Malformed shapes are not magically repaired. The transformed candidate still goes through schema-2 validation and can fail.
+The migrated candidate must still pass the complete schema-2 validator. Migration is not a general-purpose repair function.
 
-## Missing/unknown version
+### Unknown versions
 
-- non-object root → explicit error;
-- missing/non-numeric schema version → explicit error;
-- unsupported numeric version → explicit error.
+Missing, nonnumeric, malformed, or unsupported future schema versions fail safely. TableSpark does not guess how to downgrade unknown future data.
 
-Do not treat a future schema as an old schema. Unsupported future data should fail safely rather than losing unknown fields through a guessed downgrade.
+## Backup export
 
-# Backup export
-
-`exportState(state)` returns:
+`exportState(state)` returns formatted JSON:
 
 ```text
 JSON.stringify(state, null, 2)
 ```
 
-The exported file is human-inspectable formatted JSON.
+It can contain profile names and learning history and should be treated as personal data.
 
-It can contain personal learning information and should be treated as a personal file.
+Locale and onboarding preferences are not included.
 
-The locale preference is not included because it lives outside `PersistedState`.
+Ordinary backup export is disabled when:
 
-# Raw unreadable recovery export
+- a known existing raw learner-state value is in recovery; or
+- startup browser storage could not be read.
 
-`readRawState()` returns the exact current learner-state localStorage string when browser policy permits reading it.
+In both situations the visible temporary default is not a trustworthy replacement for existing learner data.
 
-Settings can download this string to a `.txt` file.
+A normal later write failure is different: the application has already loaded/constructed known valid current state, so export can still be useful even though automatic saving is currently failing.
 
-The raw file is **not** a validated backup and must not be imported/treated as safe simply because it was downloaded successfully.
+## Raw recovery export
 
-It may contain malformed, old, manually edited, or otherwise invalid content.
+`readRawState()` reads the exact learner-state browser string when browser policy permits it.
 
-# User-facing recovery sequence
+For a known invalid value, Settings can download that exact text as a private recovery artifact. It is not validated backup JSON and may contain malformed, legacy, manually edited, or private information.
 
-Recommended sequence when the recovery warning appears:
+Never treat a raw recovery file as safe merely because it was downloadable.
+
+## User-facing recovery sequence
+
+For a known invalid existing value:
 
 1. open Settings → Data & privacy;
-2. download unreadable local data if it may be needed;
-3. choose one of:
-   - import a known-good valid backup;
-   - explicitly discard unreadable local state;
-4. confirm destructive action;
-5. verify saving resumes.
+2. download the raw recovery value if it may be needed;
+3. choose either a known-good backup replacement or explicit discard;
+4. confirm the destructive action;
+5. verify local saving status after recovery.
 
-Do not advise users to manually edit browser localStorage unless they understand that it can destroy recoverable data.
+For startup storage-read unavailability:
 
-# React persistence timing
+1. do not attempt to overwrite or export the temporary default as a trusted backup;
+2. restore browser/site storage access;
+3. reload TableSpark so it can classify the real stored value;
+4. then use normal backup/recovery actions as appropriate.
 
-State updates are React state updates; localStorage persistence happens in the provider effect after state changes.
+## React timing and durability
 
-This means UI/state mutation and durable browser write are conceptually separate:
+Ordinary feature state changes and durable persistence are separate events:
 
 ```text
 user action
-  → React state update
-  → render/update
+  → React state transition
+  → render
   → persistence effect
-  → save success/failure
-  → persistence banner state
+  → browser write success/failure
+  → persistence status
 ```
 
-A feature should not assume “state changed” means “storage definitely accepted the write.” Use `persistenceAvailable` for durability messaging.
+Features must not equate “React state changed” with “browser storage accepted the write.”
 
-# Feature boundaries
+Backup replacement is intentionally stricter than ordinary feature state changes: it performs the validated replacement write first so a destructive import can be reported transactionally.
 
-## Features should
+## Responsibility boundaries
+
+### Feature components
+
+Should:
 
 - call context actions;
-- show confirmation before destructive user actions;
-- display persistence/recovery status;
-- localize user-facing errors;
-- avoid writing learner state directly to localStorage.
+- use localized user-facing errors;
+- request confirmation before destructive user actions;
+- respect persistence/recovery status;
+- avoid direct learner-state `localStorage` writes.
 
-## State provider should
+### State provider
 
-- orchestrate application transitions;
-- preserve invariants that span profiles/settings;
-- delegate mathematics/mastery/session retention to domain functions;
-- delegate parsing/validation/storage to infrastructure.
+Should:
 
-## Storage infrastructure should
+- orchestrate cross-feature transitions;
+- preserve profile/settings invariants;
+- guard destructive replacement semantics;
+- delegate mathematics and retention rules to domain functions;
+- delegate parsing/storage to infrastructure.
+
+### Storage infrastructure
+
+Should:
 
 - treat persisted/imported text as untrusted;
+- distinguish read unavailability from invalid returned data;
 - validate before returning typed state;
-- classify load result;
-- contain browser-storage exceptions;
-- not decide UI navigation or learner messaging.
+- contain browser exceptions;
+- never decide UI navigation or wording.
 
-## Domain should
+### Domain layer
 
-- remain pure where possible;
-- not access localStorage/React;
-- own reusable numeric/learning invariants.
+Should:
 
-# Changes that require a migration review
+- remain pure where practical;
+- own reusable learning/numeric invariants;
+- never depend on React or browser storage.
 
-Examples:
+## Schema-change review triggers
 
-- adding/removing a persisted profile field;
-- changing a field type;
-- changing canonical mastery-key format;
-- changing session-summary shape;
-- moving per-profile data into global settings or vice versa;
-- changing required/nullable semantics;
-- changing bounds in a way that makes previously valid stored values invalid.
+A migration/security review is required when changing any of these:
 
-A migration review is required even if TypeScript compiles, because existing browser JSON exists outside the source tree.
+- persisted profile fields;
+- field types or nullable semantics;
+- canonical mastery-key format;
+- session-summary shape;
+- per-profile/global ownership of data;
+- validation bounds that can make existing data invalid;
+- browser storage key;
+- backup compatibility behavior.
 
-# Future schema-change procedure
+TypeScript compilation alone is not enough because persisted JSON exists outside the source tree.
 
-1. Define new domain/persisted type.
-2. Increment schema version.
-3. Add explicit migration from known old version(s).
-4. Keep unknown/unreadable state preservation behavior.
-5. Update Zod structural/semantic validation.
-6. Add migration tests using realistic old JSON.
-7. Add malformed/edge-case tests.
-8. Update current-state fixtures in integration tests.
-9. Update `docs/data-schema-v2.md` by replacing/adding version-specific schema documentation appropriately.
-10. Update architecture/privacy/user/backup docs.
-11. Confirm backup compatibility policy.
-12. Run full quality/E2E checks.
+## Future schema-change procedure
+
+1. Define the new typed model.
+2. Increment the internal schema version.
+3. Add explicit migration from supported prior versions.
+4. Preserve invalid/unavailable startup safety behavior.
+5. Update structural and semantic validation.
+6. Add realistic migration tests.
+7. Add malformed and boundary tests.
+8. Update integration fixtures.
+9. Add/update version-specific schema documentation.
+10. Review privacy/security implications.
+11. Confirm backup compatibility.
+12. Run the complete quality and browser suites.
 13. Record the migration in `CHANGELOG.md` and `what_changed.md`.
 
-# State/persistence test coverage
+## Current persistence test coverage
 
-Current coverage includes:
+Automated tests cover, among other cases:
 
-- storage round trip;
-- export/import;
+- local-state round trip;
+- portable export/import parsing;
 - schema-1 migration;
-- unsupported/malformed version rejection;
+- byte-budget rejection;
 - duplicate profile ids;
-- active-profile integrity;
-- mastery counter/key invariants;
-- question answer invariants;
-- attempt correctness/mistake semantics;
-- session semantics and retention;
+- canonical mastery and counter invariants;
+- mathematically consistent questions/attempts;
+- mistake-history integrity;
+- session-summary and retention invariants;
 - goal bounds;
-- oversized data;
-- corrupted local storage preservation;
-- storage write failure;
-- explicit clear;
-- UI recovery behavior;
-- completed session persistence;
-- retention trimming.
+- known invalid stored-data preservation;
+- blocked storage-read classification as `unavailable`;
+- suppression of writes after a blocked startup read;
+- normal write failure containment;
+- atomic enforcement of the 100-profile capacity during batched updates;
+- successful transactional backup replacement;
+- failed replacement leaving current state unchanged;
+- explicit stored-state clear/recovery flows.
 
-When fixing a persistence bug, add the regression at the lowest layer that can reproduce the issue, then add a UI/E2E case if the user-facing recovery path can regress independently.
+Run the maintained local quality gate with:
+
+```bash
+npm run check
+```
+
+Browser recovery/localization behavior is additionally exercised by Playwright through:
+
+```bash
+npm run test:e2e
+```
+
+## Maintainer checklist for persistence changes
+
+Before merging a persistence-related change:
+
+- [ ] Confirm empty, loaded, invalid, and unavailable startup semantics remain distinct.
+- [ ] Confirm temporary defaults cannot overwrite unknown/unreadable existing storage.
+- [ ] Confirm backup replacement cannot report success before a durable write succeeds.
+- [ ] Confirm import/export size limits remain synchronized with documentation.
+- [ ] Confirm profile and session limits remain synchronized across UI, provider, validator, tests, and docs.
+- [ ] Confirm migrations are explicit and tested.
+- [ ] Confirm localized user-facing failures do not expose raw schema/domain exception strings.
+- [ ] Run `npm run check`.
+- [ ] Run `npm run test:e2e`.
+- [ ] Review privacy/security documentation if data semantics changed.
