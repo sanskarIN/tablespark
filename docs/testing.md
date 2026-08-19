@@ -1,6 +1,6 @@
 # Testing Strategy
 
-TableSpark uses multiple test layers so a passing UI smoke test cannot hide broken multiplication rules, and isolated unit tests cannot hide broken user journeys.
+TableSpark uses multiple test layers so a passing UI smoke test cannot hide broken multiplication/persistence rules, and isolated unit tests cannot hide broken user journeys.
 
 ## Test layers
 
@@ -16,11 +16,15 @@ These verify:
 - bounded practice-response validation;
 - deterministic question generation and seed bounds;
 - random-session seed helpers;
+- difficulty-preset progression and bounds;
 - mastery-key normalization;
 - mastery accuracy, streak, and mistake behavior;
+- preservation of profile session/goal metadata during attempt updates;
 - deduplicated mistake-review selection;
 - mastery search/filter rules and mastery classification;
-- worksheet prompt construction.
+- worksheet prompt construction and configurable blank styles;
+- supported session-history retention values;
+- prepend/trim behavior for bounded session summaries.
 
 Run:
 
@@ -42,6 +46,7 @@ These cover:
 
 - local-storage round trips;
 - portable JSON export/import;
+- schema-1-to-schema-2 migration;
 - corrupted storage classification without raw-value destruction;
 - raw recovery-state reads;
 - storage write failures;
@@ -50,6 +55,11 @@ These cover:
 - canonical mastery keys and mastery-counter invariants;
 - multiplication-answer and attempt-correctness invariants;
 - mistake-history semantics;
+- session-summary count/correctness bounds;
+- generated-session replay-seed semantics;
+- mistake-review null-seed semantics;
+- supported session-retention values and retained-history length;
+- optional mastery-goal bounds;
 - unsupported schema versions;
 - migration boundary behavior;
 - safe lightweight browser preference flags;
@@ -58,19 +68,30 @@ These cover:
 
 ### React integration tests
 
-Location: `src/App.test.tsx`
+Testing Library verifies the application through accessible roles and labels rather than implementation details.
 
-Testing Library verifies the application through accessible roles and labels rather than implementation details. Current coverage includes:
+Current integration coverage includes:
 
 - primary navigation;
 - generator updates;
-- solved/blank worksheet mode;
-- printable worksheet metadata;
+- worksheet composer output modes;
+- worksheet blank-style changes;
+- solved/practice/answer-key print metadata;
 - mastery search and filters;
 - mistake-review completion behavior;
+- completed-drill session-summary persistence;
+- session-retention trimming;
+- optional mastery-goal display;
 - unavailable speech fallback UI;
+- PWA update/offline-ready/install notices;
+- keyboard shortcut help and editable-field shortcut guards;
+- English-to-Hindi interface switching;
+- persisted Hindi locale restoration and `<html lang>` changes;
+- separation of interface locale preference from learner-state storage;
 - user-visible persistence-write failure warning;
 - unreadable local-state preservation and explicit discard recovery.
+
+Relevant files include `src/App.test.tsx`, `src/learningRecords.test.tsx`, `src/localization.test.tsx`, `src/keyboardShortcuts.test.tsx`, and component-specific test files.
 
 The unreadable-state regression specifically verifies that an invalid stored value survives initial render unchanged until the user confirms discard.
 
@@ -96,13 +117,32 @@ The scanner is defense in depth, not a replacement for secret rotation or reposi
 
 Location: `e2e/`
 
-Playwright starts a production preview server and verifies primary user journeys in Chromium:
+Playwright starts a production preview server and verifies user journeys in Chromium.
+
+`e2e/smoke.spec.ts` covers:
 
 - generate a table;
-- switch to blank worksheet mode;
+- compose a practice worksheet and change its blank style;
 - configure and complete a deterministic practice session;
 - create an offline profile;
-- change large-text accessibility settings.
+- change large-text accessibility settings;
+- preserve unreadable local data until confirmed discard.
+
+`e2e/accessibility.spec.ts` covers stable semantic invariants:
+
+- named primary navigation;
+- one main landmark;
+- skip-link target;
+- labels for form controls across major views;
+- image `alt` attributes;
+- keyboard reachability/dismissal of the shortcut reference.
+
+`e2e/localization.spec.ts` covers:
+
+- switching the browser UI to Hindi;
+- Hindi navigation/heading rendering;
+- document-language update;
+- language persistence across reload.
 
 Run:
 
@@ -121,6 +161,14 @@ On Linux CI or a minimal Linux machine, Playwright may require:
 ```bash
 npx playwright install --with-deps chromium
 ```
+
+## Accessibility automation boundary
+
+Automated browser invariants intentionally do not claim WCAG conformance or successful screen-reader operation. Manual NVDA, Narrator, VoiceOver, and TalkBack release-candidate checks remain documented in `docs/accessibility.md` and should be recorded only after a real human-assisted pass.
+
+## Localization automation boundary
+
+Typed catalog shape checks and browser smoke tests catch missing keys, switching regressions, and persistence problems. They do not prove natural translation quality. A fluent/native-speaker terminology review remains a manual release-quality check for the Hindi interface.
 
 ## Coverage
 
@@ -171,9 +219,13 @@ The CI workflow has two jobs.
 
 - installs dependencies;
 - installs Chromium and required CI libraries;
-- runs Playwright against a production preview build.
+- runs Playwright against a production preview build, including smoke, accessibility-invariant, and localization specs.
 
 CodeQL is maintained in a separate security workflow.
+
+## Release workflow verification
+
+The tagged release workflow runs `npm run check`, rebuilds the PWA, packages `dist/` as `tablespark-web.zip`, and generates `tablespark-web.zip.sha256`. This adds integrity metadata to the packaged artifact but does not replace normal CI/E2E/manual release-candidate review.
 
 ## Regression-test rule
 
@@ -197,21 +249,31 @@ Tests must not depend on:
 
 Practice generation supports a seed specifically so sessions can be reproduced. Random-seed helper tests inject a deterministic random function instead of depending on `Math.random()` output.
 
+Locale tests set or use a controlled local preference rather than depending on an unknown developer-machine browser language.
+
 ## Manual release checks
 
 Automated tests do not replace final manual checks. Before a release, inspect:
 
-- keyboard navigation;
+- keyboard navigation and shortcut help;
 - light/dark/system themes;
+- English and Hindi interfaces;
+- native/fluent review of Hindi terminology;
 - large-text mode;
 - reduced motion;
 - narrow and wide layouts;
-- print preview including blank Name/Date worksheet metadata;
+- worksheet composer output/blank/paper/column combinations;
+- print preview including blank Name/Date learner metadata and answer-key omission;
+- recent session history and retention changes;
+- optional mastery goals;
 - offline behavior after initial load;
-- PWA installability on the release origin;
-- backup export and re-import;
+- PWA installability on the real release origin;
+- non-blocking update behavior after deploying a newer build;
+- backup export and re-import, including supported schema migration;
 - persistence-write failure warning behavior where practical;
 - unreadable-state recovery download/import/discard behavior;
-- text-to-speech availability/fallback behavior.
+- text-to-speech availability/fallback behavior;
+- manual assistive-technology matrix rows from `docs/accessibility.md`;
+- real light/dark and compact/wide browser screenshots from the verified release candidate.
 
-Record release-candidate results in `what_changed.md`.
+Record release-candidate results in `what_changed.md` without marking unexecuted checks as passed.
