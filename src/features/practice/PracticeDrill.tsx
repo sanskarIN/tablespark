@@ -3,7 +3,7 @@ import { difficultyPresets, type DifficultyLevel } from '../../domain/difficulty
 import { generateQuestions } from '../../domain/questions';
 import type { DrillMode, Question } from '../../domain/types';
 import { speak } from '../../infrastructure/speech';
-import { useAppState } from '../../state/AppState';
+import { useAppState } from '../../state/useAppState';
 
 interface Setup {
   min: number;
@@ -14,11 +14,22 @@ interface Setup {
   seconds: number;
 }
 
-const defaultSetup: Setup = { min: 2, max: 12, count: 10, seed: 2026, mode: 'untimed', seconds: 60 };
+const defaultSetup: Setup = {
+  min: 2,
+  max: 12,
+  count: 10,
+  seed: 2026,
+  mode: 'untimed',
+  seconds: 60,
+};
 
 export function PracticeDrill() {
   const { activeProfile, recordAttempt, state } = useAppState();
-  const [setup, setSetup] = useState<Setup>({ ...defaultSetup, count: state.settings.defaultQuestionCount, seconds: state.settings.defaultTimeLimitSeconds });
+  const [setup, setSetup] = useState<Setup>({
+    ...defaultSetup,
+    count: state.settings.defaultQuestionCount,
+    seconds: state.settings.defaultTimeLimitSeconds,
+  });
   const [questions, setQuestions] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
   const [response, setResponse] = useState('');
@@ -40,7 +51,9 @@ export function PracticeDrill() {
   }, [isRunning, setup.mode]);
 
   useEffect(() => {
-    if (isRunning && setup.mode === 'timed' && remaining === 0) setIndex(questions.length);
+    if (isRunning && setup.mode === 'timed' && remaining === 0) {
+      setIndex(questions.length);
+    }
   }, [isRunning, questions.length, remaining, setup.mode]);
 
   const summary = useMemo(() => {
@@ -51,7 +64,12 @@ export function PracticeDrill() {
   const applyDifficulty = (level: DifficultyLevel | 'custom') => {
     if (level === 'custom') return;
     const preset = difficultyPresets[level];
-    setSetup((value) => ({ ...value, min: preset.min, max: preset.max, count: preset.count }));
+    setSetup((value) => ({
+      ...value,
+      min: preset.min,
+      max: preset.max,
+      count: preset.count,
+    }));
     setFeedback(`${preset.label}: ${preset.description}`);
   };
 
@@ -65,17 +83,21 @@ export function PracticeDrill() {
       setFeedback('');
       setRemaining(setup.seconds);
       startedAt.current = performance.now();
-      if (state.settings.speechEnabled && generated[0]) speak(`${generated[0].left} times ${generated[0].right}`);
+      if (state.settings.speechEnabled && generated[0]) {
+        speak(`${generated[0].left} times ${generated[0].right}`);
+      }
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Could not start the drill.');
     }
   };
 
   const reviewMistakes = () => {
-    const unique = activeProfile.mistakes.slice(0, setup.count).map((attempt, mistakeIndex) => ({
-      ...attempt.question,
-      id: `review-${mistakeIndex}-${attempt.question.id}`,
-    }));
+    const unique = activeProfile.mistakes
+      .slice(0, setup.count)
+      .map((attempt, mistakeIndex) => ({
+        ...attempt.question,
+        id: `review-${mistakeIndex}-${attempt.question.id}`,
+      }));
     if (unique.length === 0) {
       setFeedback('No mistakes to review yet. Complete a drill first.');
       return;
@@ -90,6 +112,7 @@ export function PracticeDrill() {
       setFeedback('Enter a whole-number answer.');
       return;
     }
+
     const correct = parsed === current.answer;
     const now = performance.now();
     recordAttempt({
@@ -101,12 +124,15 @@ export function PracticeDrill() {
     });
     if (correct) setScore((value) => value + 1);
     setFeedback(correct ? 'Correct!' : `Not quite. The answer is ${current.answer}.`);
+
     const nextIndex = index + 1;
     setIndex(nextIndex);
     setResponse('');
     startedAt.current = now;
     const next = questions[nextIndex];
-    if (state.settings.speechEnabled && next) speak(`${next.left} times ${next.right}`);
+    if (state.settings.speechEnabled && next) {
+      speak(`${next.left} times ${next.right}`);
+    }
   };
 
   return (
@@ -115,39 +141,168 @@ export function PracticeDrill() {
         <div>
           <p className="eyebrow">Focused practice</p>
           <h2 id="practice-title">Drill your multiplication skills</h2>
-          <p>Choose a progression preset or custom range, use a reproducible seed, and review recent mistakes.</p>
+          <p>
+            Choose a progression preset or custom range, use a reproducible seed, and review
+            recent mistakes.
+          </p>
         </div>
-        {setup.mode === 'timed' && isRunning ? <strong className="timer" aria-live="polite">{remaining}s</strong> : null}
+        {setup.mode === 'timed' && isRunning ? (
+          <strong className="timer" aria-live="polite">
+            {remaining}s
+          </strong>
+        ) : null}
       </div>
 
       {!isRunning && !finished ? (
-        <form className="control-grid" onSubmit={(event) => { event.preventDefault(); start(); }}>
-          <label>Difficulty preset<select defaultValue="custom" onChange={(event) => applyDifficulty(event.target.value as DifficultyLevel | 'custom')}><option value="custom">Custom</option><option value="starter">Starter · 0–5</option><option value="builder">Builder · 2–12</option><option value="challenge">Challenge · 2–20</option></select></label>
-          <label>Minimum<input type="number" min={0} max={1000} value={setup.min} onChange={(event) => setSetup((value) => ({ ...value, min: Number(event.target.value) }))} /></label>
-          <label>Maximum<input type="number" min={0} max={1000} value={setup.max} onChange={(event) => setSetup((value) => ({ ...value, max: Number(event.target.value) }))} /></label>
-          <label>Questions<input type="number" min={1} max={200} value={setup.count} onChange={(event) => setSetup((value) => ({ ...value, count: Number(event.target.value) }))} /></label>
-          <label>Seed<input type="number" value={setup.seed} onChange={(event) => setSetup((value) => ({ ...value, seed: Number(event.target.value) }))} /></label>
-          <label>Mode<select value={setup.mode} onChange={(event) => setSetup((value) => ({ ...value, mode: event.target.value as DrillMode }))}><option value="untimed">Untimed</option><option value="timed">Timed</option></select></label>
-          {setup.mode === 'timed' ? <label>Time limit (seconds)<input type="number" min={10} max={3600} value={setup.seconds} onChange={(event) => setSetup((value) => ({ ...value, seconds: Number(event.target.value) }))} /></label> : null}
-          <div className="button-row"><button className="primary-button" type="submit">Start drill</button><button className="secondary-button" type="button" onClick={reviewMistakes}>Review mistakes</button></div>
+        <form
+          className="control-grid"
+          onSubmit={(event) => {
+            event.preventDefault();
+            start();
+          }}
+        >
+          <label>
+            Difficulty preset
+            <select
+              defaultValue="custom"
+              onChange={(event) =>
+                applyDifficulty(event.target.value as DifficultyLevel | 'custom')
+              }
+            >
+              <option value="custom">Custom</option>
+              <option value="starter">Starter · 0–5</option>
+              <option value="builder">Builder · 2–12</option>
+              <option value="challenge">Challenge · 2–20</option>
+            </select>
+          </label>
+          <label>
+            Minimum
+            <input
+              type="number"
+              min={0}
+              max={1000}
+              value={setup.min}
+              onChange={(event) =>
+                setSetup((value) => ({ ...value, min: Number(event.target.value) }))
+              }
+            />
+          </label>
+          <label>
+            Maximum
+            <input
+              type="number"
+              min={0}
+              max={1000}
+              value={setup.max}
+              onChange={(event) =>
+                setSetup((value) => ({ ...value, max: Number(event.target.value) }))
+              }
+            />
+          </label>
+          <label>
+            Questions
+            <input
+              type="number"
+              min={1}
+              max={200}
+              value={setup.count}
+              onChange={(event) =>
+                setSetup((value) => ({ ...value, count: Number(event.target.value) }))
+              }
+            />
+          </label>
+          <label>
+            Seed
+            <input
+              type="number"
+              value={setup.seed}
+              onChange={(event) =>
+                setSetup((value) => ({ ...value, seed: Number(event.target.value) }))
+              }
+            />
+          </label>
+          <label>
+            Mode
+            <select
+              value={setup.mode}
+              onChange={(event) =>
+                setSetup((value) => ({ ...value, mode: event.target.value as DrillMode }))
+              }
+            >
+              <option value="untimed">Untimed</option>
+              <option value="timed">Timed</option>
+            </select>
+          </label>
+          {setup.mode === 'timed' ? (
+            <label>
+              Time limit (seconds)
+              <input
+                type="number"
+                min={10}
+                max={3600}
+                value={setup.seconds}
+                onChange={(event) =>
+                  setSetup((value) => ({ ...value, seconds: Number(event.target.value) }))
+                }
+              />
+            </label>
+          ) : null}
+          <div className="button-row">
+            <button className="primary-button" type="submit">
+              Start drill
+            </button>
+            <button className="secondary-button" type="button" onClick={reviewMistakes}>
+              Review mistakes
+            </button>
+          </div>
         </form>
       ) : null}
 
       {isRunning && current ? (
         <div className="drill-card">
-          <p>Question {index + 1} of {questions.length}</p>
-          <div className="question" aria-live="polite">{current.left} × {current.right} = ?</div>
-          <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
-            <label className="answer-label">Your answer<input autoFocus inputMode="numeric" type="number" value={response} onChange={(event) => setResponse(event.target.value)} /></label>
-            <button className="primary-button" type="submit">Check answer</button>
+          <p>
+            Question {index + 1} of {questions.length}
+          </p>
+          <div className="question" aria-live="polite">
+            {current.left} × {current.right} = ?
+          </div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <label className="answer-label">
+              Your answer
+              <input
+                autoFocus
+                inputMode="numeric"
+                type="number"
+                value={response}
+                onChange={(event) => setResponse(event.target.value)}
+              />
+            </label>
+            <button className="primary-button" type="submit">
+              Check answer
+            </button>
           </form>
         </div>
       ) : null}
 
       {finished ? (
-        <div className="drill-card center"><h3>Session complete</h3><p className="question">{summary}</p><button className="primary-button" type="button" onClick={() => setQuestions([])}>Practice again</button></div>
+        <div className="drill-card center">
+          <h3>Session complete</h3>
+          <p className="question">{summary}</p>
+          <button className="primary-button" type="button" onClick={() => setQuestions([])}>
+            Practice again
+          </button>
+        </div>
       ) : null}
-      {feedback ? <div className="status" role="status" aria-live="polite">{feedback}</div> : null}
+      {feedback ? (
+        <div className="status" role="status" aria-live="polite">
+          {feedback}
+        </div>
+      ) : null}
     </section>
   );
 }
