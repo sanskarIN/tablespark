@@ -84,13 +84,16 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
       },
       addProfile: (name) => {
         const trimmed = name.trim().slice(0, 40);
-        if (!trimmed || state.profiles.length >= MAX_PROFILES) return;
-        const profile = makeProfile(trimmed);
-        setState((current) => ({
-          ...current,
-          profiles: [...current.profiles, profile],
-          activeProfileId: profile.id,
-        }));
+        if (!trimmed) return;
+        setState((current) => {
+          if (current.profiles.length >= MAX_PROFILES) return current;
+          const profile = makeProfile(trimmed);
+          return {
+            ...current,
+            profiles: [...current.profiles, profile],
+            activeProfileId: profile.id,
+          };
+        });
       },
       deleteProfile: (id) => {
         setState((current) => {
