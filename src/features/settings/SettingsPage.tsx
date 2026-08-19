@@ -33,6 +33,7 @@ export function SettingsPage() {
     state,
     activeProfile,
     unreadableStoredState,
+    storageReadUnavailable,
     setActiveProfile,
     addProfile,
     deleteProfile,
@@ -49,6 +50,7 @@ export function SettingsPage() {
   const fileInput = useRef<HTMLInputElement>(null);
   const profileLimitReached = state.profiles.length >= MAX_PROFILES;
   const speechAvailable = canSpeak();
+  const exportBlocked = unreadableStoredState || storageReadUnavailable;
 
   const downloadBackup = () => {
     downloadText(
@@ -94,8 +96,8 @@ export function SettingsPage() {
       }
       const confirmed = window.confirm(copy.settings.confirmBackupImport);
       if (!confirmed) return;
-      replaceFromBackup(await file.text());
-      setMessage(copy.settings.backupImported);
+      const imported = replaceFromBackup(await file.text());
+      setMessage(imported ? copy.settings.backupImported : copy.settings.importFailedGeneric);
     } catch {
       setMessage(copy.settings.importFailedGeneric);
     } finally {
@@ -342,6 +344,12 @@ export function SettingsPage() {
         <h3>{copy.settings.dataPrivacy}</h3>
         <p>{copy.settings.backupNotice}</p>
 
+        {storageReadUnavailable ? (
+          <p id="storage-read-note" className="help-text">
+            {copy.status.storageBody}
+          </p>
+        ) : null}
+
         {unreadableStoredState ? (
           <div className="recovery-panel" id="recovery-note">
             <h4>{copy.settings.recoveryTitle}</h4>
@@ -361,8 +369,14 @@ export function SettingsPage() {
           <button
             className="secondary-button"
             type="button"
-            disabled={unreadableStoredState}
-            aria-describedby={unreadableStoredState ? 'recovery-note' : undefined}
+            disabled={exportBlocked}
+            aria-describedby={
+              unreadableStoredState
+                ? 'recovery-note'
+                : storageReadUnavailable
+                  ? 'storage-read-note'
+                  : undefined
+            }
             onClick={downloadBackup}
           >
             {copy.settings.exportBackup}
@@ -370,6 +384,8 @@ export function SettingsPage() {
           <button
             className="secondary-button"
             type="button"
+            disabled={storageReadUnavailable}
+            aria-describedby={storageReadUnavailable ? 'storage-read-note' : undefined}
             onClick={() => fileInput.current?.click()}
           >
             {copy.settings.importBackup}
@@ -379,6 +395,7 @@ export function SettingsPage() {
             className="visually-hidden"
             type="file"
             accept="application/json,.json"
+            disabled={storageReadUnavailable}
             aria-label={copy.settings.importBackup}
             onChange={(event) => void importBackup(event)}
           />
