@@ -7,360 +7,558 @@ Last updated: 2026-08-19
 - Application version: `0.1.0`
 - Repository: `https://github.com/sanskarIN/tablespark`
 - Default branch: `main`
-- Primary stack: strict TypeScript + React + Vite Progressive Web App
-- Persisted data schema: `1`
-- Product implementation: Phases 0–5 complete
-- Final audit: Phase 6 is implemented as far as the available tools permit; executable GitHub Actions checks are currently queued and therefore must not be described as passed yet.
+- Primary architecture: strict TypeScript + React + Vite Progressive Web App.
+- Persistence model: local-first, versioned schema `1` with semantic validation and explicit recovery handling.
+- Current implementation status: Phases 0–5 are implemented at release-candidate depth. Phase 6 final executable verification is represented by the fresh verification pull request created from the latest `main` after the reliability/security/documentation pass.
+- Current verification branch: `chore/final-verification-2026-08-19-v2`
+- Current verification pull request: `#4 chore: run final TableSpark release-candidate verification`
+- Earlier verification pull requests `#1`, `#2`, and `#3` were superseded/closed because later work changed the codebase after those checkpoints.
 
-## Current verification checkpoint
+## Completed work
 
-Final verification pull request:
+### Product: table generation and worksheets
 
-- PR: `#3 chore: run final TableSpark verification`
-- Branch: `chore/final-verification-2026-08-19`
-- Head commit: `a0e1dbea6538aaed9600ace0647a6d0e56b59557`
-- Base commit at PR creation: `cbef83aafe2ff0250ae69aed64f9e77f9c663b8a`
-
-GitHub created these pull-request workflow runs:
-
-- CI run: `32220239314`
-- CodeQL run: `32220239447`
-
-Both runs were still `queued` at the last check. The PR checkpoint includes the complete executable product/code state plus the updated 2026 CI/CodeQL workflow definitions. Three later `main` commits add only repository issue/release-note documentation/configuration and do not change executable product behavior.
-
-Earlier verification PRs #1 and #2 were closed deliberately because later implementation work made their snapshots obsolete.
-
-## Product implementation completed
-
-### Multiplication tables and worksheets
-
-- Custom table start/end ranges.
-- Custom multiplier start/end ranges.
-- Configurable table step size.
-- Integer validation with bounded values.
-- Explicit rendering budget that rejects configurations producing more than 5,000 rows, preventing accidental multi-million-row UI freezes.
+- Custom multiplication table start/end values.
+- Custom multiplier start/end values.
+- Configurable table step sizes.
+- Domain validation for integer/range constraints.
+- Explicit `MAX_RENDERED_ROWS = 5000` budget to prevent valid-looking input from freezing the browser with an enormous worksheet DOM.
 - Solved study-sheet mode.
 - Blank-answer practice worksheet mode.
-- Print-focused CSS that removes navigation/configuration controls from worksheets.
-- Optional text-to-speech controls for solved equations when browser speech synthesis is available.
+- Print-specific worksheet heading.
+- Blank Name and Date lines in printed output.
+- Active offline profile names are intentionally not inserted into print metadata.
+- Print CSS hides configuration/navigation controls and formats equation cards for paper.
+- Optional text-to-speech controls remain hidden in blank-answer worksheet mode so speech does not reveal the answer.
 
-### Practice
+### Product: practice
 
-- Deterministic seeded question generation.
-- Reproducible sessions for tests/classroom use.
-- Starter difficulty: 0–5.
-- Builder difficulty: 2–12.
-- Challenge difficulty: 2–20.
-- Custom range mode.
-- Timed drills.
-- Untimed drills.
-- Configurable question count and timer defaults.
-- Whole-number answer validation.
-- Correct/incorrect result feedback.
-- Score summaries.
-- Recent-mistake review.
-- Forced autofocus intentionally avoided for accessibility.
+- Random seed selected by default for a new practice setup.
+- Explicit unsigned 32-bit deterministic seed range (`0` through `4294967295`).
+- Deterministic seeded question generation remains reproducible for tests and bug reports.
+- **New random seed** action without changing the other setup values.
+- **New random drill** after a generated session.
+- **Repeat this seed** after a generated session.
+- Timed practice.
+- Untimed practice.
+- Starter / Builder / Challenge / Custom difficulty progression.
+- Configurable number range and question count.
+- Whole-number answer checking.
+- Explicit supported practice-response range through `src/domain/answers.ts`.
+- Immediate correctness feedback.
+- Per-question elapsed time recording.
+- Progressive speech synthesis for questions where available.
+- Mistake-review mode built from recent incorrect facts.
+- Equivalent commutative mistakes are deduplicated so review capacity is not wasted by 4×7 and 7×4 appearing as separate facts.
+- Generated-seed replay controls are not shown after a mistake-review session; review completion has its own message and return-to-setup action.
 
-### Mastery and progress
+### Product: progress and mastery
 
-- Per-fact attempts and correct counts.
-- Commutative fact keys, so `4 × 7` and `7 × 4` contribute to one mastery fact.
-- Correct-answer streak tracking.
+- Per-fact attempts.
+- Per-fact correct answers.
+- Current correct-answer streak.
+- Per-fact mastery percentage.
 - Overall profile accuracy.
-- Recent mistake history capped at 100 entries.
-- Fact-mastery dashboard.
-- Empty states when a learner has no progress/mistakes yet.
+- Bounded recent mistake history.
+- Commutative facts share a canonical mastery key.
+- Explicit mastered-fact rule: at least three attempts and at least 90% accuracy.
+- Mastered-fact count.
+- Search practiced facts using `x` or `×` notation.
+- Filters for All practiced facts / Needs practice / Mastered.
+- Deterministic sorting for filtered progress results.
 
-### Offline profiles and persistence
+### Product: offline profiles and settings
 
-- Multiple local learner profiles.
+- Multiple offline profiles with no account requirement.
+- Maximum supported profile capacity aligned between runtime and import validation (`100`).
 - Active-profile switching.
 - Final remaining profile cannot be deleted.
 - Destructive profile deletion requires confirmation.
-- Profile names are bounded.
-- Local state stored in versioned browser storage.
-- Browser storage read/write/clear failures are caught instead of crashing the app.
-- Storage failure regression test added.
-- Settings values remain inside persisted schema bounds while users edit number inputs.
-- JSON backup export.
-- JSON backup import.
-- Import file UI limit of 2 MB.
-- Backup replacement requires explicit confirmation because it replaces profiles, progress, and settings.
-- Imported JSON is treated as untrusted input and validated with Zod.
-- Active profile references are validated against the imported profile list.
-- Explicit schema migration boundary rejects unsupported versions.
-
-### Appearance, accessibility, and UX
-
-- Light theme.
-- Dark theme.
-- System theme following `prefers-color-scheme`.
+- System / Light / Dark theme.
 - Large-text classroom mode.
 - Reduced-motion mode.
-- Responsive layouts for narrow/mobile and wide/desktop views.
-- Touch-friendly control sizes.
+- Practice defaults for question count and timed duration.
+- Text-to-speech controls are disabled with explanatory text when the browser cannot provide a usable synthesis API.
+- Settings includes About/update guidance.
+
+### Reliability: persistence health
+
+- Versioned `localStorage` state.
+- Shared `MAX_BACKUP_BYTES = 2_000_000` byte budget for current persisted state and imported backups.
+- Browser storage write failures return a safe failure result rather than crashing the UI.
+- A visible **Local saving is unavailable** alert tells users when changes may not survive reload.
+- Lightweight onboarding preference storage has its own safe read/write adapter and tests.
+
+### Reliability: unreadable stored-state recovery
+
+A significant data-loss bug was removed during this continuation.
+
+Previously, treating invalid stored JSON as `null` followed by automatically saving a default state could overwrite a recoverable value. The current architecture distinguishes:
+
+- `empty` — no stored TableSpark value exists;
+- `loaded` — stored value exists and validates;
+- `invalid` — stored value exists but cannot be parsed/migrated/validated.
+
+When startup state is `invalid`:
+
+- the original raw stored value is preserved;
+- TableSpark starts a temporary in-memory default state so the interface remains usable;
+- automatic persistence is paused so the unreadable value is not overwritten;
+- the UI shows **Stored learning data needs recovery**;
+- ordinary Export backup is disabled because it would represent the temporary state rather than the stored value;
+- Settings can download the exact raw value as a `.txt` recovery artifact;
+- a validated backup import can replace the unreadable value and end recovery;
+- the user can explicitly discard the unreadable value only after confirmation;
+- after successful replacement/discard, normal persistence resumes.
+
+This behavior is covered by storage tests, React integration regression coverage, Playwright browser coverage, and ADR 0004.
+
+### Backup/import validation
+
+Imported state is treated as untrusted input and is validated before replacement.
+
+Current checks include:
+
+- shared byte-size budget before JSON parsing;
+- supported schema version;
+- one through the maximum supported profile count;
+- unique profile IDs;
+- active profile ID references an existing profile;
+- nonblank bounded profile names;
+- application-format ISO UTC timestamps;
+- settings ranges;
+- question operand bounds;
+- question answer equals the multiplication product;
+- attempt correctness agrees with the stored response;
+- recent mistake history contains only incorrect attempts;
+- canonical mastery fact keys;
+- mastery map key equals each stored mastery-stat key;
+- correct/streak counters cannot exceed valid totals.
+
+Destructive backup replacement requires confirmation.
+
+### Accessibility and UX
+
+- Native semantic buttons/inputs/selects.
+- Visible labels.
+- `aria-describedby` where support/recovery context matters.
+- Skip-to-content navigation.
 - Visible keyboard focus.
-- Skip-to-content link.
-- Semantic labels and navigation.
-- Live/status regions where useful.
-- Alt+1 through Alt+5 desktop section shortcuts with normal keyboard navigation preserved as fallback.
-- First-run onboarding.
-- Explicit offline status banner.
-- User-safe fatal error boundary.
-- Error logging intentionally excludes user-derived error-message text.
-- Structured logging redacts sensitive field names.
-- Updates/About settings section.
-- Dedicated About screen.
-- `Made by the Sanskar` visible credit.
-- GitHub, support, business email, license, and optional Buy Me a Coffee links.
-- Donation links remain optional and non-blocking.
+- `aria-current` for active navigation.
+- Live/status/alert roles for meaningful asynchronous and durability states.
+- Large text.
+- Reduced motion.
+- Responsive layouts down to narrow mobile widths.
+- Touch-friendly targets.
+- Light/dark/system theme tokens.
+- Alt+1 through Alt+5 desktop section shortcuts where not intercepted by the browser/OS.
+- Progressive speech capability detection and failure fallback.
+- Recovery actions are explicit, keyboard-operable, and confirmed before irreversible deletion.
+- Printed worksheet metadata avoids automatically exposing the active local learner profile name.
 
-### Offline/PWA behavior
+### Internationalization readiness
 
-- Vite PWA integration.
-- Auto-update service-worker registration.
-- App manifest.
-- Installable standalone display configuration.
-- Theme/background metadata.
-- Editable SVG app icon/logo.
-- Static asset precaching for repeat offline use.
-- Core table/practice/progress/profile workflows do not require a backend account or API.
+- Product UI copy is centralized in `src/i18n/en.ts`.
+- Shell, status/recovery, fatal error, tables, practice, progress, settings, and About copy use the externalized English structure.
+- Dynamic copy uses typed message factories for scores, seeds, profile capacity, progress statistics, recovery states, and other variable text.
+- Domain validation messages remain with domain/infrastructure rules because they are non-UI error contracts used by tests and programmatic callers.
+- A runtime locale provider is intentionally deferred until a second locale is added.
 
-## Architecture completed
+### Structured logging
 
-- `src/domain/` contains pure learning/business rules.
-- `src/features/` groups user-facing workflows.
-- `src/infrastructure/` isolates persistence, migrations, speech, and logging.
-- `src/state/AppStateContext.ts` defines the state contract/context.
-- `src/state/AppStateProvider.tsx` owns state composition and mutations.
-- `src/state/useAppState.ts` exposes the state hook.
-- The earlier combined state module was removed to keep React-refresh behavior/linting clean.
-- `src/components/` contains cross-cutting UI states/boundaries.
-- `src/i18n/en.ts` establishes the English string/resource boundary for future locale expansion.
-- ADRs document TypeScript PWA choice, local-first persistence, and deterministic practice generation.
+- Technical event logging remains structured.
+- Sensitive-looking field names are redacted.
+- Recognizable sensitive string values (including email/representative credential formats/private-key headers) are also redacted even when stored under a generic field name.
+- Recovery data itself is not logged.
+- Speech/storage/browser-preference failures use generic technical event names without learner content.
 
-## Automated tests added
+### Repository secret scanner
 
-### Unit/domain
+Added a dependency-free repository credential-pattern scanner:
 
-- Table generation order.
-- Table step behavior.
-- Invalid range/step rejection.
-- Rendering-budget rejection.
-- Equation formatting.
-- Deterministic question generation.
-- Different-seed sequence behavior.
-- Property-based generated-range/product correctness with `fast-check`.
-- Commutative mastery keys.
-- Mastery accuracy/streak behavior.
-- Mistake retention.
-- Difficulty progression.
-- Worksheet prompt/answer-key model.
+- `scripts/secret-scanner.mjs`
+- `scripts/secret-scan.mjs`
+- `scripts/secret-scanner.test.mjs`
 
-### Persistence/migration
+Properties:
 
-- Local-storage round trip.
-- Backup export/import round trip.
-- Malformed backup rejection.
-- Corrupt stored JSON fallback.
-- Storage write/quota failure handling.
-- Storage clearing.
-- Current migration-version acceptance.
-- Unknown migration-version rejection.
-- Invalid migration-root rejection.
+- scans repository text while ignoring generated/dependency directories;
+- skips binary and oversized files;
+- recognizes representative private-key, GitHub, AWS, Google, Slack, and Stripe credential signatures;
+- reports file, line, and finding type only;
+- deliberately does not echo the matched credential value;
+- has an independent Node test suite;
+- participates in the standard quality gate and CI.
 
-### React/integration
+This is defense in depth and is documented as not replacing credential revocation/history cleanup after an actual exposure.
 
-- Primary generator rendering.
-- Major feature navigation.
-- User-driven table-range updates.
-- Solved-to-blank worksheet switching.
+### Documentation link integrity
+
+Added a dependency-free local documentation link checker:
+
+- `scripts/link-checker.mjs`
+- `scripts/link-check.mjs`
+- `scripts/link-checker.test.mjs`
+
+It:
+
+- scans Markdown files;
+- recognizes ordinary Markdown relative links/images and simple HTML href/src references;
+- ignores external URLs, mail/tel/data targets, and fragment-only links;
+- verifies local targets exist;
+- ignores generated/dependency directories;
+- has its own Node test suite;
+- participates in `npm run check` and CI.
+
+### Quality scripts
+
+Current relevant scripts include:
+
+```text
+npm run format:check
+npm run lint
+npm run typecheck
+npm run test
+npm run test:coverage
+npm run test:security
+npm run test:docs
+npm run secret:scan
+npm run docs:check
+npm run build
+npm run test:e2e
+npm run check
+```
+
+`npm run check` currently sequences formatting, linting, strict types, Vitest, security-scanner tests, documentation-link-checker tests, repository secret scan, documentation link integrity check, and production build.
+
+### GitHub automation
+
+- CI quality job:
+  - dependency installation;
+  - formatting check;
+  - lint;
+  - TypeScript checking;
+  - Vitest;
+  - secret-scanner tests;
+  - documentation-link-checker tests;
+  - repository credential-pattern scan;
+  - local documentation link check;
+  - production PWA build;
+  - high-severity production dependency audit;
+  - production build artifact upload.
+- Separate Playwright E2E job.
+- CodeQL JavaScript/TypeScript analysis.
+- Dependabot for dependency maintenance.
+- Tagged release workflow that re-runs `npm run check` before packaging.
+- CI/CodeQL concurrency rules prevent superseded runs from growing indefinitely where configured.
+
+### GitHub repository templates
+
+- Bug reports explicitly warn reporters not to attach exported learner backups, unreadable recovery files, raw local-storage values, profile names, email addresses, credentials, or other private data.
+- Pull-request template includes data/security/recovery invariants and verification requirements.
+- Existing feature request, funding, release-note, dependency-update, support/security, and repository guidance remain in place.
+
+## Automated test coverage added/expanded
+
+### Domain
+
+- table generation and row budget;
+- equation formatting;
+- deterministic question generation;
+- unsigned seed validation;
+- property-based operand/product correctness;
+- practice seed helper;
+- bounded practice-response validation;
+- mastery updates/accuracy/streaks;
+- canonical mastery keys;
+- difficulty progression;
+- deduplicated mistake review;
+- progress search/filter/mastered rules;
+- worksheet prompt model.
+
+### Infrastructure
+
+- local-storage round trip;
+- exported/imported validated state;
+- shared size limit;
+- duplicate profile rejection;
+- blank profile-name rejection;
+- application-format timestamp validation;
+- impossible mastery-counter rejection;
+- noncanonical mastery-key rejection;
+- question-answer semantic rejection;
+- attempt-correctness semantic rejection;
+- correct-attempt-in-mistake-history rejection;
+- invalid local-state classification;
+- raw unreadable state remains available;
+- normal storage-write failure behavior;
+- migrations;
+- resilient onboarding preferences;
+- structured log redaction;
+- speech unsupported/supported/failure behavior.
+
+### React integration
+
+- primary generator rendering;
+- navigation;
+- table input updates;
+- solved/blank worksheet switch;
+- printable worksheet heading/Name/Date metadata;
+- mastery search and filters;
+- mistake-review completion behavior;
+- unavailable speech fallback;
+- local persistence failure alert;
+- unreadable local data is preserved until explicit discard;
+- recovery controls and disabled normal export during recovery.
 
 ### Browser E2E
 
-Playwright covers:
+- table generation;
+- blank worksheet mode;
+- deterministic practice completion;
+- offline profile creation;
+- large-text setting;
+- unreadable local state is preserved after startup;
+- raw unreadable state can be downloaded and the downloaded file contains the original raw value;
+- confirmed discard resolves recovery and normal persistence resumes.
 
-- generating a table;
-- switching to blank worksheet mode;
-- starting a deterministic single-question drill;
-- answering the multiplication question;
-- verifying the score;
-- creating an offline profile;
-- enabling large-text classroom mode.
+### Repository tooling tests
 
-## Security/privacy work completed
+- secret scanner clean ordinary text;
+- scanner finds representative credentials/private-key headers;
+- scanner finding metadata does not contain matched secret values;
+- documentation-link checker extracts local targets while ignoring external/fragment targets;
+- documentation-link checker passes existing relative links;
+- documentation-link checker reports missing local links.
 
-- No application credentials or remote API secrets are required for core operation.
-- `.env.example` contains only placeholder/deployment-setting guidance.
-- Imported backup validation.
-- Backup size guard.
-- Destructive-action confirmation.
-- Structured log redaction.
-- User-derived exception messages removed from fatal-error logging.
-- No `dangerouslySetInnerHTML`, `innerHTML`, `eval`, or `document.write` use found in repository audit.
-- TODO/FIXME/HACK/XXX placeholder audit returned no results.
-- Production dependency audit is a CI quality gate.
-- CodeQL is configured for JavaScript/TypeScript.
-- Dependabot covers npm and GitHub Actions.
-- GitHub Actions permissions are scoped per workflow.
-- CodeQL now uses concurrency cancellation so superseded atomic-commit runs do not continue building a queue.
-- Responsible disclosure instructions are in `SECURITY.md`.
-- Local-first data behavior is documented in `PRIVACY.md`.
+## Important modules/files added or changed in this continuation
 
-## CI and release automation
+### Domain
 
-### CI
+- `src/domain/answers.ts`
+- `src/domain/answers.test.ts`
+- `src/domain/questions.ts`
+- `src/domain/questions.test.ts`
+- `src/domain/random` functionality is kept in infrastructure while deterministic generation stays domain-owned.
+- `src/domain/review.ts`
+- `src/domain/review.test.ts`
+- `src/domain/progress.ts`
+- `src/domain/progress.test.ts`
+- `src/domain/tables.ts`
+- `src/domain/tables.test.ts`
 
-`.github/workflows/ci.yml` verifies:
+### Infrastructure
 
-1. formatting;
-2. ESLint/accessibility linting;
-3. strict TypeScript checks;
-4. Vitest test suite;
-5. production PWA build;
-6. production dependency audit at high severity;
-7. build artifact upload;
-8. Playwright browser journeys in a separate job.
+- `src/infrastructure/random.ts`
+- `src/infrastructure/random.test.ts`
+- `src/infrastructure/browserPreferences.ts`
+- `src/infrastructure/browserPreferences.test.ts`
+- `src/infrastructure/logger.ts`
+- `src/infrastructure/logger.test.ts`
+- `src/infrastructure/speech.ts`
+- `src/infrastructure/speech.test.ts`
+- `src/infrastructure/storage.ts`
+- `src/infrastructure/storage.test.ts`
 
-The workflow uses current supported 2026 major versions of the GitHub Actions used by the project and pins Node `22.12.0` for CI consistency with project runtime requirements.
+### State
 
-### CodeQL
+- `src/state/AppStateContext.ts`
+- `src/state/AppStateProvider.tsx`
+- `src/state/useAppState.ts`
 
-- JavaScript/TypeScript analysis.
-- Push, pull-request, and weekly scheduled triggers.
-- Latest-run-wins concurrency cancellation.
+### UI/features
 
-### Release
+- `src/App.tsx`
+- `src/App.test.tsx`
+- `src/components/ErrorBoundary.tsx`
+- `src/components/StatusBanners.tsx`
+- `src/features/tables/TableGenerator.tsx`
+- `src/features/practice/PracticeDrill.tsx`
+- `src/features/progress/ProgressDashboard.tsx`
+- `src/features/settings/SettingsPage.tsx`
+- `src/features/about/AboutPage.tsx`
+- `src/i18n/en.ts`
+- `src/styles.css`
+- `src/status.css`
 
-- `v*.*.*` tags trigger verification/build/release packaging.
-- `dist/` is packaged as `tablespark-web.zip`.
-- GitHub release notes can be generated and categorized using `.github/release.yml`.
-- Reusable human release-notes template exists at `docs/release-notes-template.md`.
+### E2E
 
-## Repository/community files completed
+- `e2e/smoke.spec.ts`
+
+### Repository scripts
+
+- `scripts/secret-scanner.mjs`
+- `scripts/secret-scan.mjs`
+- `scripts/secret-scanner.test.mjs`
+- `scripts/link-checker.mjs`
+- `scripts/link-check.mjs`
+- `scripts/link-checker.test.mjs`
+
+### Automation/configuration
+
+- `package.json`
+- `eslint.config.js`
+- `.github/workflows/ci.yml`
+- `.github/ISSUE_TEMPLATE/bug_report.md`
+- `.github/pull_request_template.md`
+
+### Documentation
 
 - `README.md`
-- `LICENSE`
-- `CONTRIBUTING.md`
-- `CODE_OF_CONDUCT.md`
-- `SECURITY.md`
-- `SUPPORT.md`
-- `PRIVACY.md`
 - `CHANGELOG.md`
 - `ROADMAP.md`
-- `what_changed.md`
-- `.gitignore`
-- `.editorconfig`
-- `.gitattributes`
-- `.env.example`
-- `.nvmrc`
-- `.prettierrc.json`
-- `.prettierignore`
-- VS Code extension/settings recommendations
-- Bug-report issue template
-- Feature-request issue template
-- Issue-template routing config
-- Pull-request template
-- Dependabot configuration
-- Funding configuration
-- Generated-release-notes configuration
-- CI workflow
-- CodeQL workflow
-- Release workflow
-
-## Documentation completed
-
-- `docs/architecture.md`
-- `docs/setup.md`
-- `docs/development.md`
-- `docs/testing.md`
-- `docs/release.md`
-- `docs/release-notes-template.md`
-- `docs/troubleshooting.md`
+- `SECURITY.md`
+- `PRIVACY.md`
+- `CONTRIBUTING.md`
 - `docs/accessibility.md`
+- `docs/architecture.md`
+- `docs/development.md`
 - `docs/performance.md`
-- `docs/repository-settings.md`
-- `docs/git-workflow.md`
+- `docs/quality-gates.md`
+- `docs/release.md`
+- `docs/setup.md`
+- `docs/testing.md`
+- `docs/troubleshooting.md`
 - `docs/user-guide.md`
-- `docs/adr/0001-typescript-react-pwa.md`
-- `docs/adr/0002-local-first-persistence.md`
-- `docs/adr/0003-deterministic-practice.md`
-- `docs/assets/interface-preview.svg`
+- `docs/verification-plan.md`
+- `docs/adr/0004-preserve-unreadable-local-state.md`
+- `docs/verification-checkpoint-v2.md` exists only on the current verification branch as a documentation-only workflow trigger.
 
-## Commands/checks and results
+## Architecture decisions
 
-### Repository audits performed through GitHub
+Current ADR set:
 
-- Searched for `TODO`, `FIXME`, `HACK`, `XXX`, and placeholder markers: no results returned.
-- Searched for `dangerouslySetInnerHTML`, `innerHTML`, `eval`, and `document.write`: no results returned.
-- Checked recent commit history repeatedly to preserve small, meaningful commit boundaries.
-- Created fresh pull-request verification checkpoints after older snapshots became stale.
+1. `docs/adr/0001-typescript-react-pwa.md` — TypeScript React PWA primary client.
+2. `docs/adr/0002-local-first-persistence.md` — local-first persistence.
+3. `docs/adr/0003-deterministic-practice.md` — deterministic seeded practice.
+4. `docs/adr/0004-preserve-unreadable-local-state.md` — preserve unreadable local state until explicit recovery.
 
-### Local execution environment limitation
+## Commands/checks and current verification status
 
-A direct clone/build attempt in the available execution container could not proceed because that container could not resolve `github.com` (`Could not resolve host: github.com`). The environment reported Node.js `v22.16.0` and npm `10.9.2`, but dependency/network access was unavailable there.
+### Local/container execution limitation
 
-For that reason, the executable repository verification is delegated to GitHub Actions. The current PR #3 runs exist but are still queued, so no build/test/security workflow success is claimed yet.
+A previous direct container clone/verification attempt could not resolve `github.com`, so the tool container could not obtain the repository and install its package tree. The container did have a compatible Node 22/npm 10 line, but without repository/package-network access it could not truthfully execute `npm install`, `npm run check`, Playwright, or the dependency audit from a clean clone.
 
-## Known release-candidate limitations
+No claim is made that local/container checks passed.
 
-1. GitHub Actions CI and CodeQL are queued rather than concluded at the last check. Their exact run IDs are recorded above.
-2. A complete npm lockfile could not be generated in the network-restricted execution container. Direct dependencies are exact-version pinned, CI installs/audits them, and a reviewed `package-lock.json` should be committed from a successful supported Node/npm environment before a reproducibility-focused stable release.
-3. The repository includes an editable/illustrated interface preview, not real final browser screenshots. Real light/dark/narrow/wide captures should be added after a verified build/deployment is available.
-4. No production hosting target was specified, so no live deployment is configured.
-5. Desktop delivery is currently the installable PWA model; no native Windows/macOS/Linux installer wrapper has been introduced because the product does not require privileged native APIs.
-6. Speech synthesis behavior/voice availability is browser/operating-system dependent.
+### GitHub executable verification
 
-These are release-candidate verification/distribution limitations, not intentionally omitted core multiplication/practice features.
+The fresh release-candidate verification branch is:
 
-## Commit author/email limitation
+```text
+chore/final-verification-2026-08-19-v2
+```
 
-Requested email: `sanskarin@outlook.in`.
+The fresh pull request is:
 
-It is recorded in project/package metadata and `docs/git-workflow.md`, which tells local contributors to use repository-scoped configuration:
+```text
+#4 chore: run final TableSpark release-candidate verification
+```
+
+The verification checkpoint was created only after the current reliability, security, recovery, documentation integrity, accessibility, and test changes were pushed to `main`.
+
+Required conclusions to review on this PR:
+
+- CI `quality`;
+- CI `e2e`;
+- CodeQL JavaScript/TypeScript analysis.
+
+Do **not** claim those checks passed unless their final GitHub workflow conclusions are fetched and reviewed. If runner capacity/platform state leaves them queued, record that external limitation rather than treating queued as success.
+
+## Repository audit notes
+
+- A repository TODO/FIXME/HACK audit was run during this continuation and did not identify an intentional unfinished core implementation item that should be shipped as a placeholder.
+- Core product screenshots are still represented by an editable repository preview illustration; real release browser captures remain a final release/deployment evidence task.
+- The application still intentionally has no backend, authentication system, advertising, payments, or mandatory account because those are not required by the chosen local-first learning product.
+
+## Commit identity
+
+Requested repository commit email:
+
+```text
+sanskarin@outlook.in
+```
+
+Current GitHub commit/branch metadata inspected during this continuation confirms the connector-created repository commits are using the requested author/committer email. Local contributors should still configure the repository-scoped identity explicitly:
 
 ```bash
 git config user.email "sanskarin@outlook.in"
 ```
 
-The GitHub connector write operations available in this session do not expose author/email parameters. GitHub commit search reports `git_author_email: null` for the connector-created commits. Therefore this handoff does not falsely claim the connector-set commits carry that explicit email metadata.
+## Persisted-data migration and recovery notes
 
-## Persisted-data migration notes
+Current schema version remains `1`; this continuation strengthened validation without changing the stored TypeScript data shape.
 
-- Current schema version: `1`.
-- Backup JSON is parsed as untrusted data.
-- Invalid root values are rejected.
-- Unsupported schema versions are rejected explicitly.
-- Zod validates the supported state shape.
-- `activeProfileId` must point to a profile in the same state.
-- Future incompatible shape changes must increment the schema version, add migration code, add migration tests, and update backup/release documentation.
+Important compatibility rule:
 
-## Release notes draft — 0.1.0
+- known future shape changes must increment the schema and include explicit tested migrations;
+- unknown malformed state must not be heuristically repaired or automatically overwritten;
+- startup invalid state is preserved for recovery;
+- imported backup replacement is validated and confirmed;
+- raw recovery artifacts can contain personal learner data and must be handled privately.
 
-TableSpark 0.1.0 establishes the initial production-oriented offline-first multiplication learning PWA. It provides custom table generation, solved and blank printable worksheet modes, deterministic timed/untimed practice, difficulty progression, mistake review, mastery tracking, offline profiles, validated backup/restore, themes, accessibility controls, progressive speech support, responsive layouts, documented local-first privacy, and automated CI/security/release workflows.
+The storage validator now treats the application-created ISO UTC timestamp format and canonical mastery keys as part of the schema-1 semantic contract.
 
-## Most recent meaningful commits on `main`
+## Known limitations / non-blocking release items
 
-- `839e513` — `chore: configure generated release note categories`
-- `1b2d87b` — `docs: add reusable release notes template`
-- `2c7ef36` — `chore: guide issue reporters to support and security channels`
-- `cbef83a` — `ci: cancel superseded CodeQL runs`
-- `11b564a` — `ci: update release workflow action majors`
-- `5061ea9` — `ci: update CodeQL workflow to supported action majors`
-- `7eeb6c1` — `ci: update workflow actions for 2026 runner support`
-- `be501f3` — `fix: disable JavaScript undef checks for typed source`
-- `d9484a2` — `test: cover resilient browser storage write failures`
-- `17025e7` — `fix: handle browser storage failures without crashing`
-- `af9cf52` — `fix: confirm destructive profile and backup replacement actions`
-- `c6ac7d8` — `fix: preserve valid persisted practice settings`
-- `dcc7614` — `test: cover worksheet rendering budget guard`
-- `61c50b9` — `perf: cap generated worksheet rows to protect rendering`
+- Final CI/E2E/CodeQL conclusions for the fresh verification PR must still be reviewed before declaring a verified release candidate.
+- A transitive npm `package-lock.json` has not been committed because the available execution environment could not perform a package-network install from a clean checkout. Direct dependencies remain exact-version pinned. A reviewed lockfile generated by a supported networked Node/npm environment remains recommended before a production release if feasible.
+- Real browser screenshots have not yet replaced/supplemented the editable interface preview illustration.
+- No production static hosting target was specified, so no live deployment was configured.
+- Final PWA installability/offline reload must be checked on the eventual secure production origin.
+- Browser speech synthesis behavior depends on the platform; TableSpark now provides an explicit unsupported/failure fallback.
+- The current desktop distribution is an installable PWA rather than native Windows/macOS/Linux installer packages.
+- `main` branch protection is documented but requires repository settings/owner configuration; no connector action available in this workflow was used to impose branch rules automatically.
+
+## Release notes draft — 0.1.0 release candidate
+
+TableSpark 0.1.0 establishes a production-oriented offline-first multiplication learning PWA with custom bounded table generation, printable solved/blank worksheets, random and deterministically replayable practice, timed/untimed drills, difficulty presets, deduplicated mistake review, mastery tracking, searchable progress, offline learner profiles, validated backup/restore, unreadable local-state recovery, persistence-health feedback, themes, classroom accessibility controls, progressive speech support, responsive layouts, comprehensive tests, repository secret scanning, documentation link integrity checks, CodeQL/CI automation, and complete governance/security/privacy documentation.
+
+## Recent meaningful commit messages from this continuation
+
+The continuation intentionally used many small atomic commits. Recent meaningful messages include:
+
+- `security: validate persisted timestamps and profile names`
+- `test: cover persisted profile and timestamp validation`
+- `test: verify unreadable recovery download contents`
+- `test: cover unreadable local data recovery in browser`
+- `docs: record unreadable local state recovery decision`
+- `fix: preserve unreadable local data until explicit recovery`
+- `feat: expose unreadable state recovery controls`
+- `feat: surface unreadable local data recovery state`
+- `feat: add explicit unreadable local data recovery controls`
+- `test: cover unreadable local data recovery workflow`
+- `security: validate mastery keys and mistake semantics`
+- `fix: bound practice responses to persisted limits`
+- `feat: define bounded practice answer validation`
+- `test: cover bounded practice answers`
+- `fix: distinguish generated drills from mistake reviews`
+- `test: cover mistake review completion behavior`
+- `refactor: externalize complete English interface copy`
+- `feat: add polished printable worksheet header`
+- `style: polish progress filters and printable worksheets`
+- `security: add repository secret scanning engine`
+- `test: cover repository secret scanner`
+- `security: add secret scan command`
+- `build: add secret scanning quality gates`
+- `ci: enforce repository secret scanning`
+- `docs: add local documentation link checker`
+- `test: cover local documentation link checker`
+- `build: add documentation link quality gates`
+- `ci: enforce local documentation link integrity`
+- `docs: add consolidated quality gate reference`
+- `docs: refresh complete TableSpark work handoff`
+
+Git commit hashes should be read directly from the repository history when preparing signed/published release notes; the messages above are the stable handoff identifiers for this continuation.
 
 ## Next exact tasks
 
-1. Re-check PR #3 CI run `32220239314` and CodeQL run `32220239447` when GitHub executes them.
-2. If either run fails, fetch failed job steps/logs, fix the exact root cause, and create a new verification checkpoint from the then-current `main`.
-3. If both pass, merge/close the verification checkpoint according to branch policy and record the conclusions here.
-4. Generate and review `package-lock.json` from a networked Node `22.12+` / npm `10+` environment, then change CI/release installs to `npm ci` for stronger reproducibility.
-5. Capture real release screenshots from a verified build/deployment and add them to README/release notes.
-6. Perform the manual checklist in `docs/release.md` before publishing `v0.1.0`.
+1. Fetch pull request `#4` head SHA and its GitHub Actions workflow runs.
+2. Wait for final `quality`, `e2e`, and CodeQL conclusions only as GitHub itself executes them; do not substitute a queued status for a pass.
+3. If any workflow fails, inspect the failed job/step logs, fix the exact root cause on `main`, add/retain a regression test, close the stale verification PR, and create a fresh checkpoint PR from the corrected `main`.
+4. Update this file with exact final workflow run IDs/conclusions after they are available.
+5. Run the manual release-candidate checklist in `docs/release.md` on a real browser environment, especially keyboard, themes, large text, reduced motion, print preview, unreadable-state recovery, and speech capability fallback.
+6. Generate/review a dependency lockfile from a supported networked Node/npm environment if possible; commit it only after reviewing the resolved dependency changes and rerunning quality gates.
+7. Capture real release screenshots from the verified production preview/deployment and supplement/replace the repository illustration.
+8. Choose/approve a static HTTPS production host, deploy the verified `dist/`, and verify PWA installability plus one offline reload.
+9. Only after all release gates are satisfied, finalize `CHANGELOG.md` version entries and create/push the `v0.1.0` tag so the release workflow packages the verified artifact.
