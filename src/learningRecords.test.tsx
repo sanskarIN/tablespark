@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { AppStateProvider } from './state/AppStateProvider';
 import { useAppState } from './state/useAppState';
@@ -28,6 +28,16 @@ function ProfileCapacityHarness() {
         Add two profiles
       </button>
     </>
+  );
+}
+
+function StorageStatusHarness() {
+  const { persistenceAvailable, unreadableStoredState } = useAppState();
+  return (
+    <output aria-label="Storage status">
+      {persistenceAvailable ? 'saving available' : 'saving unavailable'} · recovery{' '}
+      {unreadableStoredState ? 'required' : 'not required'}
+    </output>
   );
 }
 
@@ -175,5 +185,25 @@ describe('learning records', () => {
       const stored = JSON.parse(raw ?? '{}') as { profiles?: unknown[] };
       expect(stored.profiles).toHaveLength(100);
     });
+  });
+
+  it('keeps recovery disabled when browser storage cannot be read', () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('Blocked', 'SecurityError');
+    });
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+
+    render(
+      <AppStateProvider>
+        <StorageStatusHarness />
+      </AppStateProvider>,
+    );
+
+    expect(screen.getByLabelText('Storage status')).toHaveTextContent('saving unavailable');
+    expect(screen.getByLabelText('Storage status')).toHaveTextContent('recovery not required');
+    expect(setItem).not.toHaveBeenCalled();
+
+    setItem.mockRestore();
+    getItem.mockRestore();
   });
 });
