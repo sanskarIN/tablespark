@@ -38,6 +38,10 @@ export function SettingsPage() {
 
     try {
       if (file.size > 2_000_000) throw new Error('Backup file is too large.');
+      const confirmed = window.confirm(
+        'Importing this backup will replace all current TableSpark profiles, progress, and settings. Continue?',
+      );
+      if (!confirmed) return;
       replaceFromBackup(await file.text());
       setMessage('Backup imported successfully.');
     } catch (error) {
@@ -45,6 +49,13 @@ export function SettingsPage() {
     } finally {
       event.target.value = '';
     }
+  };
+
+  const confirmProfileDelete = (id: string, name: string) => {
+    const confirmed = window.confirm(
+      `Delete the offline profile “${name}” and its local progress? This cannot be undone.`,
+    );
+    if (confirmed) deleteProfile(id);
   };
 
   return (
@@ -161,7 +172,7 @@ export function SettingsPage() {
                 type="button"
                 className="text-button danger"
                 disabled={state.profiles.length === 1}
-                onClick={() => deleteProfile(profile.id)}
+                onClick={() => confirmProfileDelete(profile.id, profile.name)}
               >
                 Delete
               </button>
