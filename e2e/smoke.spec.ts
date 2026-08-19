@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('generate a table and complete a deterministic practice question', async ({ page }) => {
+test('generate a table, compose a worksheet, and complete a deterministic practice question', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Multiplication tables' })).toBeVisible();
 
@@ -8,10 +8,10 @@ test('generate a table and complete a deterministic practice question', async ({
   await page.getByRole('spinbutton', { name: 'Table start' }).fill('9');
   await expect(page.getByText('9 × 1 = 9')).toBeVisible();
 
-  await page
-    .getByRole('checkbox', { name: 'Hide answers for practice worksheet' })
-    .check();
+  await page.getByRole('combobox', { name: 'Printable output' }).selectOption('worksheet');
   await expect(page.getByText('9 × 1 = ______')).toBeVisible();
+  await page.getByRole('combobox', { name: 'Answer blank style' }).selectOption('box');
+  await expect(page.getByText('9 × 1 = □')).toBeVisible();
 
   await page.getByRole('button', { name: 'Practice' }).click();
   await page.getByRole('spinbutton', { name: 'Minimum' }).fill('5');
