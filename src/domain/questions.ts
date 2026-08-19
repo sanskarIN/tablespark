@@ -19,10 +19,17 @@ function mulberry32(seed: number): () => number {
 }
 
 export function generateQuestions(config: QuestionConfig): Question[] {
-  if (!Number.isInteger(config.min) || !Number.isInteger(config.max) || config.min < 0 || config.max > 1000) {
+  if (
+    !Number.isInteger(config.min) ||
+    !Number.isInteger(config.max) ||
+    config.min < 0 ||
+    config.max > 1000
+  ) {
     throw new RangeError('Question range must use integers between 0 and 1000.');
   }
-  if (config.min > config.max) throw new RangeError('Question minimum must not exceed maximum.');
+  if (config.min > config.max) {
+    throw new RangeError('Question minimum must not exceed maximum.');
+  }
   if (!Number.isInteger(config.count) || config.count < 1 || config.count > 200) {
     throw new RangeError('Question count must be between 1 and 200.');
   }
@@ -32,7 +39,12 @@ export function generateQuestions(config: QuestionConfig): Question[] {
   return Array.from({ length: config.count }, (_, index) => {
     const left = config.min + Math.floor(random() * span);
     const right = config.min + Math.floor(random() * span);
-    return { id: `${config.seed}-${index}-${left}-${right}`, left, right, answer: left * right };
+    return {
+      id: `${config.seed}-${index}-${left}-${right}`,
+      left,
+      right,
+      answer: left * right,
+    };
   });
 }
 
