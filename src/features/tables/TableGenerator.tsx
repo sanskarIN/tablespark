@@ -1,10 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { generateTable } from '../../domain/tables';
 import type { TableConfig } from '../../domain/types';
-import { buildWorksheet } from '../../domain/worksheet';
+import { buildWorksheet, type WorksheetBlankStyle } from '../../domain/worksheet';
 import { copy } from '../../i18n/en';
 import { speak } from '../../infrastructure/speech';
 import { useAppState } from '../../state/useAppState';
+
+type WorksheetOutput = 'study' | 'worksheet' | 'answer-key';
+type PaperSize = 'a4' | 'letter';
+type PrintColumns = 1 | 2 | 3;
 
 const initialConfig: TableConfig = {
   from: 2,
@@ -22,22 +26,45 @@ function numberValue(value: string, fallback: number): number {
 export function TableGenerator() {
   const { state } = useAppState();
   const [config, setConfig] = useState<TableConfig>(initialConfig);
-  const [worksheetMode, setWorksheetMode] = useState(false);
+  const [output, setOutput] = useState<WorksheetOutput>('study');
+  const [blankStyle, setBlankStyle] = useState<WorksheetBlankStyle>('line');
+  const [paperSize, setPaperSize] = useState<PaperSize>('a4');
+  const [printColumns, setPrintColumns] = useState<PrintColumns>(3);
 
   const result = useMemo(() => {
     try {
-      return { items: buildWorksheet(generateTable(config)), error: '' };
+      return {
+        items: buildWorksheet(generateTable(config), { blankStyle }),
+        error: '',
+      };
     } catch (error) {
       return {
         items: [],
         error: error instanceof Error ? error.message : copy.tables.invalidSettings,
       };
     }
-  }, [config]);
+  }, [blankStyle, config]);
 
   const update = (key: keyof TableConfig, raw: string) => {
     setConfig((current) => ({ ...current, [key]: numberValue(raw, current[key]) }));
   };
+
+  const isPracticeWorksheet = output === 'worksheet';
+  const printButtonLabel =
+    output === 'worksheet'
+      ? copy.tables.printPracticeWorksheet
+      : output === 'answer-key'
+        ? copy.tables.printAnswerKey
+        : copy.tables.printStudySheet;
+  const printTitle =
+    output === 'worksheet'
+      ? copy.tables.worksheetTitle
+      : output === 'answer-key'
+        ? copy.tables.answerKeyTitle
+        : copy.tables.studySheetTitle;
+  const worksheetStyle = {
+    '--worksheet-columns': String(printColumns),
+  } as CSSProperties;
 
   return (
     <section className="page-stack" aria-labelledby="tables-title">
@@ -48,11 +75,11 @@ export function TableGenerator() {
           <p>{copy.tables.description}</p>
         </div>
         <button className="secondary-button no-print" type="button" onClick={() => window.print()}>
-          {worksheetMode ? copy.tables.printPracticeWorksheet : copy.tables.printStudySheet}
+          {printButtonLabel}
         </button>
       </div>
 
-      <form className="control-grid" onSubmit={(event) => event.preventDefault()}>
+      <form className="control-grid no-print" onSubmit={(event) => event.preventDefault()}>
         <label>
           {copy.tables.tableStart}
           <input
@@ -103,36 +130,88 @@ export function TableGenerator() {
             max={1000}
           />
         </label>
-        <label className="check-row worksheet-toggle">
-          <input
-            type="checkbox"
-            checked={worksheetMode}
-            onChange={(event) => setWorksheetMode(event.target.checked)}
-          />
-          {copy.tables.hideAnswers}
-        </label>
       </form>
+
+      <section className="panel worksheet-composer no-print" aria-labelledby="worksheet-composer-title">
+        <div className="section-heading">
+          <div>
+            <h3 id="worksheet-composer-title">{copy.tables.composerHeading}</h3>
+            <p>{copy.tables.composerDescription}</p>
+          </div>
+        </div>
+        <div className="control-grid composer-grid">
+          <label>
+            {copy.tables.worksheetOutput}
+            <select
+              value={output}
+              onChange={(event) => setOutput(event.target.value as WorksheetOutput)}
+            >
+              <option value="study">{copy.tables.outputStudy}</option>
+              <option value="worksheet">{copy.tables.outputPractice}</option>
+              <option value="answer-key">{copy.tables.outputAnswerKey}</option>
+            </select>
+          </label>
+          <label>
+            {copy.tables.answerBlankStyle}
+            <select
+              value={blankStyle}
+              disabled={!isPracticeWorksheet}
+              onChange={(event) => setBlankStyle(event.target.value as WorksheetBlankStyle)}
+            >
+              <option value="line">{copy.tables.blankLine}</option>
+              <option value="box">{copy.tables.blankBox}</option>
+              <option value="space">{copy.tables.blankSpace}</option>
+            </select>
+          </label>
+          <label>
+            {copy.tables.paperSize}
+            <select
+              value={paperSize}
+              onChange={(event) => setPaperSize(event.target.value as PaperSize)}
+            >
+              <option value="a4">{copy.tables.paperA4}</option>
+              <option value="letter">{copy.tables.paperLetter}</option>
+            </select>
+          </label>
+          <label>
+            {copy.tables.printColumns}
+            <select
+              value={printColumns}
+              onChange={(event) => setPrintColumns(Number(event.target.value) as PrintColumns)}
+            >
+              <option value={1}>{copy.tables.columns(1)}</option>
+              <option value={2}>{copy.tables.columns(2)}</option>
+              <option value={3}>{copy.tables.columns(3)}</option>
+            </select>
+          </label>
+        </div>
+      </section>
 
       {result.error ? (
         <div className="status error" role="alert">
           {result.error}
         </div>
       ) : (
-        <>
+        <div
+          className="worksheet-page"
+          data-paper-size={paperSize}
+          data-output={output}
+          style={worksheetStyle}
+        >
           <header className="print-only worksheet-print-header">
-            <h1>
-              {worksheetMode ? copy.tables.worksheetTitle : copy.tables.studySheetTitle}
-            </h1>
-            <div className="worksheet-print-meta">
-              <span>{copy.tables.learnerLine}</span>
-              <span>{copy.tables.dateLine}</span>
-            </div>
+            <h1>{printTitle}</h1>
+            {output !== 'answer-key' ? (
+              <div className="worksheet-print-meta">
+                <span>{copy.tables.learnerLine}</span>
+                <span>{copy.tables.dateLine}</span>
+              </div>
+            ) : null}
           </header>
-          <div className="table-grid" aria-live="polite">
+          <div className="table-grid worksheet-grid" aria-live="polite">
             {result.items.map((item) => (
               <article className="equation-card" key={item.id}>
-                <strong>{worksheetMode ? item.prompt : item.solvedEquation}</strong>
-                {!worksheetMode && state.settings.speechEnabled ? (
+                <strong>{isPracticeWorksheet ? item.prompt : item.solvedEquation}</strong>
+                {!isPracticeWorksheet && state.settings.speechEnabled ? (
                   <button
                     className="icon-button no-print"
                     type="button"
@@ -145,7 +224,7 @@ export function TableGenerator() {
               </article>
             ))}
           </div>
-        </>
+        </div>
       )}
     </section>
   );
