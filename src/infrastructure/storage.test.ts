@@ -86,6 +86,30 @@ describe('local persistence', () => {
     );
   });
 
+  it('rejects non-canonical mastery keys', () => {
+    const profile = state.profiles[0]!;
+    const invalid = {
+      ...state,
+      profiles: [
+        {
+          ...profile,
+          mastery: {
+            '7x4': {
+              key: '7x4',
+              attempts: 1,
+              correct: 1,
+              streak: 1,
+              lastAttemptAt: '2026-08-19T00:00:00.000Z',
+            },
+          },
+        },
+      ],
+    };
+    expect(() => importState(JSON.stringify(invalid))).toThrow(
+      'Mastery key must be a canonical multiplication fact',
+    );
+  });
+
   it('rejects inconsistent question answers and attempt correctness', () => {
     const profile = state.profiles[0]!;
     const invalid = {
@@ -107,6 +131,30 @@ describe('local persistence', () => {
     };
     expect(() => importState(JSON.stringify(invalid))).toThrow(
       'Question answer must match its operands',
+    );
+  });
+
+  it('rejects correct attempts stored in mistake history', () => {
+    const profile = state.profiles[0]!;
+    const invalid = {
+      ...state,
+      profiles: [
+        {
+          ...profile,
+          mistakes: [
+            {
+              question: { id: 'correct', left: 4, right: 7, answer: 28 },
+              response: 28,
+              correct: true,
+              answeredAt: '2026-08-19T00:00:00.000Z',
+              elapsedMs: 500,
+            },
+          ],
+        },
+      ],
+    };
+    expect(() => importState(JSON.stringify(invalid))).toThrow(
+      'Saved mistake history cannot contain correct attempts',
     );
   });
 
