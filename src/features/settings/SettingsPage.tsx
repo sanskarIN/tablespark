@@ -348,9 +348,11 @@ export function SettingsPage() {
             <p>{copy.settings.recoveryBody}</p>
             <div className="button-row">
               <button className="secondary-button" type="button" onClick={downloadUnreadableState}>
-                {copy.settings.downloadUnreadable}</button>
+                {copy.settings.downloadUnreadable}
+              </button>
               <button className="text-button danger" type="button" onClick={discardUnreadable}>
-                {copy.settings.discardUnreadable}</button>
+                {copy.settings.discardUnreadable}
+              </button>
             </div>
           </div>
         ) : null}
@@ -363,13 +365,15 @@ export function SettingsPage() {
             aria-describedby={unreadableStoredState ? 'recovery-note' : undefined}
             onClick={downloadBackup}
           >
-            {copy.settings.exportBackup}</button>
+            {copy.settings.exportBackup}
+          </button>
           <button
             className="secondary-button"
             type="button"
             onClick={() => fileInput.current?.click()}
           >
-            {copy.settings.importBackup}</button>
+            {copy.settings.importBackup}
+          </button>
           <input
             ref={fileInput}
             className="visually-hidden"
@@ -388,7 +392,8 @@ export function SettingsPage() {
               }
             }}
           >
-            {copy.settings.resetProgress}</button>
+            {copy.settings.resetProgress}
+          </button>
         </div>
       </div>
 
