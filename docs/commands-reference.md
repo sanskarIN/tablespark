@@ -220,7 +220,7 @@ Runs the same Prettier path patterns in verification mode instead of modifying f
 
 Use this before committing and in CI. A failure means one or more covered files differ from the project's formatting rules.
 
-Markdown documentation is not currently part of the package-level Prettier command. Markdown quality is instead protected by repository review and local-link validation.
+Markdown documentation is not currently part of the package-level Prettier command. Markdown quality is instead protected by review and the local documentation-link gate.
 
 ## Application tests
 
@@ -399,7 +399,7 @@ Purpose:
 - validates the dependency-free repository secret-scanner implementation;
 - confirms supported credential signatures are detected;
 - confirms ordinary text remains clean;
-- verifies reported findings do not echo matched credential values.
+- verifies reported findings do not echo the matched credential value.
 
 This command tests the scanner implementation. It does not scan the repository itself.
 
@@ -423,25 +423,40 @@ Purpose:
 
 A clean scan is defense in depth, not proof that no secret exists. Real exposed credentials must be revoked/rotated even if a later scanner run is clean.
 
-## Documentation link checking
+## Documentation link integrity
 
-The repository includes the link-checker implementation and tests even though no dedicated package script is currently declared.
+### `npm run test:docs`
 
-Run its tests directly:
+```bash
+npm run test:docs
+```
+
+Expands to:
+
+```bash
+node --test scripts/link-checker.test.mjs && node scripts/link-check.mjs
+```
+
+This is the formal documentation integrity command used by `npm run check`, CI, and therefore the tagged release verification gate.
+
+Step 1 tests the link-checker implementation.
+
+Step 2 scans repository Markdown and verifies supported **local** link/image targets resolve against the checked-out repository.
+
+The check is intentionally local/offline. It does not request every external website and therefore does not guarantee external URL availability.
+
+If a local documentation link is broken, fix the path or intentionally remove/update the reference. Do not weaken the checker solely to make a stale path pass.
+
+### Direct documentation commands
+
+For debugging, the two stages can still be run separately:
 
 ```bash
 node --test scripts/link-checker.test.mjs
-```
-
-Run the repository local-link check directly:
-
-```bash
 node scripts/link-check.mjs
 ```
 
-The check focuses on local Markdown/documentation references. It is designed to catch broken repository paths without depending on remote network availability.
-
-If these commands become a formal package-level gate later, update `package.json`, `docs/testing.md`, `docs/quality-gates.md`, CI, and this document together.
+The package-level `test:docs` command is preferred for normal verification because it represents the maintained gate.
 
 ## Full local quality gate
 
@@ -460,6 +475,7 @@ npm run format:check
 && npm run test
 && npm run test:security
 && npm run secret:scan
+&& npm run test:docs
 && npm run build
 ```
 
@@ -471,11 +487,12 @@ Interpretation:
 2. lint/accessibility rules must be clean;
 3. TypeScript must compile under strict project settings;
 4. application tests must pass;
-5. secret-scanner tests must pass;
+5. secret-scanner implementation tests must pass;
 6. repository secret scan must pass;
-7. the production PWA must build.
+7. documentation-link implementation + local link integrity must pass;
+8. the production PWA must build.
 
-`npm run check` does **not** include Playwright E2E or a network-dependent dependency audit. CI runs those as separate gates.
+`npm run check` does **not** include Playwright E2E or the network/advisory-based production dependency audit. CI runs those as separate gates.
 
 Recommended pre-PR sequence:
 
@@ -654,6 +671,16 @@ Then inspect the diff and rerun `npm run format:check`.
 
 Update every typed fixture/catalog consumer rather than weakening the type. Schema and localization type failures are intentional safeguards.
 
+### Documentation link check fails
+
+Run:
+
+```bash
+npm run test:docs
+```
+
+Read each reported source file/target and correct the repository-local path. If the checker itself parsed/resolved valid Markdown incorrectly, add a focused checker regression test before changing the implementation.
+
 ### Secret scan reports a real credential
 
 Do not simply delete the line and declare the incident resolved. Revoke/rotate the credential, remove it from current source, assess repository history exposure, and follow `SECURITY.md`.
@@ -663,11 +690,12 @@ Do not simply delete the line and declare the incident resolved. Revoke/rotate t
 When adding, removing, or changing an npm script, update all of these together when relevant:
 
 - `package.json`;
-- `README.md`;
+- `README.md` if the command is important for normal contributors;
 - `docs/development.md`;
 - `docs/testing.md`;
 - `docs/quality-gates.md`;
 - `docs/commands-reference.md`;
+- `docs/configuration-reference.md`;
 - CI/release workflows;
 - `what_changed.md`.
 
