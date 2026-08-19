@@ -4,18 +4,24 @@ The roadmap prioritizes coherent learning value, accessibility, reliability, and
 
 ## 0.1 — Foundation
 
-- [x] Custom multiplication table generator.
-- [x] Responsive PWA shell.
+- [x] Custom multiplication table generator with a bounded render budget.
+- [x] Responsive offline-first PWA shell.
 - [x] Timed and untimed practice.
-- [x] Deterministic seeded questions.
-- [x] Mistake review and mastery tracking.
-- [x] Offline profiles and local persistence.
-- [x] Backup export/import.
+- [x] Random-by-default practice with deterministic replay seeds.
+- [x] Validated unsigned seed range and deterministic generator tests.
+- [x] Deduplicated mistake review and mastery tracking.
+- [x] Searchable/filterable mastery progress with a transparent mastery rule.
+- [x] Offline profiles with explicit capacity and local persistence.
+- [x] User-visible browser-storage failure state.
+- [x] Validated backup export/import with shared persistence-size budget and semantic integrity checks.
 - [x] Light/dark/system appearance.
 - [x] Large-text and reduced-motion settings.
-- [x] Print-friendly worksheet layout.
-- [x] Progressive speech synthesis.
+- [x] Print-friendly solved/blank worksheet layout with paper-only Name/Date metadata.
+- [x] Progressive speech synthesis with unsupported/failure fallback.
+- [x] Fully externalized English product copy ready for a future locale provider.
+- [x] Structured logging with sensitive-key and sensitive-value redaction.
 - [x] Unit/property/integration/browser testing.
+- [x] Repository secret scanner plus scanner tests in the quality gate.
 - [x] CI, dependency auditing, CodeQL, Dependabot, and release workflow.
 
 ## 0.2 — Classroom refinement
@@ -29,7 +35,7 @@ The roadmap prioritizes coherent learning value, accessibility, reliability, and
 
 ## 0.3 — Internationalization and accessibility expansion
 
-- [ ] Introduce a locale provider around the existing externalized copy structure.
+- [ ] Introduce a locale provider around the externalized English copy structure.
 - [ ] Add at least one translated locale after terminology review.
 - [ ] Browser-assisted automated accessibility checks in CI where stable.
 - [ ] Additional screen-reader manual testing notes across major browser/platform combinations.
