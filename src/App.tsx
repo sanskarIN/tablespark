@@ -6,6 +6,7 @@ import { ProgressDashboard } from './features/progress/ProgressDashboard';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { TableGenerator } from './features/tables/TableGenerator';
 import { copy } from './i18n/en';
+import { shortcutCopy } from './i18n/shortcuts';
 import { useAppState } from './state/useAppState';
 
 type View = keyof typeof copy.navigation;
@@ -16,9 +17,17 @@ function resolveSystemTheme(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName))
+  );
+}
+
 export default function App() {
   const { state, activeProfile } = useAppState();
   const [view, setView] = useState<View>('tables');
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -36,17 +45,32 @@ export default function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showShortcuts) {
+        event.preventDefault();
+        setShowShortcuts(false);
+        return;
+      }
+
+      if (isEditableTarget(event.target)) return;
+
+      if (event.key === '?') {
+        event.preventDefault();
+        setShowShortcuts((current) => !current);
+        return;
+      }
+
       if (!event.altKey) return;
       const index = Number(event.key) - 1;
       const next = views[index];
       if (next) {
         event.preventDefault();
         setView(next);
+        setShowShortcuts(false);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [showShortcuts]);
 
   return (
     <div className="app-shell">
@@ -84,7 +108,64 @@ export default function App() {
             {copy.navigation[item]}
           </button>
         ))}
+        <button
+          className="nav-button shortcut-help-button"
+          type="button"
+          onClick={() => setShowShortcuts((current) => !current)}
+          aria-haspopup="dialog"
+          aria-expanded={showShortcuts}
+        >
+          {shortcutCopy.open}
+        </button>
       </nav>
+
+      {showShortcuts ? (
+        <div className="shortcut-backdrop no-print">
+          <section
+            className="shortcut-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="shortcut-dialog-title"
+            aria-describedby="shortcut-dialog-description"
+          >
+            <div className="section-heading">
+              <div>
+                <h2 id="shortcut-dialog-title">{shortcutCopy.title}</h2>
+                <p id="shortcut-dialog-description">{shortcutCopy.description}</p>
+              </div>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setShowShortcuts(false)}
+              >
+                {shortcutCopy.close}
+              </button>
+            </div>
+            <dl className="shortcut-list">
+              {views.map((item, index) => (
+                <div key={item}>
+                  <dt>
+                    <kbd>{shortcutCopy.navigationKey(index + 1)}</kbd>
+                  </dt>
+                  <dd>{shortcutCopy.navigationDescription(copy.navigation[item])}</dd>
+                </div>
+              ))}
+              <div>
+                <dt>
+                  <kbd>{shortcutCopy.helpKey}</kbd>
+                </dt>
+                <dd>{shortcutCopy.helpDescription}</dd>
+              </div>
+              <div>
+                <dt>
+                  <kbd>{shortcutCopy.escapeKey}</kbd>
+                </dt>
+                <dd>{shortcutCopy.escapeDescription}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      ) : null}
 
       <div className="content banner-content">
         <StatusBanners />
