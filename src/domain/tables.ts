@@ -2,6 +2,7 @@ import type { TableConfig, TableRow } from './types';
 
 const MIN_VALUE = -1000;
 const MAX_VALUE = 1000;
+const MAX_RENDERED_ROWS = 5000;
 
 function assertIntegerInRange(value: number, name: string): void {
   if (!Number.isInteger(value) || value < MIN_VALUE || value > MAX_VALUE) {
@@ -20,6 +21,14 @@ export function validateTableConfig(config: TableConfig): void {
   if (config.from > config.to) throw new RangeError('Table start must not exceed table end.');
   if (config.multiplierFrom > config.multiplierTo) {
     throw new RangeError('Multiplier start must not exceed multiplier end.');
+  }
+
+  const tableCount = Math.floor((config.to - config.from) / config.step) + 1;
+  const multiplierCount = config.multiplierTo - config.multiplierFrom + 1;
+  if (tableCount * multiplierCount > MAX_RENDERED_ROWS) {
+    throw new RangeError(
+      `This configuration would create more than ${MAX_RENDERED_ROWS} rows. Increase the step or reduce the ranges.`,
+    );
   }
 }
 
