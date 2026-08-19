@@ -50,7 +50,6 @@ export interface AppSettings {
   readonly theme: ThemePreference;
   readonly largeText: boolean;
   readonly reducedMotion: boolean;
-  readonly soundEnabled: boolean;
   readonly speechEnabled: boolean;
   readonly defaultQuestionCount: number;
   readonly defaultTimeLimitSeconds: number;
