@@ -33,15 +33,19 @@ src/
 ├── main.tsx
 ├── status.css
 └── styles.css
+scripts/
+├── secret-scan.mjs
+├── secret-scanner.mjs
+└── secret-scanner.test.mjs
 ```
 
 ## Where a change belongs
 
-### Multiplication or scoring rules
+### Multiplication, scoring, review, or progress rules
 
-Put pure rules in `src/domain/` and add direct unit/property tests.
+Put pure rules in `src/domain/` and add direct unit/property tests. Domain code must not depend on React or browser APIs.
 
-### Browser storage, speech, or logging
+### Browser storage, speech, random seed selection, preferences, or logging
 
 Put platform integration in `src/infrastructure/`.
 
@@ -51,7 +55,11 @@ Put feature UI in `src/features/<feature>/`. Avoid making `App.tsx` a collection
 
 ### Cross-cutting visual state
 
-Reusable application-wide UI boundaries such as offline feedback and fatal error handling belong in `src/components/`.
+Reusable application-wide UI boundaries such as onboarding, offline/persistence feedback, and fatal error handling belong in `src/components/`.
+
+### Repository-only tooling
+
+Put tooling that runs against repository files but is not shipped to the app under `scripts/`. Keep it dependency-light where practical and test it independently.
 
 ## TypeScript rules
 
@@ -79,7 +87,7 @@ Apply formatting:
 npm run format
 ```
 
-`format:check` is appropriate for CI because it verifies without rewriting files. `format` rewrites supported files according to `.prettierrc.json`.
+The configured formatter covers TypeScript/TSX, E2E TypeScript, repository `.mjs` scripts, root JS/TS/JSON configuration, and VS Code JSON settings. Stylesheets and documentation are kept manually readable rather than being rewritten by the current Prettier command.
 
 ## Linting
 
@@ -87,7 +95,7 @@ npm run format
 npm run lint
 ```
 
-Linting includes TypeScript-aware rules, React hooks rules, React refresh safety, and JSX accessibility rules.
+Linting includes TypeScript-aware rules, React hooks rules, React refresh safety, JSX accessibility rules, and Node-aware checks for repository scripts.
 
 A lint pass is not a replacement for manual accessibility review.
 
@@ -100,12 +108,24 @@ When adding a state mutation:
 1. decide whether it is a domain rule or application wiring;
 2. keep domain calculations in pure functions;
 3. update immutable state rather than mutating nested objects;
-4. ensure persisted shape compatibility;
-5. add tests for the new behavior.
+4. ensure runtime limits match persisted/imported validation limits;
+5. preserve user-visible persistence-health behavior;
+6. add tests for the new behavior.
+
+The provider exposes `persistenceAvailable`. Do not remove this signal unless another mechanism reliably tells the user when browser storage refuses writes.
 
 ## Persistence changes
 
 Current persisted schema version: `1`.
+
+Current reliability constraints include:
+
+- 2 MB serialized state/backup byte budget;
+- 100 offline profile maximum;
+- 100 recent mistakes per profile;
+- validated active-profile identity;
+- unique profile IDs;
+- mastery and multiplication semantic invariants.
 
 Never silently repurpose an existing persisted field. For an incompatible or shape-changing update:
 
@@ -114,11 +134,14 @@ Never silently repurpose an existing persisted field. For an incompatible or sha
 3. add migration logic;
 4. update the Zod schema;
 5. test old-to-new migration and corrupted input;
-6. update privacy/backups documentation.
+6. update privacy/backups documentation;
+7. verify runtime creation/update paths cannot produce state the validator rejects.
 
 ## Internationalization
 
-Initial English interface copy is under `src/i18n/en.ts`. New reusable product strings should not be scattered unnecessarily through infrastructure or domain code.
+English product interface copy is centralized under `src/i18n/en.ts`, including dynamic copy factories for values such as scores, progress statistics, seeds, and profile capacity.
+
+New user-facing UI strings should be added there rather than scattered through feature components. Domain validation/error contracts may remain beside domain rules where they are part of non-UI behavior and test contracts.
 
 When a second locale is introduced, add a locale selection/provider architecture rather than branching on locale throughout feature components.
 
@@ -132,7 +155,9 @@ Global design tokens are CSS custom properties in `src/styles.css`:
 - shadows;
 - theme overrides.
 
-Prefer existing tokens over isolated hard-coded spacing/color values. Component-specific status/error styles are kept in `src/status.css`.
+Prefer existing tokens over isolated hard-coded spacing/color values. Component-specific status/error/help styles are kept in `src/status.css`.
+
+Print-only content uses `.print-only`, while interactive-only controls use `.no-print`. Do not put private learner data into a print-only template without an explicit product requirement and privacy review.
 
 ## Accessibility development checklist
 
@@ -140,6 +165,7 @@ For each new control:
 
 - use a native semantic element when available;
 - provide an accessible name;
+- provide `aria-describedby` when support/error context is important;
 - ensure keyboard operation;
 - preserve visible focus;
 - avoid relying on hover;
@@ -147,13 +173,27 @@ For each new control:
 - announce asynchronous result changes only when necessary;
 - test at enlarged text/zoom;
 - test both themes;
-- respect reduced-motion behavior.
+- respect reduced-motion behavior;
+- provide a safe unsupported-platform state for progressive browser APIs.
 
 ## Logging
 
 Use the structured logger for meaningful technical events only. Do not log learner answers, profile names, email addresses, backup contents, or other personal information.
 
-Sensitive-looking field names are redacted as a defense in depth, not as permission to log sensitive data.
+The logger redacts both sensitive-looking field names and recognizable sensitive string values as defense in depth. This is not permission to log sensitive data.
+
+## Secret scanning
+
+Before release-level work run:
+
+```bash
+npm run test:security
+npm run secret:scan
+```
+
+The scanner reports only file/line/type metadata and should never be changed to print matched credential values. Add a regression test when adding a new credential pattern.
+
+If a real secret is committed, scanning is not remediation. Revoke or rotate the secret first, then clean history as appropriate.
 
 ## Adding a dependency
 
@@ -175,6 +215,7 @@ For a small domain change, run the smallest relevant test first. Before a milest
 ```bash
 npm run check
 npm run test:e2e
+npm audit --omit=dev --audit-level=high
 ```
 
 Update `what_changed.md` for milestone-level work so another chat or contributor can resume precisely.
