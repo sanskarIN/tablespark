@@ -6,10 +6,18 @@ import {
   type MasteryFilter,
 } from '../../domain/progress';
 import { copy } from '../../i18n/en';
+import { learningCopy } from '../../i18n/learning';
 import { useAppState } from '../../state/useAppState';
 
+function formatSessionDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
 export function ProgressDashboard() {
-  const { activeProfile } = useAppState();
+  const { activeProfile, state } = useAppState();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<MasteryFilter>('all');
   const allStats = useMemo(() => Object.values(activeProfile.mastery), [activeProfile.mastery]);
@@ -19,6 +27,8 @@ export function ProgressDashboard() {
   );
   const totalAttempts = allStats.reduce((sum, stat) => sum + stat.attempts, 0);
   const masteredCount = allStats.filter(isMastered).length;
+  const goal = activeProfile.masteredFactsGoal;
+  const goalPercent = goal === null ? 0 : Math.min(100, Math.round((masteredCount / goal) * 100));
 
   return (
     <section className="page-stack" aria-labelledby="progress-title">
@@ -51,6 +61,28 @@ export function ProgressDashboard() {
           <span>{copy.progress.mistakesSaved}</span>
           <strong>{activeProfile.mistakes.length}</strong>
         </article>
+      </div>
+
+      <div className="panel goal-panel">
+        <div className="section-heading">
+          <div>
+            <h3>{learningCopy.progress.goalHeading}</h3>
+            <p>
+              {goal === null
+                ? learningCopy.progress.noGoal
+                : learningCopy.progress.goalProgress(masteredCount, goal)}
+            </p>
+          </div>
+          {goal !== null ? <strong className="goal-percent">{goalPercent}%</strong> : null}
+        </div>
+        {goal !== null ? (
+          <>
+            <div className="progress-track" aria-label={`${goalPercent}%`}>
+              <span style={{ width: `${goalPercent}%` }} />
+            </div>
+            {masteredCount >= goal ? <p>{learningCopy.progress.goalComplete}</p> : null}
+          </>
+        ) : null}
       </div>
 
       <div className="panel">
@@ -113,6 +145,55 @@ export function ProgressDashboard() {
               </div>
             )}
           </>
+        )}
+      </div>
+
+      <div className="panel">
+        <div className="section-heading">
+          <div>
+            <h3>{learningCopy.progress.recentSessions}</h3>
+            <p>
+              {learningCopy.progress.retainedSessions(
+                activeProfile.sessions.length,
+                state.settings.sessionHistoryLimit,
+              )}
+            </p>
+          </div>
+        </div>
+        {activeProfile.sessions.length === 0 ? (
+          <p className="empty-state">{learningCopy.progress.noSessions}</p>
+        ) : (
+          <ul className="session-list">
+            {activeProfile.sessions.slice(0, 12).map((session) => (
+              <li key={session.id}>
+                <div>
+                  <strong>
+                    {session.kind === 'generated'
+                      ? learningCopy.progress.generated
+                      : learningCopy.progress.mistakeReview}
+                  </strong>
+                  <time dateTime={session.completedAt}>{formatSessionDate(session.completedAt)}</time>
+                </div>
+                <span>
+                  {session.mode === 'timed'
+                    ? learningCopy.progress.timed
+                    : learningCopy.progress.untimed}
+                </span>
+                <span>
+                  {learningCopy.progress.sessionScore(
+                    session.correctCount,
+                    session.questionCount,
+                  )}
+                </span>
+                <span>
+                  {learningCopy.progress.sessionDuration(Math.round(session.elapsedMs / 1000))}
+                </span>
+                {session.seed !== null ? (
+                  <code>{learningCopy.progress.sessionSeed(session.seed)}</code>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
