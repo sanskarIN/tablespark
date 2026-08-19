@@ -67,4 +67,36 @@ describe('PWA status banners', () => {
     await user.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByText('Offline use is ready.')).not.toBeInTheDocument();
   });
+
+  it('offers installation only when the browser provides an install prompt', async () => {
+    const user = userEvent.setup();
+    const prompt = vi.fn(async () => undefined);
+    renderBanners();
+
+    const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+      prompt,
+    });
+    window.dispatchEvent(event);
+
+    expect(await screen.findByText('Install TableSpark on this device.')).toBeInTheDocument();
+    expect(prompt).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: 'Install TableSpark' }));
+    expect(prompt).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the user dismiss the optional install notice', async () => {
+    const user = userEvent.setup();
+    const prompt = vi.fn(async () => undefined);
+    renderBanners();
+
+    window.dispatchEvent(
+      Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Not now' }));
+
+    expect(screen.queryByText('Install TableSpark on this device.')).not.toBeInTheDocument();
+    expect(prompt).not.toHaveBeenCalled();
+  });
 });
