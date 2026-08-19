@@ -1,14 +1,12 @@
 ---
 name: Bug report
-about: Report a reproducible problem in TableSpark
-title: 'bug: '
+about: Report a reproducible TableSpark defect
 labels: bug
-assignees: ''
 ---
 
-## What happened?
+## Problem
 
-Describe the problem clearly.
+Describe what happened and what you expected instead.
 
 ## Steps to reproduce
 
@@ -16,17 +14,21 @@ Describe the problem clearly.
 2.
 3.
 
-## Expected behavior
-
-What did you expect to happen?
-
 ## Environment
 
 - TableSpark version/commit:
 - Browser and version:
 - Operating system:
-- Installed PWA or browser tab:
+- Installed PWA or normal browser tab:
 
-## Additional context
+## Evidence
 
-Add screenshots or logs only after removing personal information. Never paste passwords, tokens, private keys, or sensitive learner data.
+Add screenshots, console details, or a minimal reproduction only when they help.
+
+**Do not attach exported learner backups, unreadable local-data recovery files, raw `localStorage` values, email addresses, profile names, credentials, or other private data.** Redact personal information before sharing screenshots/logs.
+
+## Verification
+
+- [ ] I checked that the issue is reproducible.
+- [ ] I removed private learner data and secrets from this report.
+- [ ] This is not a security vulnerability. Security issues should follow `SECURITY.md`.
