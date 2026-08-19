@@ -1,0 +1,9 @@
+dist/
+coverage/
+node_modules/
+playwright-report/
+test-results/
+public/*.svg
+docs/assets/*.svg
+src/styles.css
+src/status.css
