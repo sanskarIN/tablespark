@@ -26,7 +26,9 @@ The interface-language preference is stored separately under `tablespark.locale.
 
 The application limits serialized learning state to a 2 MB byte budget, limits the number of offline profiles to the supported application capacity, and caps session history at supported retention values. Reducing the retention setting immediately removes older session summaries from local application state.
 
-If a browser refuses a storage write, TableSpark keeps the current in-memory state usable for the tab and displays a warning that local saving is unavailable. Do not assume new progress is durable while that warning is visible.
+If a browser refuses a storage write after TableSpark has loaded/created current state, TableSpark keeps the in-memory state usable for the tab and displays a warning that local saving is unavailable. Do not assume new progress is durable while that warning is visible.
+
+If the browser blocks the **initial storage read itself**, TableSpark cannot know whether learner data already exists. It therefore treats that condition differently from both an empty installation and corrupted returned data: it uses temporary in-memory defaults only to keep the interface usable, pauses automatic learner-state writes, does not claim that stored data is corrupt, and disables normal backup import/export actions that could overwrite or misrepresent inaccessible existing data. Restore site-storage access and reload before relying on persistence or backup operations.
 
 ## Session history scope
 
@@ -58,7 +60,7 @@ Changing language updates interface messages and the document language attribute
 
 ## Unreadable local-data recovery
 
-If a stored TableSpark value exists but cannot be parsed, migrated, or validated, TableSpark treats it differently from an empty installation.
+If a stored TableSpark value is successfully read but cannot be parsed, migrated, or validated, TableSpark treats it differently from an empty installation and from a storage API that could not be read at all.
 
 The application:
 
@@ -91,9 +93,12 @@ The **Import backup** action reads a selected JSON file locally. Before replacem
 - verifies saved mistake history contains only incorrect attempts;
 - validates session-summary count/correctness bounds, replay-seed semantics, and supported retention;
 - validates optional goal bounds;
-- asks for confirmation before replacing current data.
+- asks for confirmation before destructive replacement;
+- refuses replacement if startup browser storage could not be read;
+- writes the validated replacement to local storage before replacing the current in-memory state;
+- reports success only after that replacement write succeeds.
 
-A successfully imported valid backup also resolves an unreadable-data recovery state because the user has explicitly chosen a valid replacement.
+If validation or the replacement write fails, the current in-memory state is left unchanged and the import is reported as failed. A successfully written/imported valid backup also resolves an unreadable-data recovery state because the user has explicitly chosen a durable valid replacement.
 
 TableSpark does not automatically upload backup or recovery files.
 
@@ -133,9 +138,11 @@ The source repository includes a local credential-pattern scanner that runs in C
 
 ## Deleting local data
 
-You can reset the active profile’s learning progress from Settings. This clears its mastery statistics, recent mistakes, and session summaries. You can clear the optional mastery goal separately. You can also delete individual profiles when more than one exists. Deleting a browser profile or clearing TableSpark site storage can remove all locally stored application data, including the separate interface-language preference. Export a backup first if you want to keep learner-state data.
+You can reset the active profile’s learning progress from Settings. This clears its mastery statistics, recent mistakes, and session summaries. You can clear the optional mastery goal separately. You can also delete individual profiles when more than one exists. Deleting a browser profile or clearing TableSpark site storage can remove all locally stored application data, including the separate interface-language preference. Export a backup first if you want to keep learner-state data and TableSpark is able to read the current store.
 
 When TableSpark reports unreadable local data, use the dedicated recovery download before choosing **Discard unreadable local data** if there is any chance you may need the original value. Discarding is irreversible within TableSpark.
+
+When TableSpark reports that local saving is unavailable because initial storage access is blocked, do not treat the temporary visible defaults as a backup of existing learner data. Restore storage access and reload first.
 
 ## Accounts, advertising, and payments
 
