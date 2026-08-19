@@ -6,7 +6,10 @@ const SECRET_KEY = /token|secret|password|authorization|cookie|email|name/i;
 
 function redact(fields: SafeFields): SafeFields {
   return Object.fromEntries(
-    Object.entries(fields).map(([key, value]) => [key, SECRET_KEY.test(key) ? '[REDACTED]' : value]),
+    Object.entries(fields).map(([key, value]) => [
+      key,
+      SECRET_KEY.test(key) ? '[REDACTED]' : value,
+    ]),
   );
 }
 
