@@ -5,8 +5,7 @@ import { migratePersistedState } from './migrations';
 
 const STORAGE_KEY = 'tablespark.state.v1';
 export const MAX_BACKUP_BYTES = 2_000_000;
-const MAX_PROFILES = 100;
-const MAX_MASTERY_FACTS_PER_PROFILE = 10_000;
+export const MAX_PROFILES = 100;
 
 const masteryStatSchema = z
   .object({
@@ -78,15 +77,7 @@ const profileSchema = z
     mistakes: z.array(attemptSchema).max(100),
   })
   .superRefine((value, context) => {
-    const masteryEntries = Object.entries(value.mastery);
-    if (masteryEntries.length > MAX_MASTERY_FACTS_PER_PROFILE) {
-      context.addIssue({
-        code: 'custom',
-        path: ['mastery'],
-        message: `A profile cannot contain more than ${MAX_MASTERY_FACTS_PER_PROFILE} mastery facts.`,
-      });
-    }
-    for (const [key, stat] of masteryEntries) {
+    for (const [key, stat] of Object.entries(value.mastery)) {
       if (stat.key !== key) {
         context.addIssue({
           code: 'custom',
@@ -137,10 +128,14 @@ function rawByteLength(raw: string): number {
   return new TextEncoder().encode(raw).byteLength;
 }
 
-function parseState(raw: string): PersistedState {
+function assertWithinStorageBudget(raw: string): void {
   if (rawByteLength(raw) > MAX_BACKUP_BYTES) {
     throw new RangeError(`Backup data cannot exceed ${MAX_BACKUP_BYTES} bytes.`);
   }
+}
+
+function parseState(raw: string): PersistedState {
+  assertWithinStorageBudget(raw);
   const json: unknown = JSON.parse(raw);
   const migrated = migratePersistedState(json);
   return persistedStateSchema.parse(migrated) as PersistedState;
@@ -158,7 +153,9 @@ export function loadState(): PersistedState | null {
 
 export function saveState(state: PersistedState): boolean {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const raw = JSON.stringify(state);
+    assertWithinStorageBudget(raw);
+    localStorage.setItem(STORAGE_KEY, raw);
     return true;
   } catch {
     logger.warn('storage_write_failed');
