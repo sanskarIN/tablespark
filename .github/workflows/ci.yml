@@ -39,6 +39,8 @@ jobs:
         run: npm run test:security
       - name: Scan repository for secrets
         run: npm run secret:scan
+      - name: Test documentation links
+        run: npm run test:docs
       - name: Build
         run: npm run build
       - name: Audit production dependencies
