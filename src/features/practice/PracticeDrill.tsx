@@ -194,7 +194,9 @@ export function PracticeDrill() {
             >
               <option value="custom">{copy.practice.custom}</option>
               <option value="starter">{copy.practice.starter}</option>
+              <option value="foundation">{copy.practice.foundation}</option>
               <option value="builder">{copy.practice.builder}</option>
+              <option value="fluency">{copy.practice.fluency}</option>
               <option value="challenge">{copy.practice.challenge}</option>
             </select>
           </label>
