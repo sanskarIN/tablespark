@@ -32,8 +32,12 @@ Primary security boundaries include:
 - validation of persisted/imported JSON using a versioned schema;
 - explicit rejection of unsupported state versions;
 - preservation of existing unreadable local state instead of automatic overwrite;
+- explicit separation of invalid returned data from browser storage whose read operation itself is unavailable;
+- suppression of automatic writes when startup storage could not be read, preventing temporary defaults from overwriting unknown inaccessible data;
+- transactional backup replacement that commits current state only after the validated replacement is successfully written;
 - a shared 2 MB persistence/import budget to bound local state processing;
 - validation that profile IDs are unique and the active profile exists;
+- atomic enforcement of the 100-profile capacity inside the latest React state updater;
 - validation that mastery keys are canonical multiplication facts;
 - validation that mastery counters are internally consistent;
 - validation that imported multiplication answers match their operands;
@@ -75,13 +79,16 @@ Imported backups are untrusted input. TableSpark therefore:
 4. verifies canonical mastery keys plus mathematical/progress invariants;
 5. verifies profile identity consistency;
 6. verifies mistake history contains only incorrect attempts;
-7. replaces current state only after validation succeeds and the user confirms the destructive operation.
+7. asks for explicit user confirmation before destructive replacement;
+8. refuses replacement when startup storage could not be read, because the application cannot prove what may already exist there;
+9. writes the validated replacement first;
+10. replaces current in-memory state and reports success only after that write succeeds.
 
-Do not weaken these checks merely to accept manually edited backup files. Schema changes should use a tested migration instead.
+If the replacement write fails, current state remains unchanged and the import is reported as failed. Do not weaken these checks merely to accept manually edited backup files. Schema changes should use a tested migration instead.
 
 ## Unreadable stored-state boundary
 
-A local value that fails parsing, migration, or validation is not equivalent to an empty store. TableSpark classifies it as unreadable and pauses automatic persistence so a temporary default state cannot destroy the original value.
+A local value that was successfully read but fails parsing, migration, or validation is not equivalent to an empty store. TableSpark classifies it as unreadable and pauses automatic persistence so a temporary default state cannot destroy the original value.
 
 The recovery UI allows the user to:
 
@@ -92,6 +99,20 @@ The recovery UI allows the user to:
 Raw recovery downloads can contain learner information. They are never sent to TableSpark infrastructure or written to structured logs. Users and maintainers should not attach them to public issues without reviewing and redacting personal content.
 
 This recovery design is documented in ADR 0004.
+
+## Unavailable storage-read boundary
+
+If `localStorage.getItem()` itself throws, TableSpark did not obtain learner data and therefore cannot safely label it corrupted or empty.
+
+In this state TableSpark:
+
+- uses a temporary in-memory default only to keep core learning UI available;
+- does not activate unreadable-value recovery controls;
+- pauses automatic learner-state writes;
+- disables trusted backup export/import actions that could otherwise misrepresent or overwrite unknown inaccessible data;
+- asks the user, through the storage warning, to restore site-storage access and reload before relying on persistence.
+
+This state is intentionally different from a later write failure after valid state has already been loaded.
 
 ## Dependency and CI security
 
