@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { LocaleProvider } from './i18n/LocaleContext';
 import {
   dispatchPwaOfflineReady,
   dispatchPwaUpdateAvailable,
@@ -29,10 +30,12 @@ if (!root) throw new Error('Application root element was not found.');
 
 createRoot(root).render(
   <StrictMode>
-    <ErrorBoundary>
-      <AppStateProvider>
-        <App />
-      </AppStateProvider>
-    </ErrorBoundary>
+    <LocaleProvider>
+      <ErrorBoundary>
+        <AppStateProvider>
+          <App />
+        </AppStateProvider>
+      </ErrorBoundary>
+    </LocaleProvider>
   </StrictMode>,
 );
