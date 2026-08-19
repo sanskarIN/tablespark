@@ -3,8 +3,8 @@ import {
   MAX_MASTERED_FACTS_GOAL,
   SESSION_HISTORY_LIMIT_OPTIONS,
 } from '../../domain/sessions';
-import { copy } from '../../i18n/en';
-import { learningCopy } from '../../i18n/learning';
+import { useLocale } from '../../i18n/LocaleContext';
+import { SUPPORTED_LOCALES, type Locale } from '../../i18n/localePreference';
 import { canSpeak } from '../../infrastructure/speech';
 import {
   exportState,
@@ -42,6 +42,8 @@ export function SettingsPage() {
     discardUnreadableState,
     resetProgress,
   } = useAppState();
+  const { locale, setLocale, messages } = useLocale();
+  const { copy, learning } = messages;
   const [newProfileName, setNewProfileName] = useState('');
   const [message, setMessage] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
@@ -120,6 +122,23 @@ export function SettingsPage() {
       <div className="panel settings-grid">
         <div>
           <h3>{copy.settings.appearanceAccessibility}</h3>
+          <label>
+            Language / भाषा
+            <select
+              value={locale}
+              aria-describedby="locale-help"
+              onChange={(event) => setLocale(event.target.value as Locale)}
+            >
+              {SUPPORTED_LOCALES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p id="locale-help" className="help-text">
+            Interface language / इंटरफ़ेस भाषा
+          </p>
           <label>
             {copy.settings.theme}
             <select
@@ -212,9 +231,9 @@ export function SettingsPage() {
 
       <div className="panel settings-grid learning-records-panel">
         <div>
-          <h3>{learningCopy.settings.recordsHeading}</h3>
+          <h3>{learning.settings.recordsHeading}</h3>
           <label>
-            {learningCopy.settings.historyRetention}
+            {learning.settings.historyRetention}
             <select
               value={state.settings.sessionHistoryLimit}
               aria-describedby="history-retention-help"
@@ -224,24 +243,24 @@ export function SettingsPage() {
             >
               {SESSION_HISTORY_LIMIT_OPTIONS.map((limit) => (
                 <option value={limit} key={limit}>
-                  {learningCopy.settings.historyOption(limit)}
+                  {learning.settings.historyOption(limit)}
                 </option>
               ))}
             </select>
           </label>
           <p id="history-retention-help" className="help-text">
-            {learningCopy.settings.historyHelp}
+            {learning.settings.historyHelp}
           </p>
         </div>
         <div>
-          <h3>{learningCopy.settings.goalHeading}</h3>
+          <h3>{learning.settings.goalHeading}</h3>
           <label>
-            {learningCopy.settings.masteredFactsGoal}
+            {learning.settings.masteredFactsGoal}
             <input
               type="number"
               min={1}
               max={MAX_MASTERED_FACTS_GOAL}
-              placeholder={learningCopy.settings.goalPlaceholder}
+              placeholder={learning.settings.goalPlaceholder}
               value={activeProfile.masteredFactsGoal ?? ''}
               aria-describedby="mastery-goal-help"
               onChange={(event) => {
@@ -251,7 +270,7 @@ export function SettingsPage() {
             />
           </label>
           <p id="mastery-goal-help" className="help-text">
-            {learningCopy.settings.goalHelp}
+            {learning.settings.goalHelp}
           </p>
           <button
             className="text-button"
@@ -259,7 +278,7 @@ export function SettingsPage() {
             disabled={activeProfile.masteredFactsGoal === null}
             onClick={() => setMasteredFactsGoal(null)}
           >
-            {learningCopy.settings.clearGoal}
+            {learning.settings.clearGoal}
           </button>
         </div>
       </div>
