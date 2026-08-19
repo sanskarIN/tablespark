@@ -21,7 +21,9 @@ export function applyAttempt(profile: Profile, attempt: Attempt): Profile {
     lastAttemptAt: attempt.answeredAt,
   };
 
-  const mistakes = attempt.correct ? profile.mistakes : [attempt, ...profile.mistakes].slice(0, MAX_MISTAKES);
+  const mistakes = attempt.correct
+    ? profile.mistakes
+    : [attempt, ...profile.mistakes].slice(0, MAX_MISTAKES);
   return { ...profile, mastery: { ...profile.mastery, [key]: nextStat }, mistakes };
 }
 
