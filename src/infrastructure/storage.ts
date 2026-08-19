@@ -21,13 +21,29 @@ function isCanonicalMasteryKey(key: string): boolean {
   return left <= 1000 && right <= 1000 && masteryKey(left, right) === key;
 }
 
+function isRuntimeIsoTimestamp(value: string): boolean {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
+}
+
+const timestampSchema = z
+  .string()
+  .max(64)
+  .refine(isRuntimeIsoTimestamp, 'Timestamp must use the application ISO-8601 UTC format.');
+
+const profileNameSchema = z
+  .string()
+  .min(1)
+  .max(40)
+  .refine((value) => value.trim().length > 0, 'Profile name cannot be blank.');
+
 const masteryStatSchema = z
   .object({
     key: z.string().min(1).max(32),
     attempts: z.number().int().nonnegative(),
     correct: z.number().int().nonnegative(),
     streak: z.number().int().nonnegative(),
-    lastAttemptAt: z.string().max(64),
+    lastAttemptAt: timestampSchema,
   })
   .superRefine((value, context) => {
     if (!isCanonicalMasteryKey(value.key)) {
@@ -75,7 +91,7 @@ const attemptSchema = z
     question: questionSchema,
     response: z.number().int().nullable(),
     correct: z.boolean(),
-    answeredAt: z.string().max(64),
+    answeredAt: timestampSchema,
     elapsedMs: z.number().finite().nonnegative(),
   })
   .superRefine((value, context) => {
@@ -92,8 +108,8 @@ const attemptSchema = z
 const profileSchema = z
   .object({
     id: z.string().min(1).max(100),
-    name: z.string().min(1).max(40),
-    createdAt: z.string().max(64),
+    name: profileNameSchema,
+    createdAt: timestampSchema,
     mastery: z.record(z.string(), masteryStatSchema),
     mistakes: z.array(attemptSchema).max(100),
   })
