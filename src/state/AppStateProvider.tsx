@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { applyAttempt } from '../domain/mastery';
 import type { AppSettings, PersistedState, Profile } from '../domain/types';
 import {
+  clearState,
   importState as parseImportedState,
-  loadState,
+  loadStateResult,
   MAX_PROFILES,
   saveState,
 } from '../infrastructure/storage';
@@ -39,12 +40,22 @@ function makeDefaultState(): PersistedState {
 }
 
 export function AppStateProvider({ children }: { readonly children: ReactNode }) {
-  const [state, setState] = useState<PersistedState>(() => loadState() ?? makeDefaultState());
-  const [persistenceAvailable, setPersistenceAvailable] = useState(true);
+  const [initialLoad] = useState(() => loadStateResult());
+  const [state, setState] = useState<PersistedState>(() => initialLoad.state ?? makeDefaultState());
+  const [unreadableStoredState, setUnreadableStoredState] = useState(
+    initialLoad.status === 'invalid',
+  );
+  const [persistenceAvailable, setPersistenceAvailable] = useState(
+    initialLoad.status !== 'invalid',
+  );
 
   useEffect(() => {
+    if (unreadableStoredState) {
+      setPersistenceAvailable(false);
+      return;
+    }
     setPersistenceAvailable(saveState(state));
-  }, [state]);
+  }, [state, unreadableStoredState]);
 
   const activeProfile =
     state.profiles.find((profile) => profile.id === state.activeProfileId) ?? state.profiles[0];
@@ -55,6 +66,7 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
       state,
       activeProfile,
       persistenceAvailable,
+      unreadableStoredState,
       setActiveProfile: (id) => {
         if (state.profiles.some((profile) => profile.id === id)) {
           setState((current) => ({ ...current, activeProfileId: id }));
@@ -93,7 +105,17 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
             profile.id === current.activeProfileId ? applyAttempt(profile, attempt) : profile,
           ),
         })),
-      replaceFromBackup: (raw) => setState(parseImportedState(raw)),
+      replaceFromBackup: (raw) => {
+        const replacement = parseImportedState(raw);
+        setState(replacement);
+        setUnreadableStoredState(false);
+      },
+      discardUnreadableState: () => {
+        if (!unreadableStoredState) return true;
+        const cleared = clearState();
+        if (cleared) setUnreadableStoredState(false);
+        return cleared;
+      },
       resetProgress: () =>
         setState((current) => ({
           ...current,
@@ -104,7 +126,7 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
           ),
         })),
     }),
-    [activeProfile, persistenceAvailable, state],
+    [activeProfile, persistenceAvailable, state, unreadableStoredState],
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
