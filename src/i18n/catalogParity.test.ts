@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import packageJson from '../../package.json';
 import { hindiMessages } from './hi';
 import { englishMessages } from './messages';
 
@@ -32,5 +33,12 @@ describe('runtime locale catalogs', () => {
     for (const [path, message] of collectStrings(hindiMessages)) {
       expect(message.trim(), path).not.toBe('');
     }
+  });
+
+  it('keeps visible English and Hindi versions synchronized with package metadata', () => {
+    expect(englishMessages.copy.about.version).toBe(packageJson.version);
+    expect(hindiMessages.copy.about.version).toBe(packageJson.version);
+    expect(englishMessages.copy.settings.versionSummary).toContain(packageJson.version);
+    expect(hindiMessages.copy.settings.versionSummary).toContain(packageJson.version);
   });
 });
