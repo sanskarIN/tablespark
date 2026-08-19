@@ -7,7 +7,7 @@ import {
 import { difficultyPresets, type DifficultyLevel } from '../../domain/difficulty';
 import { generateQuestions, MAX_SEED } from '../../domain/questions';
 import { buildMistakeReview } from '../../domain/review';
-import type { DrillMode, Question } from '../../domain/types';
+import type { DrillMode, PracticeSessionKind, Question } from '../../domain/types';
 import { copy } from '../../i18n/en';
 import { createPracticeSeed } from '../../infrastructure/random';
 import { speak } from '../../infrastructure/speech';
@@ -22,8 +22,6 @@ interface Setup {
   seconds: number;
 }
 
-type SessionKind = 'generated' | 'mistake-review';
-
 const defaultSetup = {
   min: 2,
   max: 12,
@@ -33,7 +31,7 @@ const defaultSetup = {
 };
 
 export function PracticeDrill() {
-  const { activeProfile, recordAttempt, state } = useAppState();
+  const { activeProfile, recordAttempt, recordSession, state } = useAppState();
   const [setup, setSetup] = useState<Setup>(() => ({
     ...defaultSetup,
     seed: createPracticeSeed(),
@@ -41,13 +39,15 @@ export function PracticeDrill() {
     seconds: state.settings.defaultTimeLimitSeconds,
   }));
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [sessionKind, setSessionKind] = useState<SessionKind>('generated');
+  const [sessionKind, setSessionKind] = useState<PracticeSessionKind>('generated');
   const [index, setIndex] = useState(0);
   const [response, setResponse] = useState('');
   const [score, setScore] = useState(0);
   const [remaining, setRemaining] = useState(setup.seconds);
   const [feedback, setFeedback] = useState('');
   const startedAt = useRef(0);
+  const sessionStartedAt = useRef(0);
+  const sessionRecorded = useRef(false);
 
   const current = questions[index];
   const finished = questions.length > 0 && index >= questions.length;
@@ -66,6 +66,21 @@ export function PracticeDrill() {
       setIndex(questions.length);
     }
   }, [isRunning, questions.length, remaining, setup.mode]);
+
+  useEffect(() => {
+    if (!finished || sessionRecorded.current) return;
+    sessionRecorded.current = true;
+    recordSession({
+      id: crypto.randomUUID(),
+      kind: sessionKind,
+      mode: setup.mode,
+      completedAt: new Date().toISOString(),
+      questionCount: questions.length,
+      correctCount: score,
+      elapsedMs: Math.max(0, performance.now() - sessionStartedAt.current),
+      seed: sessionKind === 'generated' ? setup.seed : null,
+    });
+  }, [finished, questions.length, recordSession, score, sessionKind, setup.mode, setup.seed]);
 
   const summary = useMemo(() => {
     if (!finished) return '';
@@ -90,7 +105,7 @@ export function PracticeDrill() {
     setFeedback(copy.practice.randomSeedSelected(seed));
   };
 
-  const start = (nextQuestions?: Question[], kind: SessionKind = 'generated') => {
+  const start = (nextQuestions?: Question[], kind: PracticeSessionKind = 'generated') => {
     try {
       const generated = nextQuestions ?? generateQuestions(setup);
       setSessionKind(kind);
@@ -100,7 +115,10 @@ export function PracticeDrill() {
       setResponse('');
       setFeedback('');
       setRemaining(setup.seconds);
-      startedAt.current = performance.now();
+      const now = performance.now();
+      startedAt.current = now;
+      sessionStartedAt.current = now;
+      sessionRecorded.current = false;
       if (state.settings.speechEnabled && generated[0]) {
         speak(copy.practice.spokenQuestion(generated[0].left, generated[0].right));
       }
