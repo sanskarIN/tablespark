@@ -9,10 +9,12 @@ The roadmap prioritizes coherent learning value, accessibility, reliability, and
 - [x] Timed and untimed practice.
 - [x] Random-by-default practice with deterministic replay seeds.
 - [x] Validated unsigned seed range and deterministic generator tests.
+- [x] Bounded practice-response validation aligned with current product limits.
 - [x] Deduplicated mistake review and mastery tracking.
 - [x] Searchable/filterable mastery progress with a transparent mastery rule.
 - [x] Offline profiles with explicit capacity and local persistence.
-- [x] User-visible browser-storage failure state.
+- [x] User-visible browser-storage write-failure state.
+- [x] Preserved unreadable local state with download/import/discard recovery workflow.
 - [x] Validated backup export/import with shared persistence-size budget and semantic integrity checks.
 - [x] Light/dark/system appearance.
 - [x] Large-text and reduced-motion settings.
