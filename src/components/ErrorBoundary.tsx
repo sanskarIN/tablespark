@@ -1,5 +1,5 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { copy } from '../i18n/en';
+import { Component, type ContextType, type ErrorInfo, type ReactNode } from 'react';
+import { LocaleContext } from '../i18n/LocaleContext';
 import { logger } from '../infrastructure/logger';
 
 interface Props {
@@ -11,6 +11,8 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+  public static contextType = LocaleContext;
+  public declare context: ContextType<typeof LocaleContext>;
   public state: State = { hasError: false };
 
   public static getDerivedStateFromError(): State {
@@ -26,6 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render(): ReactNode {
     if (this.state.hasError) {
+      const { copy } = this.context.messages;
       return (
         <main className="fatal-error" role="alert">
           <img src="/logo.svg" alt="" width="72" height="72" />
