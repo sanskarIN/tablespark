@@ -21,9 +21,27 @@ Persisted learning state is stored under a versioned `localStorage` key in the b
 
 If a browser refuses a storage write, TableSpark keeps the current in-memory state usable for the tab and displays a warning that local saving is unavailable. Do not assume new progress is durable while that warning is visible.
 
+## Unreadable local-data recovery
+
+If a stored TableSpark value exists but cannot be parsed, migrated, or validated, TableSpark treats it differently from an empty installation.
+
+The application:
+
+- preserves the unreadable stored value instead of automatically overwriting it with defaults;
+- starts a temporary in-memory default state so the interface remains usable;
+- pauses automatic state persistence while recovery is pending;
+- displays a prominent recovery warning;
+- lets the user download the exact raw stored value as a text recovery artifact;
+- lets the user replace it by importing a valid backup;
+- lets the user explicitly discard it after confirmation.
+
+The raw recovery artifact can contain profile names, learning history, settings, and any other text that existed in the local stored value. Treat it as personal data and do not post it publicly without reviewing/redacting it first.
+
+Ordinary **Export backup** is disabled while unreadable data is being preserved because the currently displayed state is temporary and would not represent the unreadable stored value.
+
 ## Backups
 
-The **Export backup** action creates a JSON file containing local application state. That file can include profile names and learning history. Treat it as a personal file.
+The **Export backup** action creates a JSON file containing validated local application state. That file can include profile names and learning history. Treat it as a personal file.
 
 The **Import backup** action reads a selected JSON file locally. Before replacement, TableSpark:
 
@@ -31,12 +49,16 @@ The **Import backup** action reads a selected JSON file locally. Before replacem
 - checks the persisted schema version;
 - validates required objects and numeric bounds;
 - verifies unique profile identities and a valid active-profile reference;
+- verifies canonical mastery fact keys;
 - verifies mastery counters are internally consistent;
 - verifies stored multiplication answers match their operands;
 - verifies recorded correctness matches the saved response;
+- verifies saved mistake history contains only incorrect attempts;
 - asks for confirmation before replacing current data.
 
-TableSpark does not automatically upload backup files.
+A successfully imported valid backup also resolves an unreadable-data recovery state because the user has explicitly chosen a valid replacement.
+
+TableSpark does not automatically upload backup or recovery files.
 
 ## Printed worksheets
 
@@ -60,6 +82,8 @@ Application logging is intended for technical events only. The structured logger
 
 Contributors should still avoid logging personal data in the first place. Redaction is defense in depth, not a reason to include learner content in logs.
 
+Recovery data itself is not written to structured logs.
+
 ## Repository secret scanning
 
 The source repository includes a local credential-pattern scanner that runs in CI. It reports finding metadata without echoing the matched credential value. This protects the repository, not end-user learning data, and cannot recognize every possible secret format.
@@ -67,6 +91,8 @@ The source repository includes a local credential-pattern scanner that runs in C
 ## Deleting local data
 
 You can reset the active profile’s learning progress from Settings. You can also delete individual profiles when more than one exists. Deleting a browser profile or clearing TableSpark site storage can remove all locally stored application data. Export a backup first if you want to keep it.
+
+When TableSpark reports unreadable local data, use the dedicated recovery download before choosing **Discard unreadable local data** if there is any chance you may need the original value. Discarding is irreversible within TableSpark.
 
 ## Accounts, advertising, and payments
 
