@@ -1,9 +1,18 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { exportState } from '../../infrastructure/storage';
-import { useAppState } from '../../state/AppState';
+import { useAppState } from '../../state/useAppState';
 
 export function SettingsPage() {
-  const { state, activeProfile, setActiveProfile, addProfile, deleteProfile, updateSettings, replaceFromBackup, resetProgress } = useAppState();
+  const {
+    state,
+    activeProfile,
+    setActiveProfile,
+    addProfile,
+    deleteProfile,
+    updateSettings,
+    replaceFromBackup,
+    resetProgress,
+  } = useAppState();
   const [newProfileName, setNewProfileName] = useState('');
   const [message, setMessage] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
@@ -22,6 +31,7 @@ export function SettingsPage() {
   const importBackup = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
     try {
       if (file.size > 2_000_000) throw new Error('Backup file is too large.');
       replaceFromBackup(await file.text());
@@ -35,20 +45,83 @@ export function SettingsPage() {
 
   return (
     <section className="page-stack" aria-labelledby="settings-title">
-      <div className="hero-card"><div><p className="eyebrow">Personalize</p><h2 id="settings-title">Settings</h2><p>Your preferences and learning data stay in this browser unless you export them.</p></div></div>
+      <div className="hero-card">
+        <div>
+          <p className="eyebrow">Personalize</p>
+          <h2 id="settings-title">Settings</h2>
+          <p>Your preferences and learning data stay in this browser unless you export them.</p>
+        </div>
+      </div>
 
       <div className="panel settings-grid">
         <div>
           <h3>Appearance & accessibility</h3>
-          <label>Theme<select value={state.settings.theme} onChange={(event) => updateSettings({ theme: event.target.value as 'system' | 'light' | 'dark' })}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
-          <label className="check-row"><input type="checkbox" checked={state.settings.largeText} onChange={(event) => updateSettings({ largeText: event.target.checked })} />Large-text classroom mode</label>
-          <label className="check-row"><input type="checkbox" checked={state.settings.reducedMotion} onChange={(event) => updateSettings({ reducedMotion: event.target.checked })} />Reduce motion</label>
-          <label className="check-row"><input type="checkbox" checked={state.settings.speechEnabled} onChange={(event) => updateSettings({ speechEnabled: event.target.checked })} />Text-to-speech controls</label>
+          <label>
+            Theme
+            <select
+              value={state.settings.theme}
+              onChange={(event) =>
+                updateSettings({
+                  theme: event.target.value as 'system' | 'light' | 'dark',
+                })
+              }
+            >
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={state.settings.largeText}
+              onChange={(event) => updateSettings({ largeText: event.target.checked })}
+            />
+            Large-text classroom mode
+          </label>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={state.settings.reducedMotion}
+              onChange={(event) => updateSettings({ reducedMotion: event.target.checked })}
+            />
+            Reduce motion
+          </label>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={state.settings.speechEnabled}
+              onChange={(event) => updateSettings({ speechEnabled: event.target.checked })}
+            />
+            Text-to-speech controls
+          </label>
         </div>
         <div>
           <h3>Practice defaults</h3>
-          <label>Default questions<input type="number" min={1} max={200} value={state.settings.defaultQuestionCount} onChange={(event) => updateSettings({ defaultQuestionCount: Number(event.target.value) })} /></label>
-          <label>Timed drill seconds<input type="number" min={10} max={3600} value={state.settings.defaultTimeLimitSeconds} onChange={(event) => updateSettings({ defaultTimeLimitSeconds: Number(event.target.value) })} /></label>
+          <label>
+            Default questions
+            <input
+              type="number"
+              min={1}
+              max={200}
+              value={state.settings.defaultQuestionCount}
+              onChange={(event) =>
+                updateSettings({ defaultQuestionCount: Number(event.target.value) })
+              }
+            />
+          </label>
+          <label>
+            Timed drill seconds
+            <input
+              type="number"
+              min={10}
+              max={3600}
+              value={state.settings.defaultTimeLimitSeconds}
+              onChange={(event) =>
+                updateSettings({ defaultTimeLimitSeconds: Number(event.target.value) })
+              }
+            />
+          </label>
         </div>
       </div>
 
@@ -57,28 +130,91 @@ export function SettingsPage() {
         <div className="profile-list">
           {state.profiles.map((profile) => (
             <div className="profile-row" key={profile.id}>
-              <button type="button" className={profile.id === activeProfile.id ? 'profile-button active' : 'profile-button'} onClick={() => setActiveProfile(profile.id)}>{profile.name}</button>
-              <button type="button" className="text-button danger" disabled={state.profiles.length === 1} onClick={() => deleteProfile(profile.id)}>Delete</button>
+              <button
+                type="button"
+                className={
+                  profile.id === activeProfile.id ? 'profile-button active' : 'profile-button'
+                }
+                onClick={() => setActiveProfile(profile.id)}
+              >
+                {profile.name}
+              </button>
+              <button
+                type="button"
+                className="text-button danger"
+                disabled={state.profiles.length === 1}
+                onClick={() => deleteProfile(profile.id)}
+              >
+                Delete
+              </button>
             </div>
           ))}
         </div>
-        <form className="inline-form" onSubmit={(event) => { event.preventDefault(); addProfile(newProfileName); setNewProfileName(''); }}>
-          <label>New profile name<input maxLength={40} value={newProfileName} onChange={(event) => setNewProfileName(event.target.value)} /></label>
-          <button className="secondary-button" type="submit">Add profile</button>
+        <form
+          className="inline-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            addProfile(newProfileName);
+            setNewProfileName('');
+          }}
+        >
+          <label>
+            New profile name
+            <input
+              maxLength={40}
+              value={newProfileName}
+              onChange={(event) => setNewProfileName(event.target.value)}
+            />
+          </label>
+          <button className="secondary-button" type="submit">
+            Add profile
+          </button>
         </form>
       </div>
 
       <div className="panel">
         <h3>Data & privacy</h3>
-        <p>Backups contain local profile names, mastery statistics, and recent practice mistakes. Review the JSON before sharing it.</p>
+        <p>
+          Backups contain local profile names, mastery statistics, and recent practice mistakes.
+          Review the JSON before sharing it.
+        </p>
         <div className="button-row">
-          <button className="secondary-button" type="button" onClick={downloadBackup}>Export backup</button>
-          <button className="secondary-button" type="button" onClick={() => fileInput.current?.click()}>Import backup</button>
-          <input ref={fileInput} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => void importBackup(event)} />
-          <button className="text-button danger" type="button" onClick={() => { if (window.confirm('Reset progress for the active profile?')) { resetProgress(); setMessage('Progress reset.'); } }}>Reset active progress</button>
+          <button className="secondary-button" type="button" onClick={downloadBackup}>
+            Export backup
+          </button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => fileInput.current?.click()}
+          >
+            Import backup
+          </button>
+          <input
+            ref={fileInput}
+            className="visually-hidden"
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => void importBackup(event)}
+          />
+          <button
+            className="text-button danger"
+            type="button"
+            onClick={() => {
+              if (window.confirm('Reset progress for the active profile?')) {
+                resetProgress();
+                setMessage('Progress reset.');
+              }
+            }}
+          >
+            Reset active progress
+          </button>
         </div>
       </div>
-      {message ? <div className="status" role="status" aria-live="polite">{message}</div> : null}
+      {message ? (
+        <div className="status" role="status" aria-live="polite">
+          {message}
+        </div>
+      ) : null}
     </section>
   );
 }
