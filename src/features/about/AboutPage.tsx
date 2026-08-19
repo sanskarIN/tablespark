@@ -1,70 +1,64 @@
+import { copy } from '../../i18n/en';
+
 export function AboutPage() {
   return (
     <section className="page-stack" aria-labelledby="about-title">
       <div className="hero-card">
         <div>
-          <p className="eyebrow">Open source learning</p>
-          <h2 id="about-title">About TableSpark</h2>
-          <p>
-            TableSpark is an offline-first multiplication practice tool built for learners,
-            families, and classrooms.
-          </p>
+          <p className="eyebrow">{copy.about.eyebrow}</p>
+          <h2 id="about-title">{copy.about.title}</h2>
+          <p>{copy.about.description}</p>
         </div>
         <img
           className="about-logo"
           src="/logo.svg"
-          alt="TableSpark logo"
+          alt={copy.about.logoAlt}
           width="96"
           height="96"
         />
       </div>
 
       <div className="panel prose-panel">
-        <h3>Project</h3>
+        <h3>{copy.about.project}</h3>
         <p>
-          <strong>Version:</strong> 0.1.0
+          <strong>{copy.about.versionLabel}</strong> {copy.about.version}
         </p>
         <p>
-          <strong>License:</strong> MIT
+          <strong>{copy.about.licenseLabel}</strong> {copy.about.license}
         </p>
         <p>
-          <strong>Privacy:</strong> Core learning data is stored locally in your browser. No
-          account or donation is required.
+          <strong>{copy.about.privacyLabel}</strong> {copy.about.privacy}
         </p>
         <p>
-          <strong>Credit:</strong> Made by the Sanskar
+          <strong>{copy.about.creditLabel}</strong> {copy.credit}
         </p>
       </div>
 
       <div className="panel prose-panel">
-        <h3>Contact & support</h3>
+        <h3>{copy.about.contactSupport}</h3>
         <ul className="link-list">
           <li>
-            <a href="mailto:sanskarin@outlook.in">Business: sanskarin@outlook.in</a>
+            <a href="mailto:sanskarin@outlook.in">{copy.about.businessOutlook}</a>
           </li>
           <li>
-            <a href="mailto:sanskarin.business@gmail.com">
-              Business: sanskarin.business@gmail.com
-            </a>
+            <a href="mailto:sanskarin.business@gmail.com">{copy.about.businessGmail}</a>
           </li>
           <li>
-            <a href="mailto:supportramsandesh@gmail.com">
-              Support: supportramsandesh@gmail.com
-            </a>
+            <a href="mailto:supportramsandesh@gmail.com">{copy.about.supportEmail}</a>
           </li>
           <li>
             <a href="https://github.com/sanskarIN" target="_blank" rel="noreferrer">
-              GitHub profile
+              {copy.about.githubProfile}
             </a>
           </li>
           <li>
             <a href="https://github.com/sanskarIN/tablespark" target="_blank" rel="noreferrer">
-              TableSpark source
+              {copy.about.source}
             </a>
           </li>
           <li>
             <a href="https://buymeacoffee.com/sanskarIN" target="_blank" rel="noreferrer">
-              Buy Me a Coffee — optional support
+              {copy.about.funding}
             </a>
           </li>
         </ul>
