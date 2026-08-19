@@ -1,5 +1,11 @@
 import { createContext } from 'react';
-import type { AppSettings, Attempt, PersistedState, Profile } from '../domain/types';
+import type {
+  AppSettings,
+  Attempt,
+  PersistedState,
+  Profile,
+  SessionSummary,
+} from '../domain/types';
 
 export interface AppStateValue {
   readonly state: PersistedState;
@@ -11,6 +17,8 @@ export interface AppStateValue {
   readonly deleteProfile: (id: string) => void;
   readonly updateSettings: (settings: Partial<AppSettings>) => void;
   readonly recordAttempt: (attempt: Attempt) => void;
+  readonly recordSession: (summary: SessionSummary) => void;
+  readonly setMasteredFactsGoal: (goal: number | null) => void;
   readonly replaceFromBackup: (raw: string) => void;
   readonly discardUnreadableState: () => boolean;
   readonly resetProgress: () => void;
