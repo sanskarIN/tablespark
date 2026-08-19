@@ -109,10 +109,16 @@ When adding a state mutation:
 2. keep domain calculations in pure functions;
 3. update immutable state rather than mutating nested objects;
 4. ensure runtime limits match persisted/imported validation limits;
-5. preserve user-visible persistence-health behavior;
+5. preserve user-visible persistence-health and recovery behavior;
 6. add tests for the new behavior.
 
-The provider exposes `persistenceAvailable`. Do not remove this signal unless another mechanism reliably tells the user when browser storage refuses writes.
+The provider exposes:
+
+- `persistenceAvailable` — whether the latest normal storage write succeeded;
+- `unreadableStoredState` — whether an existing local value failed startup validation and is being preserved;
+- `discardUnreadableState()` — the explicit destructive recovery action used only after UI confirmation.
+
+Do not collapse `unreadableStoredState` into an ordinary write failure. They represent different conditions and have different user recovery paths.
 
 ## Persistence changes
 
@@ -125,7 +131,23 @@ Current reliability constraints include:
 - 100 recent mistakes per profile;
 - validated active-profile identity;
 - unique profile IDs;
-- mastery and multiplication semantic invariants.
+- canonical mastery keys;
+- mastery and multiplication semantic invariants;
+- saved mistake history containing only incorrect attempts.
+
+### Startup classification
+
+`loadStateResult()` distinguishes:
+
+- `empty` — no stored value exists;
+- `loaded` — a value exists and validates;
+- `invalid` — a value exists but cannot be parsed/migrated/validated.
+
+An `invalid` result must never be followed by an automatic default-state save. The provider pauses persistence, keeps the raw value available through `readRawState()`, and waits for the user to import a valid replacement or explicitly discard the unreadable value.
+
+See ADR 0004 before changing this behavior.
+
+### Schema evolution
 
 Never silently repurpose an existing persisted field. For an incompatible or shape-changing update:
 
@@ -137,9 +159,11 @@ Never silently repurpose an existing persisted field. For an incompatible or sha
 6. update privacy/backups documentation;
 7. verify runtime creation/update paths cannot produce state the validator rejects.
 
+Known older shapes should be migrated explicitly. Unknown malformed state should not be heuristically repaired or overwritten.
+
 ## Internationalization
 
-English product interface copy is centralized under `src/i18n/en.ts`, including dynamic copy factories for values such as scores, progress statistics, seeds, and profile capacity.
+English product interface copy is centralized under `src/i18n/en.ts`, including dynamic copy factories for values such as scores, progress statistics, seeds, profile capacity, and recovery states.
 
 New user-facing UI strings should be added there rather than scattered through feature components. Domain validation/error contracts may remain beside domain rules where they are part of non-UI behavior and test contracts.
 
@@ -155,7 +179,7 @@ Global design tokens are CSS custom properties in `src/styles.css`:
 - shadows;
 - theme overrides.
 
-Prefer existing tokens over isolated hard-coded spacing/color values. Component-specific status/error/help styles are kept in `src/status.css`.
+Prefer existing tokens over isolated hard-coded spacing/color values. Component-specific status/error/help/recovery styles are kept in `src/status.css`.
 
 Print-only content uses `.print-only`, while interactive-only controls use `.no-print`. Do not put private learner data into a print-only template without an explicit product requirement and privacy review.
 
@@ -174,11 +198,12 @@ For each new control:
 - test at enlarged text/zoom;
 - test both themes;
 - respect reduced-motion behavior;
-- provide a safe unsupported-platform state for progressive browser APIs.
+- provide a safe unsupported-platform state for progressive browser APIs;
+- make destructive recovery actions explicit and confirm them before data loss.
 
 ## Logging
 
-Use the structured logger for meaningful technical events only. Do not log learner answers, profile names, email addresses, backup contents, or other personal information.
+Use the structured logger for meaningful technical events only. Do not log learner answers, profile names, email addresses, backup contents, raw recovery data, or other personal information.
 
 The logger redacts both sensitive-looking field names and recognizable sensitive string values as defense in depth. This is not permission to log sensitive data.
 
