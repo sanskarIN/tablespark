@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { formatEquation, generateTable } from '../../domain/tables';
+import { generateTable } from '../../domain/tables';
 import type { TableConfig } from '../../domain/types';
+import { buildWorksheet } from '../../domain/worksheet';
 import { speak } from '../../infrastructure/speech';
 import { useAppState } from '../../state/AppState';
 
@@ -20,12 +21,13 @@ function numberValue(value: string, fallback: number): number {
 export function TableGenerator() {
   const { state } = useAppState();
   const [config, setConfig] = useState<TableConfig>(initialConfig);
+  const [worksheetMode, setWorksheetMode] = useState(false);
 
   const result = useMemo(() => {
     try {
-      return { rows: generateTable(config), error: '' };
+      return { items: buildWorksheet(generateTable(config)), error: '' };
     } catch (error) {
-      return { rows: [], error: error instanceof Error ? error.message : 'Invalid table settings.' };
+      return { items: [], error: error instanceof Error ? error.message : 'Invalid table settings.' };
     }
   }, [config]);
 
@@ -39,10 +41,10 @@ export function TableGenerator() {
         <div>
           <p className="eyebrow">Generate · Learn · Print</p>
           <h2 id="tables-title">Multiplication tables</h2>
-          <p>Create a custom range, change the step, then print a classroom-ready worksheet.</p>
+          <p>Create a custom range, switch to blank worksheet mode, then print classroom-ready practice.</p>
         </div>
         <button className="secondary-button no-print" type="button" onClick={() => window.print()}>
-          Print worksheet
+          Print {worksheetMode ? 'practice worksheet' : 'study sheet'}
         </button>
       </div>
 
@@ -67,17 +69,21 @@ export function TableGenerator() {
           Table step
           <input type="number" value={config.step} onChange={(event) => update('step', event.target.value)} min={1} max={1000} />
         </label>
+        <label className="check-row worksheet-toggle">
+          <input type="checkbox" checked={worksheetMode} onChange={(event) => setWorksheetMode(event.target.checked)} />
+          Hide answers for practice worksheet
+        </label>
       </form>
 
       {result.error ? (
         <div className="status error" role="alert">{result.error}</div>
       ) : (
         <div className="table-grid" aria-live="polite">
-          {result.rows.map((row) => (
-            <article className="equation-card" key={`${row.multiplicand}-${row.multiplier}`}>
-              <strong>{formatEquation(row)}</strong>
-              {state.settings.speechEnabled ? (
-                <button className="icon-button no-print" type="button" aria-label={`Read ${formatEquation(row)}`} onClick={() => speak(formatEquation(row))}>
+          {result.items.map((item) => (
+            <article className="equation-card" key={item.id}>
+              <strong>{worksheetMode ? item.prompt : item.solvedEquation}</strong>
+              {!worksheetMode && state.settings.speechEnabled ? (
+                <button className="icon-button no-print" type="button" aria-label={`Read ${item.solvedEquation}`} onClick={() => speak(item.solvedEquation)}>
                   🔊
                 </button>
               ) : null}
