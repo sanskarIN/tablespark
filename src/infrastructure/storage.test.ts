@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '../domain/types';
 import { clearState, exportState, importState, loadState, saveState } from './storage';
 
@@ -28,7 +28,7 @@ describe('local persistence', () => {
   beforeEach(() => localStorage.clear());
 
   it('round-trips validated state through localStorage', () => {
-    saveState(state);
+    expect(saveState(state)).toBe(true);
     expect(loadState()).toEqual(state);
   });
 
@@ -45,9 +45,17 @@ describe('local persistence', () => {
     expect(loadState()).toBeNull();
   });
 
+  it('reports storage write failure instead of throwing', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError');
+    });
+    expect(saveState(state)).toBe(false);
+    setItem.mockRestore();
+  });
+
   it('clears persisted state', () => {
     saveState(state);
-    clearState();
+    expect(clearState()).toBe(true);
     expect(loadState()).toBeNull();
   });
 });
