@@ -5,11 +5,11 @@ import { PracticeDrill } from './features/practice/PracticeDrill';
 import { ProgressDashboard } from './features/progress/ProgressDashboard';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { TableGenerator } from './features/tables/TableGenerator';
-import { copy } from './i18n/en';
-import { shortcutCopy } from './i18n/shortcuts';
+import { useLocale } from './i18n/LocaleContext';
+import type { MessageCatalog } from './i18n/messages';
 import { useAppState } from './state/useAppState';
 
-type View = keyof typeof copy.navigation;
+type View = keyof MessageCatalog['copy']['navigation'];
 
 const views: View[] = ['tables', 'practice', 'progress', 'settings', 'about'];
 
@@ -26,6 +26,8 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export default function App() {
   const { state, activeProfile } = useAppState();
+  const { messages } = useLocale();
+  const { copy, shortcuts } = messages;
   const [view, setView] = useState<View>('tables');
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -115,7 +117,7 @@ export default function App() {
           aria-haspopup="dialog"
           aria-expanded={showShortcuts}
         >
-          {shortcutCopy.open}
+          {shortcuts.open}
         </button>
       </nav>
 
@@ -130,37 +132,37 @@ export default function App() {
           >
             <div className="section-heading">
               <div>
-                <h2 id="shortcut-dialog-title">{shortcutCopy.title}</h2>
-                <p id="shortcut-dialog-description">{shortcutCopy.description}</p>
+                <h2 id="shortcut-dialog-title">{shortcuts.title}</h2>
+                <p id="shortcut-dialog-description">{shortcuts.description}</p>
               </div>
               <button
                 className="secondary-button"
                 type="button"
                 onClick={() => setShowShortcuts(false)}
               >
-                {shortcutCopy.close}
+                {shortcuts.close}
               </button>
             </div>
             <dl className="shortcut-list">
               {views.map((item, index) => (
                 <div key={item}>
                   <dt>
-                    <kbd>{shortcutCopy.navigationKey(index + 1)}</kbd>
+                    <kbd>{shortcuts.navigationKey(index + 1)}</kbd>
                   </dt>
-                  <dd>{shortcutCopy.navigationDescription(copy.navigation[item])}</dd>
+                  <dd>{shortcuts.navigationDescription(copy.navigation[item])}</dd>
                 </div>
               ))}
               <div>
                 <dt>
-                  <kbd>{shortcutCopy.helpKey}</kbd>
+                  <kbd>{shortcuts.helpKey}</kbd>
                 </dt>
-                <dd>{shortcutCopy.helpDescription}</dd>
+                <dd>{shortcuts.helpDescription}</dd>
               </div>
               <div>
                 <dt>
-                  <kbd>{shortcutCopy.escapeKey}</kbd>
+                  <kbd>{shortcuts.escapeKey}</kbd>
                 </dt>
-                <dd>{shortcutCopy.escapeDescription}</dd>
+                <dd>{shortcuts.escapeDescription}</dd>
               </div>
             </dl>
           </section>
