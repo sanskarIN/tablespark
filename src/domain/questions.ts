@@ -1,5 +1,7 @@
 import type { Question } from './types';
 
+export const MAX_SEED = 0xffffffff;
+
 export interface QuestionConfig {
   readonly min: number;
   readonly max: number;
@@ -32,6 +34,9 @@ export function generateQuestions(config: QuestionConfig): Question[] {
   }
   if (!Number.isInteger(config.count) || config.count < 1 || config.count > 200) {
     throw new RangeError('Question count must be between 1 and 200.');
+  }
+  if (!Number.isInteger(config.seed) || config.seed < 0 || config.seed > MAX_SEED) {
+    throw new RangeError(`Seed must be an integer between 0 and ${MAX_SEED}.`);
   }
 
   const random = mulberry32(config.seed);
