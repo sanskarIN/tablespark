@@ -88,17 +88,16 @@ export function SettingsPage() {
     if (!file) return;
 
     try {
-      if (file.size > MAX_BACKUP_BYTES) throw new Error(copy.settings.backupTooLarge);
+      if (file.size > MAX_BACKUP_BYTES) {
+        setMessage(copy.settings.backupTooLarge);
+        return;
+      }
       const confirmed = window.confirm(copy.settings.confirmBackupImport);
       if (!confirmed) return;
       replaceFromBackup(await file.text());
       setMessage(copy.settings.backupImported);
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? copy.settings.importFailed(error.message)
-          : copy.settings.importFailedGeneric,
-      );
+    } catch {
+      setMessage(copy.settings.importFailedGeneric);
     } finally {
       event.target.value = '';
     }
@@ -349,11 +348,9 @@ export function SettingsPage() {
             <p>{copy.settings.recoveryBody}</p>
             <div className="button-row">
               <button className="secondary-button" type="button" onClick={downloadUnreadableState}>
-                {copy.settings.downloadUnreadable}
-              </button>
+                {copy.settings.downloadUnreadable}</button>
               <button className="text-button danger" type="button" onClick={discardUnreadable}>
-                {copy.settings.discardUnreadable}
-              </button>
+                {copy.settings.discardUnreadable}</button>
             </div>
           </div>
         ) : null}
@@ -366,15 +363,13 @@ export function SettingsPage() {
             aria-describedby={unreadableStoredState ? 'recovery-note' : undefined}
             onClick={downloadBackup}
           >
-            {copy.settings.exportBackup}
-          </button>
+            {copy.settings.exportBackup}</button>
           <button
             className="secondary-button"
             type="button"
             onClick={() => fileInput.current?.click()}
           >
-            {copy.settings.importBackup}
-          </button>
+            {copy.settings.importBackup}</button>
           <input
             ref={fileInput}
             className="visually-hidden"
@@ -393,8 +388,7 @@ export function SettingsPage() {
               }
             }}
           >
-            {copy.settings.resetProgress}
-          </button>
+            {copy.settings.resetProgress}</button>
         </div>
       </div>
 
