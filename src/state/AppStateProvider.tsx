@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { applyAttempt } from '../domain/mastery';
+import {
+  DEFAULT_SESSION_HISTORY_LIMIT,
+  isSessionHistoryLimit,
+  MAX_MASTERED_FACTS_GOAL,
+  prependSession,
+  retainSessions,
+} from '../domain/sessions';
 import type { AppSettings, PersistedState, Profile } from '../domain/types';
 import {
   clearState,
@@ -17,6 +24,7 @@ const defaultSettings: AppSettings = {
   speechEnabled: false,
   defaultQuestionCount: 10,
   defaultTimeLimitSeconds: 60,
+  sessionHistoryLimit: DEFAULT_SESSION_HISTORY_LIMIT,
 };
 
 function makeProfile(name = 'Learner'): Profile {
@@ -26,13 +34,15 @@ function makeProfile(name = 'Learner'): Profile {
     createdAt: new Date().toISOString(),
     mastery: {},
     mistakes: [],
+    sessions: [],
+    masteredFactsGoal: null,
   };
 }
 
 function makeDefaultState(): PersistedState {
   const profile = makeProfile();
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     activeProfileId: profile.id,
     profiles: [profile],
     settings: defaultSettings,
@@ -94,10 +104,27 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
         });
       },
       updateSettings: (settings) =>
-        setState((current) => ({
-          ...current,
-          settings: { ...current.settings, ...settings },
-        })),
+        setState((current) => {
+          const requestedHistoryLimit = settings.sessionHistoryLimit;
+          const sessionHistoryLimit =
+            requestedHistoryLimit === undefined
+              ? current.settings.sessionHistoryLimit
+              : isSessionHistoryLimit(requestedHistoryLimit)
+                ? requestedHistoryLimit
+                : current.settings.sessionHistoryLimit;
+          const nextSettings = {
+            ...current.settings,
+            ...settings,
+            sessionHistoryLimit,
+          };
+          const profiles = isSessionHistoryLimit(sessionHistoryLimit)
+            ? current.profiles.map((profile) => ({
+                ...profile,
+                sessions: retainSessions(profile.sessions, sessionHistoryLimit),
+              }))
+            : current.profiles;
+          return { ...current, settings: nextSettings, profiles };
+        }),
       recordAttempt: (attempt) =>
         setState((current) => ({
           ...current,
@@ -105,6 +132,36 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
             profile.id === current.activeProfileId ? applyAttempt(profile, attempt) : profile,
           ),
         })),
+      recordSession: (summary) =>
+        setState((current) => {
+          const limit = isSessionHistoryLimit(current.settings.sessionHistoryLimit)
+            ? current.settings.sessionHistoryLimit
+            : DEFAULT_SESSION_HISTORY_LIMIT;
+          return {
+            ...current,
+            profiles: current.profiles.map((profile) =>
+              profile.id === current.activeProfileId
+                ? { ...profile, sessions: prependSession(profile.sessions, summary, limit) }
+                : profile,
+            ),
+          };
+        }),
+      setMasteredFactsGoal: (goal) => {
+        if (
+          goal !== null &&
+          (!Number.isInteger(goal) || goal < 1 || goal > MAX_MASTERED_FACTS_GOAL)
+        ) {
+          return;
+        }
+        setState((current) => ({
+          ...current,
+          profiles: current.profiles.map((profile) =>
+            profile.id === current.activeProfileId
+              ? { ...profile, masteredFactsGoal: goal }
+              : profile,
+          ),
+        }));
+      },
       replaceFromBackup: (raw) => {
         const replacement = parseImportedState(raw);
         setState(replacement);
@@ -121,7 +178,7 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
           ...current,
           profiles: current.profiles.map((profile) =>
             profile.id === current.activeProfileId
-              ? { ...profile, mastery: {}, mistakes: [] }
+              ? { ...profile, mastery: {}, mistakes: [], sessions: [] }
               : profile,
           ),
         })),
