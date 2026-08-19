@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { generateTable } from '../../domain/tables';
 import type { TableConfig } from '../../domain/types';
 import { buildWorksheet } from '../../domain/worksheet';
+import { copy } from '../../i18n/en';
 import { speak } from '../../infrastructure/speech';
 import { useAppState } from '../../state/useAppState';
 
@@ -29,7 +30,7 @@ export function TableGenerator() {
     } catch (error) {
       return {
         items: [],
-        error: error instanceof Error ? error.message : 'Invalid table settings.',
+        error: error instanceof Error ? error.message : copy.tables.invalidSettings,
       };
     }
   }, [config]);
@@ -42,21 +43,18 @@ export function TableGenerator() {
     <section className="page-stack" aria-labelledby="tables-title">
       <div className="hero-card">
         <div>
-          <p className="eyebrow">Generate · Learn · Print</p>
-          <h2 id="tables-title">Multiplication tables</h2>
-          <p>
-            Create a custom range, switch to blank worksheet mode, then print classroom-ready
-            practice.
-          </p>
+          <p className="eyebrow">{copy.tables.eyebrow}</p>
+          <h2 id="tables-title">{copy.tables.title}</h2>
+          <p>{copy.tables.description}</p>
         </div>
         <button className="secondary-button no-print" type="button" onClick={() => window.print()}>
-          Print {worksheetMode ? 'practice worksheet' : 'study sheet'}
+          {worksheetMode ? copy.tables.printPracticeWorksheet : copy.tables.printStudySheet}
         </button>
       </div>
 
       <form className="control-grid" onSubmit={(event) => event.preventDefault()}>
         <label>
-          Table start
+          {copy.tables.tableStart}
           <input
             type="number"
             value={config.from}
@@ -66,7 +64,7 @@ export function TableGenerator() {
           />
         </label>
         <label>
-          Table end
+          {copy.tables.tableEnd}
           <input
             type="number"
             value={config.to}
@@ -76,7 +74,7 @@ export function TableGenerator() {
           />
         </label>
         <label>
-          Multiplier start
+          {copy.tables.multiplierStart}
           <input
             type="number"
             value={config.multiplierFrom}
@@ -86,7 +84,7 @@ export function TableGenerator() {
           />
         </label>
         <label>
-          Multiplier end
+          {copy.tables.multiplierEnd}
           <input
             type="number"
             value={config.multiplierTo}
@@ -96,7 +94,7 @@ export function TableGenerator() {
           />
         </label>
         <label>
-          Table step
+          {copy.tables.tableStep}
           <input
             type="number"
             value={config.step}
@@ -111,7 +109,7 @@ export function TableGenerator() {
             checked={worksheetMode}
             onChange={(event) => setWorksheetMode(event.target.checked)}
           />
-          Hide answers for practice worksheet
+          {copy.tables.hideAnswers}
         </label>
       </form>
 
@@ -120,23 +118,34 @@ export function TableGenerator() {
           {result.error}
         </div>
       ) : (
-        <div className="table-grid" aria-live="polite">
-          {result.items.map((item) => (
-            <article className="equation-card" key={item.id}>
-              <strong>{worksheetMode ? item.prompt : item.solvedEquation}</strong>
-              {!worksheetMode && state.settings.speechEnabled ? (
-                <button
-                  className="icon-button no-print"
-                  type="button"
-                  aria-label={`Read ${item.solvedEquation}`}
-                  onClick={() => speak(item.solvedEquation)}
-                >
-                  🔊
-                </button>
-              ) : null}
-            </article>
-          ))}
-        </div>
+        <>
+          <header className="print-only worksheet-print-header">
+            <h1>
+              {worksheetMode ? copy.tables.worksheetTitle : copy.tables.studySheetTitle}
+            </h1>
+            <div className="worksheet-print-meta">
+              <span>{copy.tables.learnerLine}</span>
+              <span>{copy.tables.dateLine}</span>
+            </div>
+          </header>
+          <div className="table-grid" aria-live="polite">
+            {result.items.map((item) => (
+              <article className="equation-card" key={item.id}>
+                <strong>{worksheetMode ? item.prompt : item.solvedEquation}</strong>
+                {!worksheetMode && state.settings.speechEnabled ? (
+                  <button
+                    className="icon-button no-print"
+                    type="button"
+                    aria-label={copy.tables.readEquation(item.solvedEquation)}
+                    onClick={() => speak(item.solvedEquation)}
+                  >
+                    🔊
+                  </button>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </>
       )}
     </section>
   );
