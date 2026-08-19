@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { PersistedState } from '../domain/types';
+import { migratePersistedState } from './migrations';
 
 const STORAGE_KEY = 'tablespark.state.v1';
 
@@ -47,14 +48,22 @@ const persistedStateSchema = z.object({
     defaultQuestionCount: z.number().int().min(1).max(200),
     defaultTimeLimitSeconds: z.number().int().min(10).max(3600),
   }),
+}).superRefine((value, context) => {
+  if (!value.profiles.some((profile) => profile.id === value.activeProfileId)) {
+    context.addIssue({ code: 'custom', path: ['activeProfileId'], message: 'Active profile must exist.' });
+  }
 });
+
+function parseState(raw: string): PersistedState {
+  const json: unknown = JSON.parse(raw);
+  const migrated = migratePersistedState(json);
+  return persistedStateSchema.parse(migrated) as PersistedState;
+}
 
 export function loadState(): PersistedState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = persistedStateSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? (parsed.data as PersistedState) : null;
+    return raw ? parseState(raw) : null;
   } catch {
     return null;
   }
@@ -69,8 +78,7 @@ export function exportState(state: PersistedState): string {
 }
 
 export function importState(raw: string): PersistedState {
-  const parsed = persistedStateSchema.parse(JSON.parse(raw));
-  return parsed as PersistedState;
+  return parseState(raw);
 }
 
 export function clearState(): void {
