@@ -2,7 +2,7 @@ import type { TableConfig, TableRow } from './types';
 
 const MIN_VALUE = -1000;
 const MAX_VALUE = 1000;
-const MAX_RENDERED_ROWS = 5000;
+export const MAX_RENDERED_ROWS = 5000;
 
 function assertIntegerInRange(value: number, name: string): void {
   if (!Number.isInteger(value) || value < MIN_VALUE || value > MAX_VALUE) {
