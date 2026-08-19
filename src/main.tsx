@@ -6,6 +6,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppStateProvider } from './state/AppStateProvider';
 import './styles.css';
 import './status.css';
+import './shortcuts.css';
 
 registerSW({ immediate: true });
 
