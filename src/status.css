@@ -5,6 +5,7 @@
 .banner span { color: var(--muted); }
 .banner.warning { border-color: color-mix(in srgb, #d97706 55%, var(--border)); }
 .banner.welcome { box-shadow: var(--shadow); }
+.help-text { margin: -.35rem 0 .9rem; color: var(--muted); font-size: .9rem; }
 .fatal-error { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 1rem; padding: 2rem; text-align: center; background: var(--bg); color: var(--text); }
 .fatal-error p { max-width: 55ch; color: var(--muted); }
 
