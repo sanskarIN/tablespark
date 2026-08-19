@@ -37,6 +37,8 @@ describe('mastery tracking', () => {
   });
 
   it('calculates rounded mastery percentages', () => {
-    expect(masteryPercent({ key: '2x3', attempts: 3, correct: 2, streak: 0, lastAttemptAt: '' })).toBe(67);
+    expect(
+      masteryPercent({ key: '2x3', attempts: 3, correct: 2, streak: 0, lastAttemptAt: '' }),
+    ).toBe(67);
   });
 });
