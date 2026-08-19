@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { AppStateProvider } from './state/AppStateProvider';
 
@@ -109,5 +109,15 @@ describe('TableSpark application', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Search facts' }), '6 × 8');
     expect(screen.getByText('6 × 8')).toBeInTheDocument();
     expect(screen.queryByText('4 × 7')).not.toBeInTheDocument();
+  });
+
+  it('warns when browser storage cannot persist changes', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Blocked', 'SecurityError');
+    });
+
+    renderApp();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Local saving is unavailable.');
+    setItem.mockRestore();
   });
 });
