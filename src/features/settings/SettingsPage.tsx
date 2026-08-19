@@ -2,6 +2,10 @@ import { useRef, useState, type ChangeEvent } from 'react';
 import { exportState } from '../../infrastructure/storage';
 import { useAppState } from '../../state/useAppState';
 
+function boundedInteger(value: number, min: number, max: number, fallback: number): number {
+  return Number.isInteger(value) && value >= min && value <= max ? value : fallback;
+}
+
 export function SettingsPage() {
   const {
     state,
@@ -106,7 +110,14 @@ export function SettingsPage() {
               max={200}
               value={state.settings.defaultQuestionCount}
               onChange={(event) =>
-                updateSettings({ defaultQuestionCount: Number(event.target.value) })
+                updateSettings({
+                  defaultQuestionCount: boundedInteger(
+                    event.currentTarget.valueAsNumber,
+                    1,
+                    200,
+                    state.settings.defaultQuestionCount,
+                  ),
+                })
               }
             />
           </label>
@@ -118,7 +129,14 @@ export function SettingsPage() {
               max={3600}
               value={state.settings.defaultTimeLimitSeconds}
               onChange={(event) =>
-                updateSettings({ defaultTimeLimitSeconds: Number(event.target.value) })
+                updateSettings({
+                  defaultTimeLimitSeconds: boundedInteger(
+                    event.currentTarget.valueAsNumber,
+                    10,
+                    3600,
+                    state.settings.defaultTimeLimitSeconds,
+                  ),
+                })
               }
             />
           </label>
@@ -210,6 +228,19 @@ export function SettingsPage() {
           </button>
         </div>
       </div>
+
+      <div className="panel prose-panel">
+        <h3>Updates & about</h3>
+        <p>
+          TableSpark uses an auto-updating Progressive Web App service worker in production.
+          Browser update timing can vary, so reopen the app if a newly deployed version is waiting.
+        </p>
+        <p>
+          Version 0.1.0 · MIT License · Made by the Sanskar. Full project, support, privacy, and
+          funding details are available on the About page.
+        </p>
+      </div>
+
       {message ? (
         <div className="status" role="status" aria-live="polite">
           {message}
