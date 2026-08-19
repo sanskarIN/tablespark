@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { PersistedState } from '../domain/types';
+import { logger } from './logger';
 import { migratePersistedState } from './migrations';
 
 const STORAGE_KEY = 'tablespark.state.v1';
@@ -70,12 +71,19 @@ export function loadState(): PersistedState | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? parseState(raw) : null;
   } catch {
+    logger.warn('storage_read_failed');
     return null;
   }
 }
 
-export function saveState(state: PersistedState): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+export function saveState(state: PersistedState): boolean {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    return true;
+  } catch {
+    logger.warn('storage_write_failed');
+    return false;
+  }
 }
 
 export function exportState(state: PersistedState): string {
@@ -86,6 +94,12 @@ export function importState(raw: string): PersistedState {
   return parseState(raw);
 }
 
-export function clearState(): void {
-  localStorage.removeItem(STORAGE_KEY);
+export function clearState(): boolean {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    return true;
+  } catch {
+    logger.warn('storage_clear_failed');
+    return false;
+  }
 }
