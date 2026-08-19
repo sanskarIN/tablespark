@@ -1,5 +1,9 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { exportState, MAX_BACKUP_BYTES } from '../../infrastructure/storage';
+import {
+  exportState,
+  MAX_BACKUP_BYTES,
+  MAX_PROFILES,
+} from '../../infrastructure/storage';
 import { useAppState } from '../../state/useAppState';
 
 function boundedInteger(value: number, min: number, max: number, fallback: number): number {
@@ -20,6 +24,7 @@ export function SettingsPage() {
   const [newProfileName, setNewProfileName] = useState('');
   const [message, setMessage] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+  const profileLimitReached = state.profiles.length >= MAX_PROFILES;
 
   const downloadBackup = () => {
     const blob = new Blob([exportState(state)], { type: 'application/json' });
@@ -156,6 +161,9 @@ export function SettingsPage() {
 
       <div className="panel">
         <h3>Offline profiles</h3>
+        <p id="profile-capacity">
+          {state.profiles.length} of {MAX_PROFILES} local profiles in use.
+        </p>
         <div className="profile-list">
           {state.profiles.map((profile) => (
             <div className="profile-row" key={profile.id}>
@@ -183,6 +191,10 @@ export function SettingsPage() {
           className="inline-form"
           onSubmit={(event) => {
             event.preventDefault();
+            if (profileLimitReached) {
+              setMessage(`Profile limit reached. Delete a profile before adding another.`);
+              return;
+            }
             addProfile(newProfileName);
             setNewProfileName('');
           }}
@@ -192,10 +204,12 @@ export function SettingsPage() {
             <input
               maxLength={40}
               value={newProfileName}
+              disabled={profileLimitReached}
+              aria-describedby="profile-capacity"
               onChange={(event) => setNewProfileName(event.target.value)}
             />
           </label>
-          <button className="secondary-button" type="submit">
+          <button className="secondary-button" type="submit" disabled={profileLimitReached}>
             Add profile
           </button>
         </form>
