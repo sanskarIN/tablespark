@@ -78,6 +78,7 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
       activeProfile,
       persistenceAvailable,
       unreadableStoredState,
+      storageReadUnavailable,
       setActiveProfile: (id) => {
         if (state.profiles.some((profile) => profile.id === id)) {
           setState((current) => ({ ...current, activeProfileId: id }));
@@ -168,8 +169,15 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
       },
       replaceFromBackup: (raw) => {
         const replacement = parseImportedState(raw);
+        if (storageReadUnavailable) return false;
+        if (!saveState(replacement)) {
+          setPersistenceAvailable(false);
+          return false;
+        }
         setState(replacement);
         setUnreadableStoredState(false);
+        setPersistenceAvailable(true);
+        return true;
       },
       discardUnreadableState: () => {
         if (!unreadableStoredState) return true;
@@ -187,7 +195,13 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
           ),
         })),
     }),
-    [activeProfile, persistenceAvailable, state, unreadableStoredState],
+    [
+      activeProfile,
+      persistenceAvailable,
+      state,
+      storageReadUnavailable,
+      unreadableStoredState,
+    ],
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
