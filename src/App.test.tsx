@@ -123,6 +123,55 @@ describe('TableSpark application', () => {
     expect(screen.queryByText('4 × 7')).not.toBeInTheDocument();
   });
 
+  it('does not present seed replay controls after a mistake review session', async () => {
+    localStorage.setItem(
+      'tablespark.state.v1',
+      JSON.stringify({
+        schemaVersion: 1,
+        activeProfileId: 'p1',
+        profiles: [
+          {
+            id: 'p1',
+            name: 'Learner',
+            createdAt: '2026-08-19T00:00:00.000Z',
+            mastery: {},
+            mistakes: [
+              {
+                question: { id: 'mistake-1', left: 4, right: 7, answer: 28 },
+                response: 27,
+                correct: false,
+                answeredAt: '2026-08-19T00:00:01.000Z',
+                elapsedMs: 500,
+              },
+            ],
+          },
+        ],
+        settings: {
+          theme: 'system',
+          largeText: false,
+          reducedMotion: false,
+          speechEnabled: false,
+          defaultQuestionCount: 10,
+          defaultTimeLimitSeconds: 60,
+        },
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getByRole('button', { name: 'Practice' }));
+    await user.click(screen.getByRole('button', { name: 'Review mistakes' }));
+    expect(screen.getByText('4 × 7 = ?')).toBeInTheDocument();
+    await user.type(screen.getByRole('spinbutton', { name: 'Your answer' }), '28');
+    await user.click(screen.getByRole('button', { name: 'Check answer' }));
+
+    expect(
+      screen.getByText('This review was built from the unique facts in your saved recent mistakes.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Repeat this seed' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Back to practice setup' })).toBeInTheDocument();
+  });
+
   it('disables speech controls when the browser has no speech synthesis support', async () => {
     const user = userEvent.setup();
     renderApp();
