@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { copy } from '../i18n/en';
 import { readBooleanFlag, writeBooleanFlag } from '../infrastructure/browserPreferences';
 import { useAppState } from '../state/useAppState';
 
@@ -29,28 +30,22 @@ export function StatusBanners() {
     <div className="banner-stack no-print">
       {!persistenceAvailable ? (
         <div className="banner warning" role="alert">
-          <strong>Local saving is unavailable.</strong> Changes can still work in this tab, but they
-          may not survive a reload. Free browser storage or allow site storage, then export a backup
-          when saving becomes available again.
+          <strong>{copy.status.storageTitle}</strong> {copy.status.storageBody}
         </div>
       ) : null}
       {!online ? (
         <div className="banner warning" role="status">
-          <strong>You’re offline.</strong> Table generation, practice, progress, and local profiles
-          still work.
+          <strong>{copy.status.offlineTitle}</strong> {copy.status.offlineBody}
         </div>
       ) : null}
       {showWelcome ? (
-        <div className="banner welcome" role="region" aria-label="Welcome to TableSpark">
+        <div className="banner welcome" role="region" aria-label={copy.status.welcomeLabel}>
           <div>
-            <strong>Welcome to TableSpark</strong>
-            <span>
-              Start with custom tables, then use Practice to build mastery. Your data stays on this
-              device by default.
-            </span>
+            <strong>{copy.status.welcomeTitle}</strong>
+            <span>{copy.status.welcomeBody}</span>
           </div>
           <button className="text-button" type="button" onClick={dismissWelcome}>
-            Got it
+            {copy.status.dismissWelcome}
           </button>
         </div>
       ) : null}
