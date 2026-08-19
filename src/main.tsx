@@ -11,6 +11,7 @@ import { AppStateProvider } from './state/AppStateProvider';
 import './styles.css';
 import './status.css';
 import './shortcuts.css';
+import './learning.css';
 
 let updateSW: ReturnType<typeof registerSW> | undefined;
 updateSW = registerSW({
