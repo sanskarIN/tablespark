@@ -12,6 +12,8 @@ TableSpark aims to:
 
 - protect local learner data from accidental application destruction;
 - reject malformed/semantically impossible imported state;
+- distinguish missing, invalid, and inaccessible browser state so recovery logic does not destroy unknown data;
+- make destructive backup replacement durable before reporting success;
 - avoid creating a remote credential/account attack surface for core learning;
 - avoid logging learner content or recognizable credentials;
 - prevent oversized local input from consuming unbounded processing/storage resources;
@@ -83,7 +85,7 @@ HTML `min`, `max`, and input types are not security boundaries by themselves bec
 
 ## 2. Browser localStorage
 
-LocalStorage is treated as persistent but **untrusted on read**.
+LocalStorage is treated as persistent but **untrusted on read** and potentially **unavailable as an API**.
 
 Reasons:
 
@@ -91,9 +93,10 @@ Reasons:
 - older app versions may have stored different schemas;
 - browser sync/restore can reintroduce unexpected data;
 - corruption/truncation can occur;
-- another script running in the same origin would share origin storage permissions.
+- another script running in the same origin would share origin storage permissions;
+- privacy/origin/browser policy can make `getItem()` throw before any learner value is returned.
 
-Therefore every learner-state load runs through:
+When a learner-state value is successfully returned, it runs through:
 
 ```text
 byte budget
@@ -103,7 +106,18 @@ byte budget
 → semantic validation
 ```
 
-A value that fails this pipeline is preserved for recovery rather than trusted or overwritten.
+A returned value that fails this pipeline is preserved for recovery rather than trusted or overwritten.
+
+A storage read that throws is a different condition. TableSpark has not obtained a value and therefore cannot safely call the store empty or the learner data corrupt. In that state the app:
+
+- uses temporary in-memory defaults only so core UI remains usable;
+- marks local persistence unavailable;
+- does not activate known-invalid-value recovery controls;
+- suppresses automatic learner-state writes;
+- disables trusted backup import/export actions that could overwrite or misrepresent unknown inaccessible state;
+- requires browser storage access to be restored and the app reloaded before normal persistence/recovery can be trusted.
+
+This protects against a subtle data-loss failure where an unreadable existing browser value could otherwise be replaced by a freshly created default merely because `getItem()` threw.
 
 ## 3. Backup file import
 
@@ -121,7 +135,19 @@ It may be:
 
 Import shares the same validator pipeline as persistence loading and uses a 2 MB byte budget before parsing.
 
-The application does not merge arbitrary backup fragments into current state. It validates a complete replacement state and asks for user confirmation before replacing current learner data.
+The application does not merge arbitrary backup fragments into current state. It validates a complete replacement state and asks for user confirmation before destructive replacement.
+
+Replacement is transactional:
+
+```text
+validate replacement
+→ verify startup storage was readable
+→ write replacement
+→ if write succeeds, replace React state
+→ report success
+```
+
+If validation fails, startup storage was unreadable, or the replacement write fails, current in-memory state is left unchanged and import is reported as failed. This prevents a “successful import” message for state that exists only in memory and would disappear on reload.
 
 ## 4. Recovery text download
 
@@ -300,14 +326,14 @@ Validator checks:
 
 - canonical fact keys;
 - object key/stat key agreement;
-- correct <= attempts;
-- streak <= correct/attempts.
+- `correct <= attempts`;
+- `streak <= correct/attempts`.
 
 ## Session invariants
 
 Validator checks:
 
-- correctCount <= questionCount;
+- `correctCount <= questionCount`;
 - generated session has valid seed;
 - mistake review has `seed: null`;
 - history fits configured retention.
@@ -318,6 +344,8 @@ Validator checks:
 - max 100 profiles;
 - unique profile IDs;
 - active profile references an existing profile.
+
+The provider independently enforces the 100-profile capacity inside the functional React state updater, so two batched additions cannot both pass a stale-render capacity check and produce 101 profiles.
 
 # Rendering/XSS boundary
 
@@ -403,14 +431,26 @@ Automatically overwriting invalid stored state could create data loss from:
 
 The current design prefers preservation + explicit choice over silent destruction.
 
-While unreadable state is preserved:
+While a successfully-read but invalid state value is preserved:
 
 - automatic learner-state saving is paused;
 - temporary UI state is not represented as a valid backup;
 - ordinary backup export is disabled;
 - raw recovery download is available;
-- valid backup import can replace it;
+- a validated backup can replace it only after the replacement is successfully written;
 - discard requires confirmation.
+
+# Storage-read unavailability as a separate control
+
+When `localStorage.getItem()` itself throws, no raw learner value has been obtained. Treating that condition as corruption would create misleading recovery UI, while treating it as empty could destroy unknown data.
+
+Therefore:
+
+- `storageReadUnavailable` is distinct from `unreadableStoredState`;
+- automatic persistence is paused;
+- normal backup export/import is blocked because temporary defaults cannot be trusted as existing learner state;
+- no raw-recovery claim is made;
+- restored browser storage access plus reload is required to reclassify the actual store.
 
 # User-controlled destructive actions
 
@@ -493,6 +533,7 @@ Before adding a feature, ask:
 10. Does it affect children/classroom privacy expectations?
 11. Does it add a production deployment/backend boundary?
 12. Does it require new abuse/rate-limit/auth controls?
+13. Could a browser storage read or write failure change whether existing data is safe to replace?
 
 If yes, update the relevant security/privacy/architecture docs and tests in the same change series.
 
