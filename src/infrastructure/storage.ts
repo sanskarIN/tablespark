@@ -16,7 +16,8 @@ export const MAX_PROFILES = 100;
 export type StateLoadResult =
   | { readonly status: 'empty'; readonly state: null }
   | { readonly status: 'loaded'; readonly state: PersistedState }
-  | { readonly status: 'invalid'; readonly state: null };
+  | { readonly status: 'invalid'; readonly state: null }
+  | { readonly status: 'unavailable'; readonly state: null };
 
 function isCanonicalMasteryKey(key: string): boolean {
   const match = /^(\d{1,4})x(\d{1,4})$/.exec(key);
@@ -243,12 +244,20 @@ function parseState(raw: string): PersistedState {
 }
 
 export function loadStateResult(): StateLoadResult {
+  let raw: string | null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return { status: 'empty', state: null };
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    logger.warn('storage_read_unavailable');
+    return { status: 'unavailable', state: null };
+  }
+
+  if (raw === null) return { status: 'empty', state: null };
+
+  try {
     return { status: 'loaded', state: parseState(raw) };
   } catch {
-    logger.warn('storage_read_failed');
+    logger.warn('storage_data_invalid');
     return { status: 'invalid', state: null };
   }
 }
