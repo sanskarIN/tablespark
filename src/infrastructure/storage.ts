@@ -8,6 +8,11 @@ const STORAGE_KEY = 'tablespark.state.v1';
 export const MAX_BACKUP_BYTES = 2_000_000;
 export const MAX_PROFILES = 100;
 
+export type StateLoadResult =
+  | { readonly status: 'empty'; readonly state: null }
+  | { readonly status: 'loaded'; readonly state: PersistedState }
+  | { readonly status: 'invalid'; readonly state: null };
+
 function isCanonicalMasteryKey(key: string): boolean {
   const match = /^(\d{1,4})x(\d{1,4})$/.exec(key);
   if (!match) return false;
@@ -167,12 +172,26 @@ function parseState(raw: string): PersistedState {
   return persistedStateSchema.parse(migrated) as PersistedState;
 }
 
-export function loadState(): PersistedState | null {
+export function loadStateResult(): StateLoadResult {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? parseState(raw) : null;
+    if (raw === null) return { status: 'empty', state: null };
+    return { status: 'loaded', state: parseState(raw) };
   } catch {
     logger.warn('storage_read_failed');
+    return { status: 'invalid', state: null };
+  }
+}
+
+export function loadState(): PersistedState | null {
+  return loadStateResult().state;
+}
+
+export function readRawState(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    logger.warn('storage_raw_read_failed');
     return null;
   }
 }
