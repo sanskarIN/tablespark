@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
+import { readBooleanFlag, writeBooleanFlag } from '../infrastructure/browserPreferences';
 
 const ONBOARDING_KEY = 'tablespark.onboarding.dismissed.v1';
 
 export function StatusBanners() {
   const [online, setOnline] = useState(() => navigator.onLine);
-  const [showWelcome, setShowWelcome] = useState(
-    () => localStorage.getItem(ONBOARDING_KEY) !== 'true',
-  );
+  const [showWelcome, setShowWelcome] = useState(() => !readBooleanFlag(ONBOARDING_KEY));
 
   useEffect(() => {
     const goOnline = () => setOnline(true);
@@ -20,7 +19,7 @@ export function StatusBanners() {
   }, []);
 
   const dismissWelcome = () => {
-    localStorage.setItem(ONBOARDING_KEY, 'true');
+    writeBooleanFlag(ONBOARDING_KEY, true);
     setShowWelcome(false);
   };
 
