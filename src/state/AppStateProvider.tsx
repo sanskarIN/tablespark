@@ -55,17 +55,18 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
   const [unreadableStoredState, setUnreadableStoredState] = useState(
     initialLoad.status === 'invalid',
   );
+  const [storageReadUnavailable] = useState(initialLoad.status === 'unavailable');
   const [persistenceAvailable, setPersistenceAvailable] = useState(
-    initialLoad.status !== 'invalid',
+    initialLoad.status === 'empty' || initialLoad.status === 'loaded',
   );
 
   useEffect(() => {
-    if (unreadableStoredState) {
+    if (unreadableStoredState || storageReadUnavailable) {
       setPersistenceAvailable(false);
       return;
     }
     setPersistenceAvailable(saveState(state));
-  }, [state, unreadableStoredState]);
+  }, [state, storageReadUnavailable, unreadableStoredState]);
 
   const activeProfile =
     state.profiles.find((profile) => profile.id === state.activeProfileId) ?? state.profiles[0];
