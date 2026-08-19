@@ -7,13 +7,13 @@ Use this document as the release-candidate evidence checklist. Do not mark an it
 | Field | Value |
 | --- | --- |
 | Candidate version | `2.0.12` |
-| Commit SHA | Record at final 2.0.12 release-candidate freeze |
+| Commit SHA | `215386197a059d5e0922cdc7f622919a2e8b65a0` |
 | Pull request | PR `#4` — `feat: continue TableSpark roadmap refinement` |
 | Verification date | Not yet recorded for final 2.0.12 head |
 | Tester/reviewer | Not yet recorded |
 | Production origin | Not yet selected |
 
-The source/package/UI version is already prepared as `2.0.12`, but the `v2.0.12` tag must not be created until the exact final candidate passes the required automated and manual gates below.
+The source/package/UI version is prepared as `2.0.12`, but the `v2.0.12` tag must not be created until the exact candidate passes the required automated and manual gates below.
 
 ## Automated repository gates
 
@@ -21,13 +21,21 @@ Record the exact workflow run or check URL/result after the candidate commit sto
 
 | Gate | Required result | Evidence |
 | --- | --- | --- |
-| CI `quality` | Pass | Not yet recorded for final 2.0.12 candidate |
-| CI `e2e` | Pass | Not yet recorded for final 2.0.12 candidate |
-| CodeQL | Pass | Not yet recorded for final 2.0.12 candidate |
-| Release Visual Evidence | Pass | Not yet recorded for final 2.0.12 candidate |
-| Production dependency audit | No blocking high-severity finding | Covered by CI; final run not yet recorded |
-| Repository secret scan | Clean | Covered by CI; final run not yet recorded |
-| Visible version consistency | Package + English UI + Hindi UI all `2.0.12` | Automated locale-catalog regression test added; final run not yet recorded |
+| CI `quality` | Pass | Exact-head CI run created; currently queued |
+| CI `e2e` | Pass | Exact-head CI run created; currently queued |
+| CodeQL | Pass | Exact-head CodeQL run created; currently queued |
+| Release Visual Evidence | Pass | Exact-head visual-evidence run created; currently queued |
+| Production dependency audit | No blocking high-severity finding | Covered by CI; final result pending |
+| Repository secret scan | Clean | Covered by CI; final result pending |
+| Visible version consistency | Package + English UI + Hindi UI all `2.0.12` | Unit/catalog and Playwright assertions added; final result pending |
+
+Exact-head workflow run IDs at candidate freeze:
+
+- CI: `32269505578`
+- CodeQL: `32269505330`
+- Release Visual Evidence: `32269505337`
+
+A queued run is not a pass. If any source or documentation file changes after this evidence record, the commit SHA and workflow evidence above become stale and must be replaced with the new candidate.
 
 ## Real browser screenshots
 
