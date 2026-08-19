@@ -3,9 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { AppStateProvider } from './state/AppStateProvider';
 import './styles.css';
 import './status.css';
-import { AppStateProvider } from './state/AppState';
 
 registerSW({ immediate: true });
 
