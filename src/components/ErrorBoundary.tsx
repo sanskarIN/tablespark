@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { copy } from '../i18n/en';
 import { logger } from '../infrastructure/logger';
 
 interface Props {
@@ -28,17 +29,14 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <main className="fatal-error" role="alert">
           <img src="/logo.svg" alt="" width="72" height="72" />
-          <h1>TableSpark hit an unexpected error</h1>
-          <p>
-            Your local learning data has not been intentionally cleared. Reload the app to try
-            again.
-          </p>
+          <h1>{copy.fatalError.title}</h1>
+          <p>{copy.fatalError.body}</p>
           <button
             className="primary-button"
             type="button"
             onClick={() => window.location.reload()}
           >
-            Reload TableSpark
+            {copy.fatalError.reload}
           </button>
         </main>
       );
