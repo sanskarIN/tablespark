@@ -6,16 +6,21 @@ This document defines a reproducible release process for TableSpark.
 
 A release tag should point only to a commit that has passed the repository quality gates and a manual release-candidate review. Do not create a tag merely to make a workflow pass.
 
+The current prepared source version is **2.0.12**. This does not mean the `v2.0.12` tag has already been published; tagging remains the final release action after the exact candidate passes verification.
+
 ## 1. Update release metadata
 
 Before tagging:
 
 - choose the semantic version;
 - update `package.json` version if needed;
+- keep visible English/Hindi About and Settings version copy synchronized with package metadata;
 - move completed entries from `CHANGELOG.md` Unreleased into the version section;
 - update `ROADMAP.md` if priorities changed;
 - update `what_changed.md` with the release candidate status;
 - verify documentation describes the actual product.
+
+The locale-catalog test suite contains a regression assertion that the visible English/Hindi version matches `package.json`.
 
 ## 2. Install dependencies
 
@@ -73,12 +78,15 @@ Manually review:
 - backup export/import and destructive-import confirmation;
 - invalid/oversized backup rejection;
 - unreadable-local-state preservation/download/import/discard recovery;
+- blocked startup storage-read behavior where practical to simulate;
+- transactional backup replacement where practical to simulate;
 - user-visible storage-failure state where practical to simulate;
 - theme changes;
 - large text and reduced motion;
 - keyboard shortcut reference plus Alt+1 through Alt+5 behavior where available;
 - text-to-speech where available;
 - disabled speech fallback in an unsupported browser/profile;
+- English/Hindi About and Settings pages display version `2.0.12`;
 - offline reload after service-worker caching;
 - About/contact/funding links.
 
@@ -103,21 +111,23 @@ git config user.email
 
 The intended project commit email is `sanskarin@outlook.in`.
 
-## 7. Create the tag
+## 7. Create the 2.0.12 tag
 
-For version `0.1.0`:
+Only after the frozen candidate is verified:
 
 ```bash
-git tag -a v0.1.0 -m "TableSpark v0.1.0"
-git push origin v0.1.0
+git tag -a v2.0.12 -m "TableSpark v2.0.12"
+git push origin v2.0.12
 ```
 
 Command meaning:
 
 - `git tag -a` creates an annotated tag.
-- `v0.1.0` is the tag name expected by the release workflow pattern.
+- `v2.0.12` is the tag name expected by the release workflow pattern.
 - `-m` supplies the tag message.
-- `git push origin v0.1.0` publishes that specific tag to GitHub.
+- `git push origin v2.0.12` publishes that specific tag to GitHub.
+
+Do not move an already-published `v2.0.12` tag to a different commit. If a tagged build is faulty, prepare a later patch version.
 
 ## 8. Automated release workflow
 
@@ -157,7 +167,7 @@ Compare the hexadecimal values exactly. The checksum is integrity metadata, not 
 
 After the release appears on GitHub:
 
-- confirm the release points to the intended tag/commit;
+- confirm the release points to `v2.0.12` and the intended candidate commit;
 - download the attached ZIP and SHA-256 file;
 - verify the ZIP against the checksum before deployment;
 - inspect the packaged files;
@@ -176,4 +186,4 @@ If deployment must be rolled back, redeploy the last known-good artifact and doc
 
 ## Release artifact scope
 
-The initial release produces a static web/PWA artifact. Native installers are not generated because the chosen architecture does not require a native wrapper for its current product requirements.
+The current release process produces a static web/PWA artifact. Native installers are not generated because the chosen architecture does not require a native wrapper for its current product requirements.
