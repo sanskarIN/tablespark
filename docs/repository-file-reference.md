@@ -2,7 +2,7 @@
 
 This is the exhaustive tracked-file map for the TableSpark branch at the documentation-completeness checkpoint on 2026-08-19.
 
-After this file is added, the inventory below contains **156 explicitly listed tracked files**. Directories are explained through their files rather than counted as separate tracked-file entries.
+The inventory below contains **156 explicitly listed tracked files**. Directories are explained through their files rather than counted as separate tracked-file entries.
 
 Purpose of this document:
 
@@ -33,7 +33,7 @@ Generated/untracked directories such as `node_modules/`, `dist/`, `coverage/`, `
 | `.prettierrc.json` | Prettier style: single quotes, trailing commas, 100-column width, semicolons. | Keep package formatting scripts aligned with this policy. |
 | `eslint.config.js` | Flat ESLint config for Node scripts and strict type-aware TS/React/JSX accessibility rules. | Tool/rule upgrades can change CI; do not broadly suppress accessibility/type issues. |
 | `index.html` | Vite HTML entry document and React mount host. | Any external script/meta/network additions need privacy/security review and production testing. |
-| `package.json` | Node project manifest: metadata, engine minimums, scripts, runtime/dev dependencies. | Central synchronized source for commands, version, dependencies, Node requirements. |
+| `package.json` | Node project manifest: metadata, engine minimums, scripts, runtime/dev dependencies, including the formal `test:docs` gate. | Central synchronized source for commands, version, dependencies, Node requirements and aggregate `check`. |
 | `playwright.config.ts` | Playwright Chromium E2E config, production-preview web server, CI retry/worker behavior. | Keep preview port/build command and E2E docs synchronized. |
 | `tsconfig.app.json` | Strict browser/application TypeScript project for `src/`. | Schema/i18n/state changes intentionally surface typed fixture/catalog errors here. |
 | `tsconfig.json` | Root TypeScript project-reference coordinator. | References app and Node projects used by `tsc -b`. |
@@ -72,7 +72,7 @@ Generated/untracked directories such as `node_modules/`, `dist/`, `coverage/`, `
 
 | File | Purpose | Important maintenance relationship |
 | --- | --- | --- |
-| `.github/workflows/ci.yml` | Main PR/main CI: formatting, lint, types, Vitest, scanner tests/scan, build, production audit, artifact + Chromium E2E. | `quality` and `e2e` are recommended required checks; keep Node/actions/docs synchronized. |
+| `.github/workflows/ci.yml` | Main PR/main CI: formatting, lint, types, Vitest, scanner tests/scan, documentation-link gate, build, production audit, build artifact, plus Chromium E2E. | `quality` and `e2e` are recommended required checks; keep Node/actions/scripts/docs synchronized. |
 | `.github/workflows/codeql.yml` | Push/PR/weekly JavaScript-TypeScript CodeQL security analysis. | Needs `security-events: write`; real alerts require investigation rather than dismissal for a green check. |
 | `.github/workflows/release.yml` | Tag-triggered verification, production build, ZIP packaging, SHA-256 generation and GitHub Release creation. | Tag only verified candidate; checksum is integrity metadata, not a signature. |
 | `.github/workflows/visual-evidence.yml` | PR/manual Chromium real-browser screenshot capture and artifact upload. | Human review is still required; screenshots are candidate evidence, not production-origin evidence. |
@@ -107,33 +107,33 @@ Generated/untracked directories such as `node_modules/`, `dist/`, `coverage/`, `
 | `docs/localization.md` | Locale provider/catalog architecture, language preference storage, adding a locale, testing guidance. | Update supported-locale list/provider/catalog/test procedure together. |
 | `docs/native-packaging-evaluation.md` | TWA/Capacitor/native options and current decision to keep PWA canonical. | Re-evaluate only when a real distribution/native capability need exists. |
 | `docs/performance.md` | Performance goals, table/session/storage budgets, measurement and optimization rules. | Update when limits/bundle/caching architecture changes. |
-| `docs/quality-gates.md` | Merge/release verification expectations. | Keep synchronized with actual CI job/check names and package scripts. |
+| `docs/quality-gates.md` | Merge/release verification expectations, including documentation-link integrity. | Keep synchronized with actual package scripts, CI job/check names and release process. |
 | `docs/release-evidence.md` | Candidate evidence recording template for CI, screenshots, accessibility, Hindi, production PWA and artifact checks. | Evidence must be tied to final candidate SHA; pending means not run. |
 | `docs/release-notes-template.md` | Structured template for consistent release notes. | Keep aligned with product/change categories and security/privacy communication. |
 | `docs/release.md` | Version/tag/quality/build/package/checksum/GitHub Release/post-release/rollback procedure. | Keep artifact names and workflow behavior synchronized. |
 | `docs/repository-settings.md` | Recommended main-branch protection/ruleset/check settings. | Required check names must come from real GitHub runs, not guesses. |
 | `docs/setup.md` | Development tool installation and upgrade guidance. | Keep supported Node/npm/browser/Playwright instructions current. |
-| `docs/testing.md` | Unit/property/integration/security/E2E/accessibility/localization testing strategy and boundaries. | Update when tests/scripts/workflows are added/renamed. |
+| `docs/testing.md` | Unit/property/integration/security/docs/E2E/accessibility/localization testing strategy and boundaries. | Update when tests/scripts/workflows are added/renamed. |
 | `docs/troubleshooting.md` | Setup/build/test/storage/PWA/common failure diagnosis. | Add real recurring failures; remove obsolete tooling instructions. |
 | `docs/user-guide.md` | End-user guide to Tables, worksheet composer, Practice, Progress, Settings, backup/recovery, PWA and keyboard behavior. | Must match visible localized product behavior and destructive semantics. |
 | `docs/verification-plan.md` | Candidate verification sequence/plan. | Use alongside evidence document; source implementation alone cannot satisfy manual gates. |
 
-# 8. New comprehensive documentation references
+# 8. Comprehensive documentation references added by the deep documentation pass
 
 | File | Purpose | Important maintenance relationship |
 | --- | --- | --- |
-| `docs/commands-reference.md` | Deep explanation of npm, Playwright, security, link-check, Git, release/checksum commands and failures. | Update whenever package scripts/commands/toolchain procedures change. |
+| `docs/commands-reference.md` | Deep explanation of npm, Playwright, security, documentation-link, Git, release/checksum commands and failures. | Update whenever package scripts/commands/toolchain procedures change. |
 | `docs/configuration-reference.md` | Explains package/TypeScript/Vite/PWA/Vitest/Playwright/ESLint/Prettier/editor/env/Git/GitHub configuration. | Maintains synchronized-values checklist to prevent config drift. |
 | `docs/ci-cd.md` | Complete CI/CodeQL/release/visual-evidence/Dependabot/release-note automation guide. | Update workflow triggers/jobs/permissions/artifacts and branch protection guidance together. |
 | `docs/domain-model.md` | Detailed pure domain types, multiplication/practice/mastery/review/session/worksheet invariants and flows. | Update with any mathematical/learning rule or bound change. |
 | `docs/state-and-persistence.md` | React state actions, startup classifications, localStorage, migration/import/export/recovery and save-failure lifecycle. | Critical for schema/recovery changes; keep aligned with storage/provider tests. |
 | `docs/security-model.md` | Engineering trust boundaries for local input/storage/import, browser APIs, dependencies, Actions, releases and no-backend model. | New network/auth/HTML-rendering/deployment boundaries require explicit update. |
-| `docs/maintenance.md` | Recurring dependency/toolchain/schema/i18n/accessibility/PWA/docs/release/incident maintenance handbook. | Use as maintainer operational checklist. |
+| `docs/maintenance.md` | Recurring dependency/toolchain/schema/i18n/accessibility/PWA/docs/release/incident maintenance handbook. | Use as maintainer operational checklist; `test:docs` is a formal quality gate. |
 | `docs/glossary.md` | Defines project/product/engineering/security/release terminology. | Update when introducing terms that have project-specific meaning. |
 | `docs/documentation-index.md` | Audience/task navigation and documentation source-of-truth hierarchy. | Add newly created public/deep docs so they remain discoverable. |
 | `docs/repository-file-reference.md` | This exhaustive tracked-file inventory. | Must change when any tracked file is added/removed/renamed. |
 
-# 9. Documentation assets
+# 9. Documentation asset
 
 | File | Purpose | Important maintenance relationship |
 | --- | --- | --- |
@@ -160,9 +160,9 @@ Generated/untracked directories such as `node_modules/`, `dist/`, `coverage/`, `
 
 | File | Purpose | Important maintenance relationship |
 | --- | --- | --- |
-| `scripts/link-check.mjs` | CLI entry that runs local repository Markdown link checking. | Currently callable directly; if added to package `check`, update CI/docs. |
-| `scripts/link-checker.mjs` | Dependency-free implementation for extracting/validating repository-local Markdown links. | Keep behavior deterministic/offline for local paths. |
-| `scripts/link-checker.test.mjs` | Node tests for link-checker implementation. | Update before expanding Markdown/path syntax handling. |
+| `scripts/link-check.mjs` | CLI entry that runs local repository Markdown link checking. | Invoked by formal `npm run test:docs`, which is part of `npm run check` and CI/release verification. |
+| `scripts/link-checker.mjs` | Dependency-free implementation for extracting/validating repository-local Markdown links. | Keep behavior deterministic/offline for local paths; parser changes need tests. |
+| `scripts/link-checker.test.mjs` | Node tests for link-checker implementation. | Also run by `npm run test:docs`; update before expanding Markdown/path syntax handling. |
 | `scripts/secret-scan.mjs` | CLI entry that scans repository files using the secret-scanner implementation. | Scanner is defense in depth; never use it to justify committing real secrets. |
 | `scripts/secret-scanner.mjs` | Dependency-free supported credential-pattern detection/redacted finding logic. | Add specific patterns carefully and never echo matched secret values. |
 | `scripts/secret-scanner.test.mjs` | Node tests for scanner detections/redaction behavior. | Use synthetic fake credential samples only. |
@@ -472,6 +472,17 @@ Review:
 - StatusBanners/copy/tests;
 - E2E/release/deployment docs.
 
+## Documentation quality gate
+
+Review:
+
+- `package.json` `test:docs`/`check`;
+- `scripts/link-check*.mjs`;
+- CI `quality` step;
+- commands/testing/quality/CI/maintenance docs.
+
+The link gate verifies local references. The tracked-file map must still be manually/automatically compared with a recursive Git file list for completeness.
+
 ## CI/job names
 
 Review:
@@ -509,7 +520,7 @@ When maintaining this file:
 3. compare those paths against this reference;
 4. add/remove/rename entries as necessary;
 5. verify documentation index links for new docs;
-6. run the repository local Markdown link checker;
+6. run `npm run test:docs` against an actual checkout;
 7. record the completeness update in `what_changed.md`.
 
 A directory listing alone is not sufficient because nested files can be missed. Use the recursive tree or equivalent `git ls-files` from a real checkout.
@@ -532,4 +543,4 @@ On PowerShell:
 (git ls-files).Count
 ```
 
-After this reference file is created, the documented checkpoint contains **156 listed tracked files**. Future commits can legitimately change the count; update this document rather than preserving the number artificially.
+At this documentation checkpoint, this reference lists **156 tracked files**. Future commits can legitimately change the count; update this document rather than preserving the number artificially.
