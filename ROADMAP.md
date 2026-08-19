@@ -20,7 +20,7 @@ The roadmap prioritizes coherent learning value, accessibility, reliability, and
 - [x] Large-text and reduced-motion settings.
 - [x] Print-friendly solved/blank worksheet layout with paper-only Name/Date metadata.
 - [x] Progressive speech synthesis with unsupported/failure fallback.
-- [x] Fully externalized English product copy ready for a locale provider.
+- [x] Typed runtime locale provider with English and Hindi interface catalogs plus persisted language switching.
 - [x] Structured logging with sensitive-key and sensitive-value redaction.
 - [x] Unit/property/integration/browser testing.
 - [x] Repository secret scanner plus scanner tests in the quality gate.
