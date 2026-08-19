@@ -35,12 +35,13 @@ Implemented:
 - Explicit `MAX_RENDERED_ROWS = 5000` generation budget prevents a mathematically valid-looking configuration from creating an excessively large worksheet DOM.
 - Deterministic row ordering.
 - Solved equation formatting using the multiplication sign `×`.
+- Table-configuration failures resolve through the active locale catalog instead of surfacing raw English domain exceptions.
 
 The row budget is enforced before rendering, not merely hidden by the UI.
 
 ## 2. Worksheet composer and printing
 
-The Tables feature now includes a dedicated worksheet composer rather than a single hide-answers toggle.
+The Tables feature includes a dedicated worksheet composer rather than a single hide-answers toggle.
 
 Printable output modes:
 
@@ -130,9 +131,10 @@ Implemented:
 - per-question elapsed time recording;
 - progressive browser speech synthesis for questions where available;
 - disabled speech controls plus explanatory copy when the browser cannot provide a usable synthesis API;
-- runtime speech failures are non-fatal.
+- runtime speech failures are non-fatal;
+- practice-start and review failures use active-locale fallback copy instead of raw domain exception messages.
 
-User-facing practice/table error paths are localized rather than exposing raw English domain exception strings while the Hindi locale is active.
+This last point is important for Hindi UI correctness: invalid practice setup no longer leaks English exception text into a Hindi session.
 
 ## 6. Mistake review
 
@@ -273,6 +275,8 @@ Implemented:
 - final remaining profile cannot be deleted;
 - destructive profile deletion requires confirmation.
 
+The 100-profile maximum is enforced inside the functional React state updater, not only from the rendered Settings count. This prevents two batched additions at a 99-profile state from both observing stale render state and creating 101 profiles.
+
 Each profile keeps separate:
 
 - mastery;
@@ -337,6 +341,8 @@ Implemented automated coverage includes:
 - locale preference excluded from learner-state JSON;
 - browser-level Hindi navigation/reload;
 - browser-level Hindi table/practice/backup error paths.
+
+The final hardening pass changed table generation, practice start/review, and invalid-backup feedback so these paths use localized catalog messages rather than embedding raw English parser/domain exceptions.
 
 A fluent/native Hindi terminology review remains a **manual release-quality gate** and is documented in `docs/hindi-review-checklist.md`.
 
@@ -432,25 +438,41 @@ Validation includes:
 
 ## 19. Startup storage classification
 
-The local storage loader distinguishes:
+The learner-state loader now distinguishes **four** startup outcomes:
 
 ### `empty`
 
-No learner-state value exists. TableSpark can create/persist defaults.
+`localStorage.getItem()` succeeded and no learner-state value exists. TableSpark can create and persist defaults.
 
 ### `loaded`
 
-Existing value parses/migrates/validates successfully and becomes current state.
+The browser read succeeded and the existing value parses/migrates/validates successfully. It becomes current state.
 
 ### `invalid`
 
-A value exists but cannot safely be read/parsed/migrated/validated.
+The browser read succeeded and returned an existing raw value, but parsing, migration, size validation, schema validation, or semantic validation failed.
 
-The `invalid` case is **not** treated as empty.
+This case is **not** treated as empty. The exact returned value is preserved for explicit recovery.
 
-## 20. Unreadable local-state recovery
+### `unavailable`
 
-When an existing learner-state value is unreadable:
+`localStorage.getItem()` itself threw before TableSpark obtained a learner-state value.
+
+This is deliberately neither `empty` nor `invalid`:
+
+- TableSpark cannot know whether learner data exists;
+- it creates only temporary in-memory defaults so core UI can render;
+- `storageReadUnavailable = true`;
+- `unreadableStoredState = false`;
+- automatic learner-state writes are paused;
+- normal validated backup export/import controls are disabled because the visible default is not a trustworthy representation of inaccessible storage;
+- recovery UI for a known invalid raw value is not shown because no raw value was obtained.
+
+This distinction fixes the prior edge case where a browser storage read exception could be misclassified as corrupted data and could eventually risk writing temporary defaults over unknown inaccessible state.
+
+## 20. Known-invalid local-state recovery
+
+When an existing learner-state value was successfully read but is invalid:
 
 - original raw stored value is preserved;
 - TableSpark creates only a temporary in-memory default state so UI remains usable;
@@ -464,9 +486,49 @@ When an existing learner-state value is unreadable:
 
 This prevents a temporary default state from automatically destroying recoverable existing data.
 
-## 21. Normal storage write failure
+## 21. Transactional backup replacement
 
-A different condition exists when current state is valid but the browser refuses a save.
+Backup replacement now has a durability boundary rather than treating a React state update as equivalent to a successful import.
+
+Pipeline:
+
+```text
+raw backup
+→ byte-size check
+→ JSON parsing
+→ supported migration
+→ complete schema-2 validation
+→ confirm startup storage was readable
+→ save validated replacement
+→ only after successful save, replace React state
+→ report import success
+```
+
+If validation fails:
+
+- current state remains unchanged;
+- localized generic import failure is shown.
+
+If startup storage reads were unavailable:
+
+- replacement is refused without writing, because TableSpark will not overwrite unknown inaccessible data.
+
+If the replacement write fails:
+
+- current state remains unchanged;
+- `persistenceAvailable` is set false;
+- import reports failure rather than success.
+
+If the replacement write succeeds:
+
+- validated replacement becomes current state;
+- known-invalid recovery state is cleared when applicable;
+- persistence is marked available;
+- the normal persistence effect can continue from the durable replacement.
+
+## 22. Normal storage write failure
+
+A different condition exists when current state is known/valid but the browser later refuses a save.
 
 TableSpark:
 
@@ -476,11 +538,11 @@ TableSpark:
 - does not crash the application;
 - warns that changes may not survive reload.
 
-Write failure and unreadable-existing-data recovery intentionally remain separate states because their safe behavior differs.
+This later write-failure state remains distinct from both known-invalid existing data and startup storage-read unavailability because their safe export/recovery behavior differs.
 
 # Accessibility and keyboard behavior
 
-## 22. Implemented accessibility structure
+## 23. Implemented accessibility structure
 
 Current implementation includes:
 
@@ -500,7 +562,7 @@ Current implementation includes:
 - document language updates for locale changes;
 - progress percentages available as text/accessible labels.
 
-## 23. Keyboard shortcut reference
+## 24. Keyboard shortcut reference
 
 Implemented:
 
@@ -515,7 +577,7 @@ Implemented:
 
 The shortcuts are optional enhancements and may be intercepted by an OS/browser.
 
-## 24. Accessibility verification boundary
+## 25. Accessibility verification boundary
 
 Automated Playwright checks verify stable semantics such as:
 
@@ -532,7 +594,7 @@ The manual assistive-technology matrix remains pending until actually executed w
 
 # PWA lifecycle
 
-## 25. Offline/update behavior
+## 26. Offline/update behavior
 
 The production PWA service worker can cache the app shell.
 
@@ -549,7 +611,7 @@ User choices:
 - **Update now**
 - **Later**
 
-## 26. Optional installation
+## 27. Optional installation
 
 When a supporting browser emits its install-prompt event, TableSpark can display an optional installation message/action.
 
@@ -563,7 +625,7 @@ Properties:
 
 # Release and distribution work
 
-## 27. Release artifact integrity
+## 28. Release artifact integrity
 
 Tagged release workflow packages:
 
@@ -581,7 +643,7 @@ The checksum verifies byte-level integrity relative to the workflow-produced dig
 
 It is not a cryptographic publisher signature.
 
-## 28. Real browser visual evidence
+## 29. Real browser visual evidence
 
 The repository contains:
 
@@ -601,7 +663,7 @@ These are intended as real browser evidence rather than fabricated/mock release 
 
 The uploaded artifact still requires human inspection before being marked reviewed.
 
-## 29. Deployment/native packaging decisions
+## 30. Deployment/native packaging decisions
 
 Static hosting is technically appropriate for `dist/`, but no repository document claims an unapproved host is production.
 
@@ -615,7 +677,7 @@ Static hosting is technically appropriate for `dist/`, but no repository documen
 
 # Automated test system
 
-## 30. Domain/unit/property coverage
+## 31. Domain/unit/property coverage
 
 Current coverage includes:
 
@@ -632,7 +694,7 @@ Current coverage includes:
 - deduplicated mistake review;
 - session retention/prepend/trim.
 
-## 31. Infrastructure coverage
+## 32. Infrastructure coverage
 
 Includes:
 
@@ -654,11 +716,12 @@ Includes:
 - question/attempt/mistake semantics;
 - session semantics/retention;
 - goal bounds;
-- unreadable stored-state classification/preservation;
+- known-invalid stored-state classification/preservation;
+- blocked startup storage-read classification as `unavailable` rather than `invalid`;
 - normal write failure;
 - explicit clear.
 
-## 32. React integration coverage
+## 33. React integration coverage
 
 Includes:
 
@@ -676,9 +739,13 @@ Includes:
 - session-history persistence;
 - retention trimming;
 - optional mastery goals;
-- English/Hindi locale switching/persistence.
+- English/Hindi locale switching/persistence;
+- atomic profile-capacity enforcement during batched additions;
+- startup blocked-read behavior with recovery disabled and automatic writes suppressed;
+- successful transactional backup replacement;
+- failed backup replacement leaving the current profile/state unchanged.
 
-## 33. Browser E2E coverage
+## 34. Browser E2E coverage
 
 Current specs:
 
@@ -697,7 +764,7 @@ Release-evidence screenshot capture is opt-in through its dedicated flag/workflo
 
 # Repository security/quality tooling
 
-## 34. Secret scanner
+## 35. Secret scanner
 
 Files:
 
@@ -717,7 +784,7 @@ Properties:
 
 It is defense in depth, not permission to commit credentials. A real exposed secret must be revoked/rotated and history/artifacts assessed separately.
 
-## 35. Documentation link checker
+## 36. Documentation link checker
 
 Files:
 
@@ -738,7 +805,7 @@ It:
 1. tests the checker implementation;
 2. verifies supported repository-local Markdown link targets against the checkout.
 
-`test:docs` is now part of:
+`test:docs` is part of:
 
 - `npm run check`;
 - CI `quality`;
@@ -785,7 +852,7 @@ Playwright E2E and the npm production advisory audit remain separate CI/release-
 
 # Current GitHub automation
 
-## 36. CI
+## 37. CI
 
 `.github/workflows/ci.yml`
 
@@ -815,7 +882,7 @@ Triggers:
 - installs Chromium/system dependencies;
 - runs production-preview Playwright tests.
 
-## 37. CodeQL
+## 38. CodeQL
 
 `.github/workflows/codeql.yml`
 
@@ -827,7 +894,7 @@ Runs on:
 
 Uses JavaScript/TypeScript CodeQL analysis with scoped `security-events: write` permission.
 
-## 38. Release
+## 39. Release
 
 `.github/workflows/release.yml`
 
@@ -839,13 +906,13 @@ Runs on `v*.*.*` tags and:
 - creates SHA-256 metadata;
 - creates GitHub Release with generated notes and both assets.
 
-## 39. Release Visual Evidence
+## 40. Release Visual Evidence
 
 `.github/workflows/visual-evidence.yml`
 
 Runs on PRs to main and manual dispatch, captures real Chromium screenshots, and uploads a 30-day evidence artifact.
 
-## 40. Dependabot
+## 41. Dependabot
 
 Configured weekly for:
 
@@ -856,228 +923,189 @@ Development dependencies can be grouped to reduce update noise.
 
 # Deep documentation completion phase
 
-The project documentation has now been expanded from topic-level guides into a complete repository documentation system.
+The project documentation has been expanded from topic-level guides into a complete repository documentation system.
 
-## 41. New deep documentation references
-
-Added:
+## 42. Deep documentation references
 
 ### `docs/commands-reference.md`
 
-Deep explanation of:
-
-- npm install/dev/build/preview/typecheck/lint/format/tests;
-- Playwright/browser installation;
-- visual evidence capture;
-- secret scanning;
-- formal documentation-link gate;
-- aggregate quality gate;
-- npm audit;
-- Git commands;
-- release tags/checksum verification;
-- common failures.
+Deep explanation of npm, browser, evidence, security, documentation, Git and release commands plus common failures.
 
 ### `docs/configuration-reference.md`
 
-Documents:
-
-- `package.json`;
-- `.nvmrc`;
-- TypeScript project graph/strictness;
-- Vite/PWA manifest/Workbox;
-- Vitest;
-- Playwright;
-- ESLint;
-- Prettier;
-- EditorConfig;
-- VS Code workspace settings;
-- environment placeholders/security;
-- Git ignore/attributes;
-- GitHub repository configuration;
-- synchronized values that must move together.
+Documents package, Node, TypeScript, Vite/PWA, Vitest, Playwright, ESLint, Prettier, EditorConfig, VS Code, environment, Git and GitHub configuration and synchronized values.
 
 ### `docs/ci-cd.md`
 
-Documents every repository automation surface:
-
-- CI quality/e2e;
-- documentation-link step;
-- CodeQL;
-- release workflow;
-- visual-evidence workflow;
-- permissions;
-- concurrency;
-- artifacts;
-- Dependabot;
-- generated release notes;
-- failure triage;
-- branch-protection check-name maintenance.
+Documents CI quality/e2e, CodeQL, release workflow, visual evidence, permissions, concurrency, artifacts, Dependabot, generated notes, failure triage and check-name maintenance.
 
 ### `docs/domain-model.md`
 
-Documents:
-
-- all core domain types;
-- mathematical invariants;
-- table bounds/render budget;
-- worksheet model;
-- deterministic generator/seed semantics;
-- canonical commutative fact keys;
-- difficulty presets;
-- mastery math/rule;
-- mistake-review deduplication;
-- session retention/goals;
-- feature-to-domain data flows.
+Documents core domain types, mathematical invariants, table/worksheet budgets, deterministic generation, mastery, mistake review, sessions/goals and feature-to-domain flows.
 
 ### `docs/state-and-persistence.md`
 
-Documents:
+Now documents in detail:
 
 - storage keys;
-- empty/loaded/invalid startup states;
-- automatic save lifecycle;
-- normal write failure vs unreadable existing data;
-- all AppState actions;
-- Zod structural/semantic validation;
+- **empty / loaded / invalid / unavailable** startup states;
+- distinction between known-invalid returned data and a storage read that never returned a value;
+- suppression of writes after blocked startup reads;
+- ordinary write failures;
+- all `AppState` actions;
+- atomic 100-profile capacity enforcement;
+- structural/semantic validation;
 - migration pipeline;
+- transactional backup replacement;
 - backup/raw recovery behavior;
-- future schema-change process.
+- future schema-change procedure and maintainer checklist.
 
 ### `docs/security-model.md`
 
-Documents engineering trust boundaries for:
-
-- browser inputs;
-- localStorage;
-- backup import;
-- raw recovery data;
-- browser APIs;
-- service workers/install prompts;
-- external navigation;
-- dependencies;
-- GitHub Actions;
-- release artifacts;
-- rendering/XSS;
-- logging;
-- repository scanner;
-- consequences of any future backend/auth feature.
+Documents engineering trust boundaries for browser input, localStorage/read availability, transactional backup import, raw recovery, browser APIs, service worker/install prompt, external navigation, dependencies, Actions, release artifacts, XSS/rendering, logging, repository scanning and future backend/auth consequences.
 
 ### `docs/maintenance.md`
 
-Maintainer operations handbook covering:
-
-- dependency/toolchain upgrades;
-- TypeScript/ESLint/Prettier;
-- domain/schema compatibility;
-- localStorage budgets;
-- localization/Hindi review;
-- accessibility/CSS/print;
-- PWA/hosting;
-- Actions/Dependabot;
-- scanner/documentation gate;
-- README/changelog/handoff maintenance;
-- releases/incidents/clean-clone verification.
+Maintainer operations handbook covering dependency/toolchain upgrades, TypeScript/lint/formatting, domain/schema compatibility, storage budgets, localization/Hindi review, accessibility/print, PWA/hosting, Actions/Dependabot, scanner/docs gates, documentation, releases and incidents.
 
 ### `docs/glossary.md`
 
 A project-specific A–Z glossary covering product, learning, persistence, accessibility, PWA, testing, Git, security and release terminology.
 
-It explicitly distinguishes concepts such as:
-
-- local vs encrypted;
-- offline-first vs never needing internet;
-- checksum vs signature;
-- seeded vs secure random;
-- fact streak vs engagement streak;
-- profile vs authenticated account;
-- source inspection vs executed evidence.
-
 ### `docs/documentation-index.md`
 
-Audience/task navigation for:
-
-- users;
-- developers;
-- maintainers;
-- persistence work;
-- localization;
-- accessibility;
-- security/privacy;
-- releases;
-- deployment/packaging.
-
-It also defines documentation source-of-truth hierarchy and an update matrix.
+Audience/task navigation plus documentation source-of-truth hierarchy and update matrix.
 
 ### `docs/repository-file-reference.md`
 
 Exhaustive tracked-file inventory.
 
-At the documentation-completeness checkpoint it explicitly lists **156 tracked files**, including:
+At the documentation-completeness checkpoint it explicitly lists **156 tracked files**, including every root config/policy/document, GitHub config/workflow/template, VS Code file, ADR/document/asset, E2E spec, public asset, repository script/test and application source/test/style/type file.
 
-- every root config/policy/document;
-- every GitHub config/workflow/template;
-- both VS Code workspace files;
-- every ADR/document/asset;
-- every E2E spec;
-- every public asset;
-- every repository script/test;
-- every application/component/domain/feature/i18n/infrastructure/state/test/style/type file.
+The final audit temporarily evaluated adding a CODEOWNERS file, but did not retain it because the project already has a single clear repository maintainer and retaining it would have expanded the tracked-file inventory without enough functional value. The final tree therefore remains aligned with the 156-file exhaustive reference.
 
-Each entry explains its purpose and important maintenance relationship.
+## 43. Public policy/documentation synchronization
 
-The reference also includes cross-file synchronization checklists and a procedure for comparing against a recursive Git tree/`git ls-files`.
+The final hardening pass synchronized:
 
-## 42. Existing documentation retained and integrated
+- `CHANGELOG.md` with blocked-read, transactional-import, localized-error and atomic-profile fixes;
+- `ROADMAP.md` with the now-implemented runtime locale provider/Hindi interface rather than stale “ready for a locale provider” wording;
+- `SECURITY.md` with blocked-read and transactional replacement trust boundaries;
+- `PRIVACY.md` with startup-read unavailability, disabled unsafe backup actions and durability-before-import-success behavior;
+- `docs/security-model.md` and `docs/state-and-persistence.md` with the same executable invariants.
 
-The new documentation does not replace the existing focused guides. It integrates with and links to:
+This is important because persistence behavior is part of the public privacy/data-loss contract, not merely an internal refactor.
 
-- README;
-- CHANGELOG;
-- ROADMAP;
-- PRIVACY;
-- SECURITY;
-- SUPPORT;
-- CONTRIBUTING;
-- CODE OF CONDUCT;
-- accessibility;
-- architecture;
-- data-schema-v2;
-- deployment evaluation;
-- development;
-- git workflow;
-- Hindi review;
-- localization;
-- native packaging evaluation;
-- performance;
-- quality gates;
-- release evidence;
-- release notes template;
-- release guide;
-- repository settings;
-- setup;
-- testing;
-- troubleshooting;
-- user guide;
-- verification plan;
-- ADRs 0001–0004.
+# Final reliability hardening in this continuation
 
-## 43. Documentation integrity improvement
+## 44. Atomic profile-capacity invariant
 
-Before this phase, the repository had a local link-checker utility but documentation/process text was partially stale about how it was invoked.
+A real React batching edge case was fixed.
 
-Current state:
+Before the fix, `addProfile()` checked the rendered `state.profiles.length` before scheduling the functional update. At 99 profiles, two additions fired in one event could both pass that stale outer check and sequentially produce 101 profiles.
 
-- `npm run test:docs` is declared in `package.json`;
-- it tests the link-checker implementation and then checks repository-local Markdown targets;
-- `npm run check` includes `test:docs`;
-- CI `quality` has an explicit documentation-link step;
-- tagged release verification inherits it through `npm run check`;
-- `docs/quality-gates.md`, `docs/testing.md`, `docs/commands-reference.md`, `docs/ci-cd.md`, `docs/maintenance.md`, and the tracked-file reference are synchronized with this behavior;
-- stale documentation that referred to an undeclared `docs:check` command has been corrected.
+Current behavior:
+
+- trim/validate name first;
+- inspect `current.profiles.length` inside the updater;
+- only create/append a profile when the latest state is below `MAX_PROFILES`.
+
+Regression coverage creates 99 profiles, dispatches two additions in one event and verifies both rendered and persisted counts stop at 100.
+
+## 45. Browser storage-read classification
+
+A second real reliability/data-safety issue was fixed.
+
+Previously, an exception from `localStorage.getItem()` was grouped with malformed returned data. That could incorrectly show a corrupted-data recovery flow even though TableSpark had never obtained any value to parse or preserve.
+
+Current loader result type has four explicit outcomes:
+
+```text
+empty
+loaded
+invalid
+unavailable
+```
+
+`unavailable` is reserved for a storage read operation that throws.
+
+Regression coverage verifies:
+
+- the storage infrastructure returns `unavailable`;
+- the provider reports saving unavailable;
+- recovery remains not required;
+- no automatic `setItem()` call is attempted after the blocked startup read.
+
+## 46. Transactional destructive backup import
+
+A third reliability issue was fixed.
+
+Previously, a validated backup could replace React state and immediately show “imported successfully,” while persistence happened later in an effect. If the browser then rejected the write, the imported state existed only in memory and could disappear on reload despite the success message.
+
+Current behavior:
+
+1. parse/migrate/validate;
+2. refuse replacement if startup storage was unreadable;
+3. call `saveState(replacement)`;
+4. if saving fails, leave current state unchanged and return failure;
+5. only after successful saving, replace React state and clear invalid-data recovery;
+6. the Settings UI reports localized success/failure from that durability result.
+
+Regression coverage verifies both successful and failed replacement paths.
+
+## 47. Safe backup actions during blocked startup reads
+
+When the initial learner-state read is unavailable:
+
+- validated backup export is disabled because the displayed defaults are only temporary;
+- backup import is disabled because TableSpark refuses to overwrite unknown inaccessible storage;
+- a localized storage warning remains available as explanation;
+- known-invalid-value recovery controls stay hidden.
+
+A normal later write failure is intentionally different: current state was already known, so exporting it can still be useful.
+
+## 48. Localized validation failures
+
+The final audit compared Hindi browser error expectations with feature catch paths and found a source/test mismatch.
+
+Fixed paths:
+
+- table generation/configuration failure;
+- generated practice startup failure;
+- mistake-review setup failure;
+- invalid backup parsing/schema failure.
+
+These paths now use the active message catalog/generic localized copy rather than raw English domain/Zod exception messages.
+
+# Documentation integrity and completeness
+
+## 49. Documentation link gate
+
+Formal package command:
+
+```bash
+npm run test:docs
+```
+
+It tests the link-checker implementation and checks supported repository-local Markdown links.
+
+It is included in:
+
+- `npm run check`;
+- CI `quality`;
+- tagged release verification through `npm run check`.
+
+## 50. Exhaustive tracked-file reference
+
+`docs/repository-file-reference.md` is the auditable artifact for the “do not skip files” requirement.
+
+The maintained checkpoint lists **156 tracked files individually**.
+
+Generated/untracked directories such as `node_modules/`, `dist/`, `coverage/`, Playwright reports/results and similar build/runtime output are deliberately excluded from tracked-file counts.
 
 # Verification status for this handoff
 
-## 44. Local execution limitation
+## 51. Local execution limitation
 
 A direct clean-clone verification attempt in the execution container could not resolve `github.com` because that container had no working outbound DNS/network path for the clone.
 
@@ -1092,15 +1120,22 @@ npm audit
 
 completed successfully in that container.
 
-The repository is public and GitHub Actions remains the authoritative executable verification path for the branch.
+GitHub Actions remains the authoritative executable verification path for the branch.
 
-## 45. GitHub final-head verification rule
+## 52. GitHub exact-final-head verification rule
 
-This handoff update itself changes the branch SHA, so prior workflow runs—even successful runs—cannot be used as final evidence for this exact final documentation checkpoint.
+This handoff update itself changes the branch SHA. Prior workflow runs—even successful runs—cannot be used as final evidence for the exact SHA produced by this commit.
 
-After this commit, fetch/check the final PR head and its GitHub Actions runs.
+After this commit:
 
-Do not edit this file again merely to paste a green status if doing so would create a new unverified SHA. Record final external workflow state in the PR/check UI and final response/release-evidence process instead.
+1. fetch PR #4 again and record its exact new head SHA externally;
+2. inspect CI for that exact SHA;
+3. inspect CodeQL for that exact SHA;
+4. inspect Release Visual Evidence for that exact SHA;
+5. if any exact-head job fails, inspect its job/steps/logs and make only focused fixes;
+6. after any fix, repeat the exact-head rule because the SHA changed again.
+
+Do not edit this handoff merely to paste a green workflow status if doing so would create another unverified head.
 
 A run is not a pass when it is:
 
@@ -1111,7 +1146,9 @@ A run is not a pass when it is:
 - unavailable;
 - attached only to an older head SHA.
 
-## 46. Manual/external gates that remain pending until actually executed
+# Manual/external gates
+
+## 53. Gates that remain pending until actually executed
 
 These are intentionally **not** marked complete by source/documentation work alone:
 
@@ -1134,38 +1171,17 @@ These are intentionally **not** marked complete by source/documentation work alo
 
 These gates are tracked in `docs/release-evidence.md`, `docs/accessibility.md`, `docs/hindi-review-checklist.md`, `docs/deployment-evaluation.md`, and `docs/release.md`.
 
-# Documentation completeness checkpoint
-
-The current documentation pass was explicitly performed to satisfy the requirement to document the complete repository without skipping tracked files.
-
-The auditable completeness artifact is:
-
-```text
-docs/repository-file-reference.md
-```
-
-At this checkpoint it documents **156 tracked files individually**.
-
-The maintained completeness procedure is:
-
-1. obtain a recursive Git tree or run `git ls-files` on the exact candidate;
-2. compare every tracked file against the reference;
-3. update the reference for any add/remove/rename;
-4. run `npm run test:docs` to verify supported local documentation targets;
-5. keep documentation-index/README discoverability current;
-6. record meaningful documentation-system changes in CHANGELOG and this handoff.
-
 # Next safe work
 
-Source/product scope is largely at a release-candidate/refinement checkpoint. The next work should prioritize **verification and evidence**, not speculative architecture expansion:
+Source/product/documentation scope is now at the final release-candidate/refinement checkpoint. The next work should be **verification and evidence**, not speculative feature expansion:
 
 1. fetch final PR #4 head SHA;
 2. inspect CI `quality` and `e2e` for that exact SHA;
 3. inspect CodeQL for that exact SHA;
-4. inspect Release Visual Evidence run for that exact SHA;
+4. inspect Release Visual Evidence for that exact SHA;
 5. fix only real final-head failures with focused commits/tests;
-6. if visual evidence succeeds, manually inspect the artifact before marking screenshots reviewed;
-7. keep remaining assistive-technology/Hindi/production-origin/release gates pending until actually performed;
-8. do not merge PR #4 until the required repository checks and intended review gates are satisfied.
+6. if visual evidence succeeds, inspect the artifact before marking screenshots reviewed;
+7. keep assistive-technology/Hindi/production-origin/release gates pending until actually performed;
+8. do not merge PR #4 until required repository checks and intended review gates are satisfied.
 
 No production deployment, native wrapper, app-store package, release tag, or manual assistive-technology/Hindi certification is claimed by this handoff.
