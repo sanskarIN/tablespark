@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -178,6 +178,36 @@ describe('TableSpark application', () => {
     await user.click(screen.getByRole('button', { name: 'Settings' }));
     expect(screen.getByRole('checkbox', { name: 'Text-to-speech controls' })).toBeDisabled();
     expect(screen.getByText('Text-to-speech is not available in this browser.')).toBeInTheDocument();
+  });
+
+  it('preserves unreadable local data until the user explicitly discards it', async () => {
+    localStorage.setItem('tablespark.state.v1', '{broken');
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+
+    renderApp();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Stored learning data needs recovery.',
+    );
+    expect(localStorage.getItem('tablespark.state.v1')).toBe('{broken');
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(
+      screen.getByRole('button', { name: 'Download unreadable local data' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Discard unreadable local data' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Export backup' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Discard unreadable local data' }));
+    expect(
+      await screen.findByText('Unreadable local data discarded. Local saving has resumed.'),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(localStorage.getItem('tablespark.state.v1')).not.toBe('{broken');
+    });
+    confirm.mockRestore();
   });
 
   it('warns when browser storage cannot persist changes', async () => {
