@@ -10,12 +10,16 @@ Location: `src/domain/*.test.ts`
 
 These verify:
 
-- table generation order and step sizes;
+- table generation order, step sizes, and output budget;
 - input validation;
 - equation formatting;
-- deterministic question generation;
+- deterministic question generation and seed bounds;
+- random-session seed helpers;
 - mastery-key normalization;
-- mastery accuracy, streak, and mistake behavior.
+- mastery accuracy, streak, and mistake behavior;
+- deduplicated mistake-review selection;
+- mastery search/filter rules and mastery classification;
+- worksheet prompt construction.
 
 Run:
 
@@ -38,15 +42,48 @@ These cover:
 - local-storage round trips;
 - portable JSON export/import;
 - corrupted storage handling;
-- malformed backup rejection;
+- storage write failures;
+- malformed and oversized backup rejection;
+- profile identity validation;
+- mastery-counter invariants;
+- multiplication-answer and attempt-correctness invariants;
 - unsupported schema versions;
-- migration boundary behavior.
+- migration boundary behavior;
+- safe lightweight browser preference flags;
+- structured log redaction;
+- progressive speech-synthesis behavior.
 
 ### React integration tests
 
 Location: `src/App.test.tsx`
 
-Testing Library verifies the application through accessible roles and labels rather than implementation details. Current coverage includes primary navigation and generator updates.
+Testing Library verifies the application through accessible roles and labels rather than implementation details. Current coverage includes:
+
+- primary navigation;
+- generator updates;
+- solved/blank worksheet mode;
+- printable worksheet metadata;
+- mastery search and filters;
+- unavailable speech fallback UI;
+- user-visible persistence-failure warning.
+
+### Security-scanner tests
+
+The dependency-free repository secret scanner has its own Node test suite:
+
+```bash
+npm run test:security
+```
+
+The tests verify ordinary text stays clean, supported credential patterns are recognized, and findings do not echo the matched credential value.
+
+Scan the repository itself with:
+
+```bash
+npm run secret:scan
+```
+
+The scanner is defense in depth, not a replacement for secret rotation or repository-history cleanup after an accidental real-secret commit.
 
 ### Browser end-to-end tests
 
@@ -55,6 +92,7 @@ Location: `e2e/`
 Playwright starts a production preview server and verifies primary user journeys in Chromium:
 
 - generate a table;
+- switch to blank worksheet mode;
 - configure and complete a deterministic practice session;
 - create an offline profile;
 - change large-text accessibility settings.
@@ -69,6 +107,12 @@ Install Chromium first on a new development machine:
 
 ```bash
 npx playwright install chromium
+```
+
+On Linux CI or a minimal Linux machine, Playwright may require:
+
+```bash
+npx playwright install --with-deps chromium
 ```
 
 ## Coverage
@@ -90,16 +134,18 @@ npm run check
 This runs, in order:
 
 1. Prettier formatting check;
-2. ESLint;
+2. ESLint and JSX accessibility rules;
 3. TypeScript type checking;
-4. Vitest tests;
-5. production build.
+4. Vitest application tests;
+5. Node security-scanner tests;
+6. repository secret scan;
+7. production build.
 
-Browser E2E is intentionally a separate script because it requires a browser binary.
+Browser E2E is intentionally a separate script because it requires a browser binary. Production dependency auditing is an additional CI/release gate because it depends on installed package metadata.
 
 ## CI behavior
 
-The CI workflow has two jobs:
+The CI workflow has two jobs.
 
 ### `quality`
 
@@ -108,6 +154,8 @@ The CI workflow has two jobs:
 - runs lint;
 - runs TypeScript checks;
 - runs Vitest;
+- tests the repository secret scanner;
+- scans repository files for supported credential patterns;
 - builds the PWA;
 - audits production dependencies for high-severity findings;
 - uploads the built `dist/` directory as an artifact.
@@ -138,9 +186,9 @@ Tests must not depend on:
 - external APIs;
 - real learner data;
 - clock-sensitive remote state;
-- random values without a controlled seed.
+- random values without a controlled source/seed.
 
-Practice generation supports a seed specifically so sessions can be reproduced.
+Practice generation supports a seed specifically so sessions can be reproduced. Random-seed helper tests inject a deterministic random function instead of depending on `Math.random()` output.
 
 ## Manual release checks
 
@@ -151,10 +199,11 @@ Automated tests do not replace final manual checks. Before a release, inspect:
 - large-text mode;
 - reduced motion;
 - narrow and wide layouts;
-- print preview;
+- print preview including blank Name/Date worksheet metadata;
 - offline behavior after initial load;
 - PWA installability on the release origin;
 - backup export and re-import;
+- persistence-failure warning behavior where practical;
 - text-to-speech availability/fallback behavior.
 
 Record release-candidate results in `what_changed.md`.
