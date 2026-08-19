@@ -1,22 +1,39 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { copy } from '../../i18n/en';
 import { canSpeak } from '../../infrastructure/speech';
-import { exportState, MAX_BACKUP_BYTES, MAX_PROFILES } from '../../infrastructure/storage';
+import {
+  exportState,
+  MAX_BACKUP_BYTES,
+  MAX_PROFILES,
+  readRawState,
+} from '../../infrastructure/storage';
 import { useAppState } from '../../state/useAppState';
 
 function boundedInteger(value: number, min: number, max: number, fallback: number): number {
   return Number.isInteger(value) && value >= min && value <= max ? value : fallback;
 }
 
+function downloadText(content: string, filename: string, type: string): void {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export function SettingsPage() {
   const {
     state,
     activeProfile,
+    unreadableStoredState,
     setActiveProfile,
     addProfile,
     deleteProfile,
     updateSettings,
     replaceFromBackup,
+    discardUnreadableState,
     resetProgress,
   } = useAppState();
   const [newProfileName, setNewProfileName] = useState('');
@@ -26,14 +43,36 @@ export function SettingsPage() {
   const speechAvailable = canSpeak();
 
   const downloadBackup = () => {
-    const blob = new Blob([exportState(state)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `tablespark-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadText(
+      exportState(state),
+      `tablespark-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      'application/json',
+    );
     setMessage(copy.settings.backupExported);
+  };
+
+  const downloadUnreadableState = () => {
+    const raw = readRawState();
+    if (raw === null) {
+      setMessage(copy.settings.unreadableUnavailable);
+      return;
+    }
+
+    downloadText(
+      raw,
+      `tablespark-unreadable-recovery-${new Date().toISOString().slice(0, 10)}.txt`,
+      'text/plain;charset=utf-8',
+    );
+    setMessage(copy.settings.unreadableDownloaded);
+  };
+
+  const discardUnreadable = () => {
+    if (!window.confirm(copy.settings.confirmDiscardUnreadable)) return;
+    if (discardUnreadableState()) {
+      setMessage(copy.settings.unreadableDiscarded);
+    } else {
+      setMessage(copy.settings.unreadableDiscardFailed);
+    }
   };
 
   const importBackup = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -224,8 +263,30 @@ export function SettingsPage() {
       <div className="panel">
         <h3>{copy.settings.dataPrivacy}</h3>
         <p>{copy.settings.backupNotice}</p>
+
+        {unreadableStoredState ? (
+          <div className="recovery-panel" id="recovery-note">
+            <h4>{copy.settings.recoveryTitle}</h4>
+            <p>{copy.settings.recoveryBody}</p>
+            <div className="button-row">
+              <button className="secondary-button" type="button" onClick={downloadUnreadableState}>
+                {copy.settings.downloadUnreadable}
+              </button>
+              <button className="text-button danger" type="button" onClick={discardUnreadable}>
+                {copy.settings.discardUnreadable}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="button-row">
-          <button className="secondary-button" type="button" onClick={downloadBackup}>
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={unreadableStoredState}
+            aria-describedby={unreadableStoredState ? 'recovery-note' : undefined}
+            onClick={downloadBackup}
+          >
             {copy.settings.exportBackup}
           </button>
           <button
