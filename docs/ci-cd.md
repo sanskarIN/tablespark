@@ -1,12 +1,12 @@
 # TableSpark CI/CD and Repository Automation
 
-This document explains every automated GitHub workflow and maintenance automation currently tracked in TableSpark. It describes triggers, permissions, jobs, artifacts, intended branch-protection use, and failure triage.
+This document explains every automated GitHub workflow and maintenance automation currently tracked in TableSpark. It describes triggers, permissions, jobs, artifacts, intended branch-protection use, documentation integrity, and failure triage.
 
 ## Automation map
 
 TableSpark currently has four GitHub Actions workflows:
 
-1. **CI** — formatting, lint, types, tests, security scan, production build, dependency audit, and Chromium E2E.
+1. **CI** — formatting, lint, types, application tests, repository security checks, documentation-link integrity, production build/audit, and Chromium E2E.
 2. **CodeQL** — JavaScript/TypeScript static security analysis.
 3. **Release** — verifies a version tag, builds/packages the web artifact, creates SHA-256 metadata, and publishes a GitHub Release.
 4. **Release Visual Evidence** — captures real Chromium screenshots of the built UI for release-candidate review.
@@ -52,7 +52,7 @@ CI runs on:
 - pushes to `main`;
 - pull requests whose base is `main`.
 
-It does not run on every arbitrary branch push unless that push is part of a pull request to `main`.
+It does not run on every arbitrary branch push unless that branch is represented by a pull request to `main`.
 
 ## Concurrency
 
@@ -62,9 +62,7 @@ The workflow groups executions by workflow + ref and enables:
 cancel-in-progress: true
 ```
 
-Meaning: if a newer run supersedes an older run for the same ref, GitHub can cancel the obsolete run. This reduces wasted CI time and helps reviewers focus on the newest commit.
-
-A cancelled older run is not a failure in the candidate code, but it is also not evidence for the newest candidate. Release evidence must refer to the final head commit's checks.
+If a newer run supersedes an older run for the same ref, GitHub can cancel the obsolete run. A cancelled older run is not a failure in the candidate code, but it is also not evidence for the newest candidate. Release evidence must refer to checks for the final head SHA.
 
 ## `quality` job
 
@@ -80,7 +78,7 @@ Timeout:
 15 minutes
 ```
 
-### Step 1 — Checkout
+### Checkout
 
 ```yaml
 uses: actions/checkout@v7
@@ -88,7 +86,7 @@ uses: actions/checkout@v7
 
 Makes the candidate repository contents available to later steps.
 
-### Step 2 — Node setup
+### Node setup
 
 ```yaml
 uses: actions/setup-node@v7
@@ -96,25 +94,25 @@ node-version: 22.12.0
 package-manager-cache: false
 ```
 
-The workflow deliberately pins the expected Node version. Package-manager caching is disabled, favoring simpler/fresher installs over cache-specific behavior.
+The workflow pins the expected Node version. Package-manager caching is disabled for simpler/fresher installs.
 
-If the repository's supported Node version changes, update this value together with `.nvmrc`, `package.json`, other workflows, and setup documentation.
+If the supported Node version changes, update this value together with `.nvmrc`, `package.json`, every other workflow, and setup/configuration documentation.
 
-### Step 3 — Dependency installation
+### Dependency installation
 
 ```bash
 npm install --no-fund --no-audit
 ```
 
-`--no-audit` here avoids duplicating the explicit audit step later. It does **not** mean dependency auditing is disabled for CI overall.
+`--no-audit` avoids duplicating the explicit production-audit step later. It does **not** disable dependency security review overall.
 
-### Step 4 — Formatting
+### Check formatting
 
 ```bash
 npm run format:check
 ```
 
-A failure means a covered file does not match Prettier configuration/scope.
+A failure means a covered source/config file differs from Prettier policy.
 
 Typical fix:
 
@@ -123,78 +121,97 @@ npm run format
 npm run format:check
 ```
 
-Review formatting changes before committing them.
+Review the formatting diff before committing.
 
-### Step 5 — Lint
+### Lint
 
 ```bash
 npm run lint
 ```
 
-This includes type-aware TypeScript rules plus JSX accessibility and React rules.
+Includes strict type-aware TypeScript, React Hooks/refresh, JSX accessibility, and Node-script lint rules.
 
 A lint failure should normally be fixed in source rather than suppressed globally.
 
-### Step 6 — Type check
+### Type-check
 
 ```bash
 npm run typecheck
 ```
 
-Validates strict application/tooling TypeScript projects.
+Validates strict browser and Node/E2E TypeScript project references.
 
 Especially important after:
 
-- persisted-schema changes;
+- persisted schema changes;
 - locale catalog changes;
 - React state/context changes;
-- configuration or E2E TypeScript changes.
+- configuration/E2E TypeScript changes.
 
-### Step 7 — Application tests
+### Application tests
 
 ```bash
 npm run test
 ```
 
-Runs Vitest tests, including domain, persistence, localization, PWA adapter, component, and integration regression coverage.
+Runs Vitest domain, infrastructure, localization, PWA adapter, component, and integration tests.
 
-### Step 8 — Secret-scanner implementation tests
+### Secret-scanner implementation tests
 
 ```bash
 npm run test:security
 ```
 
-Tests the repository's dependency-free credential-pattern scanner.
+Tests the dependency-free repository scanner implementation. This is different from scanning the current repository.
 
-This verifies the scanner itself; it is separate from scanning the repository.
-
-### Step 9 — Repository secret scan
+### Repository secret scan
 
 ```bash
 npm run secret:scan
 ```
 
-Runs the scanner over its intended repository scope.
+Scans the intended repository text for supported credential signatures while avoiding echoing the matched credential value.
 
 If this reports a real credential:
 
 1. stop treating the branch as releasable;
 2. revoke/rotate the credential;
 3. remove it from current source;
-4. determine whether Git history or already-published artifacts contain it;
+4. assess repository history/artifact exposure;
 5. follow `SECURITY.md`.
 
-Never merely add a real secret to an ignore list to restore a green build.
+Never add a real exposed secret to an ignore list merely to restore green CI.
 
-### Step 10 — Production build
+### Documentation-link quality gate
+
+```bash
+npm run test:docs
+```
+
+This formal gate performs two stages:
+
+1. tests `scripts/link-checker.mjs` through `scripts/link-checker.test.mjs`;
+2. runs `scripts/link-check.mjs` over the checked-out repository.
+
+It validates supported repository-local Markdown targets and therefore protects deep documentation from silently accumulating broken file/image links.
+
+Important boundary:
+
+- it validates **local** repository links;
+- it does not crawl every external website;
+- it does not automatically know whether every new tracked source file has been described in `docs/repository-file-reference.md`.
+
+The exhaustive file inventory still requires tracked-file review when files are added/removed/renamed.
+
+### Production build
 
 ```bash
 npm run build
 ```
 
-Runs strict TypeScript build mode and Vite's production PWA build. A passing test suite with a failing build is still a release blocker.
+Runs strict TypeScript build mode and Vite's production PWA build. A passing unit suite with a failing production build is still a release blocker.
 
-### Step 11 — Production dependency audit
+### Production dependency audit
 
 ```bash
 npm audit --omit=dev --audit-level=high
@@ -202,9 +219,9 @@ npm audit --omit=dev --audit-level=high
 
 CI fails for covered high/critical production dependency advisories reported by npm.
 
-This is advisory-database based; a clean audit does not prove that dependencies are vulnerability-free.
+This is advisory-database based; a clean audit does not prove dependencies are vulnerability-free.
 
-### Step 12 — Upload production build
+### Upload production build
 
 ```yaml
 uses: actions/upload-artifact@v7
@@ -213,12 +230,12 @@ path: dist
 if-no-files-found: error
 ```
 
-The artifact is the exact `dist/` directory produced in the `quality` job.
+The artifact is the exact `dist/` produced by this quality job.
 
-Uses:
+Uses include:
 
-- inspect build output without rebuilding locally;
-- compare candidate contents;
+- inspect candidate build output without rebuilding locally;
+- compare packaged/static contents;
 - diagnose release/deployment differences.
 
 It is a CI artifact, not automatically a published production deployment.
@@ -247,16 +264,17 @@ Steps:
 4. install Chromium plus Linux dependencies;
 5. run `npm run test:e2e`.
 
-The Playwright configuration itself builds and starts the production preview before running browser specs.
+The Playwright configuration builds and starts the production preview automatically.
 
-Current E2E areas include:
+Current ordinary E2E areas include:
 
 - smoke/product flows;
 - accessibility invariants;
 - English/Hindi switching;
 - Hindi localized error paths;
-- print media behavior;
-- release screenshot capture spec (normally skipped unless its explicit flag is supplied).
+- print media behavior.
+
+`e2e/release-evidence.spec.ts` is normally skipped during ordinary E2E because its screenshot capture is enabled by a dedicated environment flag/workflow.
 
 ## Branch protection recommendation
 
@@ -294,7 +312,7 @@ Scheduled cron:
 17 3 * * 1
 ```
 
-This means 03:17 UTC every Monday. GitHub scheduled workflow timing can be delayed by platform load; it should not be treated as a real-time scheduler.
+This means 03:17 UTC every Monday. GitHub scheduled workflow execution can be delayed by platform load and should not be treated as a real-time scheduler.
 
 ## Permissions
 
@@ -303,11 +321,11 @@ contents: read
 security-events: write
 ```
 
-`security-events: write` allows CodeQL analysis results to be uploaded to GitHub code scanning.
+`security-events: write` allows analysis results to be uploaded to GitHub code scanning.
 
 ## Concurrency
 
-Like CI, CodeQL cancels obsolete in-progress runs for the same workflow/ref.
+CodeQL cancels obsolete in-progress runs for the same workflow/ref.
 
 ## Analysis job
 
@@ -338,10 +356,10 @@ Steps:
 
 CodeQL complements, but does not replace:
 
-- TypeScript correctness checks;
+- strict TypeScript correctness checks;
 - ESLint;
 - dependency audits;
-- the repository secret scanner;
+- repository secret scanning;
 - privacy/security design review;
 - manual review of browser trust boundaries.
 
@@ -350,16 +368,16 @@ CodeQL complements, but does not replace:
 Distinguish:
 
 - **workflow/tool failure** — setup/autobuild/action infrastructure failed;
-- **analysis alert** — CodeQL successfully found a potentially unsafe code pattern.
+- **analysis alert** — CodeQL completed and found a potentially unsafe pattern.
 
 For a real alert:
 
-1. inspect data flow and reachability;
+1. inspect data flow/reachability;
 2. reproduce/understand the pattern;
 3. fix the smallest responsible boundary;
 4. add a regression test when practical;
-5. rerun CodeQL on the fix;
-6. do not dismiss an alert solely to make branch protection green.
+5. rerun CodeQL;
+6. do not dismiss solely to satisfy branch protection.
 
 # 3. Tagged Release workflow
 
@@ -377,13 +395,11 @@ Release
 
 ## Trigger
 
-Runs when a tag matching:
+Runs when a pushed tag matches:
 
 ```text
 v*.*.*
 ```
-
-is pushed.
 
 Examples:
 
@@ -393,7 +409,7 @@ v0.2.1
 v1.0.0
 ```
 
-The pattern is syntactic; maintainers still need to follow semantic-versioning/release policy intentionally.
+The glob is syntactic; maintainers still need to apply release/version policy intentionally.
 
 ## Permission
 
@@ -401,9 +417,9 @@ The pattern is syntactic; maintainers still need to follow semantic-versioning/r
 contents: write
 ```
 
-This is required because the workflow creates a GitHub Release and uploads assets.
+Required because the workflow creates a GitHub Release and uploads assets.
 
-Do not expose `github.token` to arbitrary untrusted shell input. The current release command uses repository/tag environment variables generated by GitHub and known artifact paths.
+Do not expose `github.token` to arbitrary untrusted shell input.
 
 ## Release job
 
@@ -435,9 +451,18 @@ npm install --no-fund --no-audit
 npm run check
 ```
 
-This reruns local quality checks before packaging.
+The standard local gate now includes:
 
-Important limitation: `npm run check` does not include Playwright E2E. Therefore a release tag should be created only from a commit whose PR/CI E2E and required manual release gates were already reviewed.
+- formatting;
+- lint;
+- type checks;
+- application tests;
+- secret-scanner tests;
+- repository secret scan;
+- documentation-link tests/local-link integrity;
+- production build.
+
+Important limitation: `npm run check` does not include Playwright E2E or the npm advisory audit. A release tag should be created only from a commit whose PR/CI browser/audit/security/manual gates were already reviewed.
 
 ### Build release
 
@@ -445,7 +470,7 @@ Important limitation: `npm run check` does not include Playwright E2E. Therefore
 npm run build
 ```
 
-This intentionally rebuilds the production artifact from the tagged commit rather than blindly republishing an older CI artifact.
+The workflow intentionally rebuilds from the tagged commit rather than publishing an arbitrary local artifact.
 
 ### Package
 
@@ -453,7 +478,7 @@ This intentionally rebuilds the production artifact from the tagged commit rathe
 cd dist && zip -r ../tablespark-web.zip .
 ```
 
-The ZIP contains the contents of `dist/` at the archive root, not an extra `dist/` parent directory.
+The ZIP contains the contents of `dist/` at archive root.
 
 Output:
 
@@ -473,7 +498,7 @@ Output:
 tablespark-web.zip.sha256
 ```
 
-The checksum lets a downloader detect accidental or malicious byte-level modification relative to the workflow-produced digest.
+The checksum lets a downloader detect byte-level modification relative to the workflow-produced digest.
 
 It is **not** a digital signature or independent proof of publisher identity.
 
@@ -481,29 +506,30 @@ It is **not** a digital signature or independent proof of publisher identity.
 
 The GitHub CLI receives `GH_TOKEN` from `github.token` and runs `gh release create` with:
 
-- current tag name from `GITHUB_REF_NAME`;
+- current tag from `GITHUB_REF_NAME`;
 - ZIP artifact;
 - checksum file;
 - repository from `GITHUB_REPOSITORY`;
 - generated release notes;
 - `--verify-tag`.
 
-If tag verification fails, do not bypass it by removing the check without understanding the tag/repository state.
+If tag verification fails, do not remove the check just to publish. Diagnose the tag/repository state.
 
 ## Safe release sequence
 
-Before pushing the tag:
+Before pushing a tag:
 
-1. freeze the candidate commit;
-2. verify PR `quality`, `e2e`, CodeQL, and release visual evidence for that SHA;
-3. perform/manual-record required accessibility, Hindi, and production-origin gates where applicable;
-4. update changelog/version/release notes;
-5. create annotated tag;
-6. push only the intended tag;
-7. inspect workflow result;
-8. download ZIP + checksum;
-9. verify checksum independently;
-10. only then deploy the artifact if a production host has been approved.
+1. freeze candidate SHA;
+2. verify final-head PR `quality`, `e2e`, CodeQL, and visual evidence;
+3. inspect screenshot artifact;
+4. complete/manual-record required accessibility/Hindi/production-origin gates where applicable;
+5. update changelog/version/release notes;
+6. create annotated tag;
+7. push intended tag;
+8. inspect release workflow result;
+9. download ZIP + checksum;
+10. verify checksum independently;
+11. deploy only after production host/origin approval.
 
 See `docs/release.md` and `docs/release-evidence.md`.
 
@@ -528,7 +554,7 @@ Runs on:
 - pull requests targeting `main`;
 - manual `workflow_dispatch`.
 
-The manual trigger is useful when evidence needs to be regenerated without changing source.
+The manual trigger can regenerate evidence without a source edit.
 
 ## Permission
 
@@ -536,7 +562,7 @@ The manual trigger is useful when evidence needs to be regenerated without chang
 contents: read
 ```
 
-The workflow does not modify the repository or deploy anything.
+The workflow does not modify/deploy the repository.
 
 ## Screenshot job
 
@@ -576,7 +602,7 @@ Expected path:
 test-results/release-evidence/*.png
 ```
 
-`if-no-files-found: error` prevents a workflow from appearing successful if the test ran without producing screenshots.
+`if-no-files-found: error` prevents a misleading green upload step without screenshots.
 
 Retention:
 
@@ -584,23 +610,29 @@ Retention:
 30 days
 ```
 
-Current expected captures:
+Expected captures:
 
 - light/wide;
 - dark/wide;
 - light/compact;
 - dark/compact.
 
-These screenshots are **real Chromium renderings of the built application**.
+These are **real Chromium renderings of the built application**.
 
-They still require human inspection for clipping, awkward wrapping, typography, layout quality, and whether the candidate displayed an unexpected banner/state.
+They still need human inspection for:
 
-A passing screenshot workflow is not proof of:
+- clipping/overlap;
+- awkward localization wrapping;
+- typography;
+- theme correctness;
+- unexpected banners/state.
+
+A green screenshot workflow is not proof of:
 
 - Safari/Firefox rendering;
 - screen-reader behavior;
 - production hosting correctness;
-- PWA scope/installability on the final origin;
+- PWA installability/scope on final origin;
 - Hindi linguistic quality.
 
 # 5. Dependabot
@@ -611,7 +643,7 @@ File:
 .github/dependabot.yml
 ```
 
-Dependabot configuration version:
+Configuration version:
 
 ```text
 2
@@ -629,7 +661,7 @@ Schedule:
 
 - weekly;
 - Monday;
-- 04:00 (GitHub's Dependabot scheduling context).
+- 04:00.
 
 Open PR limit:
 
@@ -643,7 +675,7 @@ Development dependency updates are grouped under:
 development-dependencies
 ```
 
-Grouping reduces noisy one-PR-per-dev-package maintenance while still allowing runtime dependency changes to receive separate scrutiny where Dependabot determines appropriate updates.
+Grouping reduces noisy one-PR-per-dev-package maintenance while runtime/security-sensitive updates can still receive focused scrutiny.
 
 ## GitHub Actions updates
 
@@ -671,9 +703,9 @@ Action updates are supply-chain-sensitive. Review:
 - major-version migration notes;
 - requested permissions;
 - changed behavior;
-- whether a new major version still works with repository policies.
+- compatibility with repository policies.
 
-Do not auto-merge a major workflow action change solely because Dependabot opened it.
+Do not auto-merge a major workflow action update solely because Dependabot opened it.
 
 # 6. Generated release-note configuration
 
@@ -687,7 +719,7 @@ This is **not** the Actions release workflow. It configures GitHub's generated c
 
 ## Exclusion
 
-PRs/issues with label:
+PRs/issues labeled:
 
 ```text
 skip-changelog
@@ -695,7 +727,7 @@ skip-changelog
 
 are excluded from generated notes.
 
-Use the label only when omission is intentional; do not hide security-significant or user-visible changes from release notes merely for cleanliness.
+Do not hide security-significant or user-visible changes merely for cleaner notes.
 
 ## Categories
 
@@ -708,7 +740,7 @@ Generated notes classify labels into:
 - Dependencies → `dependencies`
 - Other changes → wildcard fallback
 
-Good PR labeling improves release-note usefulness but does not replace the maintained `CHANGELOG.md`.
+Good labeling improves generated notes but does not replace maintained `CHANGELOG.md`.
 
 # 7. Issue and pull-request automation surfaces
 
@@ -723,7 +755,7 @@ Files:
 
 Their role is contributor guidance rather than executable product code.
 
-Important privacy rule: issue/PR templates should never ask users to upload raw learner backups or unreadable recovery artifacts publicly. Reproduction guidance should request synthetic/redacted examples.
+Privacy rule: templates should never request public upload of raw learner backups or unreadable recovery artifacts. Reproduction guidance should use synthetic/redacted examples.
 
 # 8. Funding configuration
 
@@ -733,14 +765,14 @@ File:
 .github/FUNDING.yml
 ```
 
-This exposes optional repository funding through GitHub UI.
+Exposes optional repository funding through GitHub UI.
 
-Funding must remain:
+Funding remains:
 
 - optional;
 - separate from core learning features;
 - unrelated to access to privacy/security support;
-- described without pressure or misleading urgency.
+- described without pressure/misleading urgency.
 
 # 9. What is not automated
 
@@ -761,9 +793,26 @@ See deployment/native-packaging/evidence docs for the explicit gates.
 
 # 10. Workflow failure triage
 
-## Formatting/lint/type/test failure
+## Formatting/lint/type/application-test failure
 
 Reproduce locally with the exact named npm command before changing unrelated code.
+
+## Documentation-link failure
+
+Run:
+
+```bash
+npm run test:docs
+```
+
+For a reported broken target:
+
+1. inspect source Markdown and intended target;
+2. fix stale/misspelled local path;
+3. if the link is valid and checker parsing is wrong, add a focused checker test before changing `link-checker.mjs`;
+4. rerun the full documentation gate.
+
+Do not disable link checking merely because a large documentation commit created many failures.
 
 ## Build failure
 
@@ -777,7 +826,7 @@ Check TypeScript first, then Vite/PWA diagnostics.
 
 ## E2E failure
 
-Run the failing spec locally:
+Run failing spec locally:
 
 ```bash
 npx playwright test e2e/<file>.spec.ts
@@ -787,7 +836,7 @@ If CI retried, inspect trace/test artifacts where available. Do not increase ret
 
 ## Audit failure
 
-Identify whether the advisory affects a production dependency and reachable use case. Upgrade/replace the dependency where possible. Document a deliberate risk decision if immediate remediation is impossible.
+Identify whether advisory affects a production dependency/reachable use case. Upgrade/replace where possible. Document a deliberate risk decision if immediate remediation is impossible.
 
 ## CodeQL failure/alert
 
@@ -797,32 +846,32 @@ Separate infrastructure failure from an actual code-scanning result. Real alerts
 
 Determine whether:
 
-- the screenshot test failed to render;
+- screenshot test failed to render;
 - expected files were not created;
 - artifact upload failed;
-- the workflow lacks a browser/system dependency.
+- workflow lacks browser/system dependency.
 
-Even after a green run, manually inspect the artifact.
+Even after green automation, manually inspect images.
 
 ## Release failure before GitHub Release creation
 
-Do not manually create a release from an unverified partial artifact just to bypass the failed workflow. Fix the cause or rerun from the same intended tag/commit according to release policy.
+Do not manually create a release from an unverified partial artifact merely to bypass workflow failure. Fix the cause/rerun according to release policy.
 
-## Release created but later found faulty
+## Faulty published release
 
-Do not move the public tag silently. Follow the rollback/patch guidance in `docs/release.md`.
+Do not move the public tag silently. Follow rollback/patch guidance in `docs/release.md`.
 
 # 11. Required-check maintenance
 
 Whenever a workflow/job is renamed:
 
-1. merge/establish a successful run under the new name;
-2. inspect the exact status/check names GitHub exposes;
+1. establish a successful run under new name;
+2. inspect exact status/check names GitHub exposes;
 3. update branch protection/rulesets;
 4. update `docs/repository-settings.md` and `docs/quality-gates.md`;
-5. make sure the old required check is not left impossible to satisfy.
+5. remove obsolete impossible-to-satisfy required checks.
 
-Branch protection should follow actual check names, not documentation guesses.
+Branch protection follows actual check names, not guesses.
 
 # 12. Automation-change checklist
 
@@ -831,12 +880,12 @@ For any `.github/workflows/*.yml` change:
 - [ ] Review trigger scope.
 - [ ] Review token permissions.
 - [ ] Review third-party action publisher/version.
-- [ ] Check whether untrusted PR data enters a shell command.
-- [ ] Check whether secrets/tokens can reach untrusted code.
-- [ ] Check artifact contents for personal/sensitive data.
+- [ ] Check untrusted PR data does not enter unsafe shell commands.
+- [ ] Check secrets/tokens cannot reach untrusted code.
+- [ ] Check artifact contents for private/sensitive data.
 - [ ] Keep Node/tool versions synchronized.
 - [ ] Re-run relevant workflow on a PR before relying on it.
-- [ ] Update CI/CD, testing, release, and repository-settings docs.
-- [ ] Record the change in `what_changed.md` when it changes a release/verification gate.
+- [ ] Update CI/CD, testing, release, quality-gate and repository-settings docs.
+- [ ] Record release/verification behavior changes in `what_changed.md`.
 
-For Dependabot/release-note configuration changes, also verify the intended maintenance cadence/labels against current repository practice.
+For Dependabot/release-note configuration changes, also verify maintenance cadence/labels against current repository practice.
