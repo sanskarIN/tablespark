@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { exportState } from '../../infrastructure/storage';
+import { exportState, MAX_BACKUP_BYTES } from '../../infrastructure/storage';
 import { useAppState } from '../../state/useAppState';
 
 function boundedInteger(value: number, min: number, max: number, fallback: number): number {
@@ -37,7 +37,7 @@ export function SettingsPage() {
     if (!file) return;
 
     try {
-      if (file.size > 2_000_000) throw new Error('Backup file is too large.');
+      if (file.size > MAX_BACKUP_BYTES) throw new Error('Backup file is too large.');
       const confirmed = window.confirm(
         'Importing this backup will replace all current TableSpark profiles, progress, and settings. Continue?',
       );
