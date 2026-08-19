@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 export function canSpeak(): boolean {
   return (
     typeof window !== 'undefined' &&
@@ -8,10 +10,16 @@ export function canSpeak(): boolean {
 
 export function speak(text: string): boolean {
   if (!canSpeak()) return false;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.9;
-  utterance.pitch = 1;
-  window.speechSynthesis.speak(utterance);
-  return true;
+
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+    return true;
+  } catch {
+    logger.warn('speech_synthesis_failed');
+    return false;
+  }
 }
