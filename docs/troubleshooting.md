@@ -9,7 +9,7 @@ node --version
 npm --version
 ```
 
-TableSpark requires Node.js 22+ and npm 10+.
+TableSpark requires Node.js 22.12.0 or newer and npm 10 or newer.
 
 Then reinstall project dependencies:
 
@@ -101,7 +101,7 @@ npm run format
 npm run format:check
 ```
 
-The first command rewrites formatting. The second verifies that formatting is now stable.
+The first command rewrites the files covered by the repository formatter command. The second verifies that formatting is stable.
 
 ## Unit tests fail
 
@@ -116,6 +116,37 @@ npm run test:watch
 ```
 
 Tests are deterministic and should not require network access or production credentials.
+
+## Security scanner tests fail
+
+Test the scanner separately:
+
+```bash
+npm run test:security
+```
+
+Do not replace a failing fixture with a real credential. Scanner tests deliberately construct fake representative values.
+
+## Repository secret scan fails
+
+Run:
+
+```bash
+npm run secret:scan
+```
+
+The output identifies the file, line, and finding type without printing the matched value. Inspect the referenced file carefully.
+
+If the finding is a real secret:
+
+1. revoke/rotate the credential immediately;
+2. remove it from the working tree;
+3. determine whether Git history must be cleaned;
+4. coordinate disclosure if user or production security could be affected.
+
+A later passing scan does not make a previously exposed credential safe again.
+
+If it is a false positive, improve the scanner/test narrowly rather than globally disabling the pattern.
 
 ## Playwright browser is missing
 
@@ -162,6 +193,44 @@ For development debugging:
 
 Do not clear site storage if you need locally stored profiles unless you exported a backup first.
 
+## “Local saving is unavailable” appears
+
+This warning means the application can operate in the current tab but the latest state write was rejected. Possible causes include:
+
+- local-storage quota exhaustion;
+- restrictive browser/site storage policy;
+- private browsing behavior;
+- browser extension or security software interference.
+
+Recommended steps:
+
+1. avoid reloading until you understand whether new progress is durable;
+2. check browser storage permissions/capacity for the site;
+3. remove unrelated site data rather than blindly clearing TableSpark data;
+4. when saving resumes, export a validated backup.
+
+This warning is different from the unreadable-data recovery state below.
+
+## “Stored learning data needs recovery” appears
+
+TableSpark found an existing local value but could not validate it. The application intentionally **does not overwrite that value**.
+
+While recovery is pending:
+
+- the app uses a temporary in-memory default state;
+- new changes are not persisted over the unreadable value;
+- ordinary **Export backup** is disabled because it would export the temporary state.
+
+Go to **Settings → Data & privacy**. You can:
+
+1. choose **Download unreadable local data** to save the exact raw stored value as a text recovery artifact;
+2. import a known-good TableSpark backup, which replaces the unreadable value after validation/confirmation;
+3. choose **Discard unreadable local data** only if you no longer need it.
+
+Download the raw value before discarding if there is any chance you may need manual recovery. The raw file may contain learner profile names and learning history, so treat it as personal data.
+
+Do not paste unreadable learning data into public issues. If support needs a reproduction, remove personal data first.
+
 ## Local profile/progress disappeared
 
 TableSpark stores learning state in browser local storage. It can disappear if:
@@ -175,34 +244,47 @@ If you exported a backup, restore it through **Settings → Data & privacy → I
 
 If local data was deleted and no backup exists, the application has no remote server copy from which to restore it.
 
+If data still exists but is unreadable, TableSpark shows the dedicated recovery warning instead of automatically deleting it.
+
 ## Backup import fails
 
-Possible reasons:
+Possible reasons include:
 
 - invalid JSON;
 - unsupported schema version;
-- missing required profile/settings fields;
+- file over the shared 2 MB persisted-state budget;
+- too many profiles;
+- duplicate profile identifiers;
 - an active profile identifier that does not exist in the profile array;
-- backup file over the UI size limit.
+- invalid settings ranges;
+- non-canonical mastery fact keys;
+- impossible mastery counters;
+- multiplication answers that do not match their operands;
+- attempt correctness that does not match the recorded response;
+- correct attempts incorrectly stored in mistake history.
 
-Use a backup created by TableSpark whenever possible. Do not hand-edit a backup unless you understand the versioned schema.
+Use a backup created by TableSpark whenever possible. Do not hand-edit a backup unless you understand the versioned schema and semantic invariants.
 
-## Text-to-speech button does nothing
+## Text-to-speech is unavailable or does nothing
 
 Speech synthesis is a progressive enhancement and depends on browser/platform support.
 
-Check that:
+If the browser does not expose usable speech-synthesis functions, TableSpark disables the Settings checkbox and displays an explanation.
+
+If controls are available but speech still fails, check that:
 
 - speech controls are enabled in Settings;
-- the browser exposes speech synthesis;
 - an operating-system voice is available;
-- browser/site audio is not blocked.
+- browser/site audio is not blocked;
+- the operating system/browser speech service is functioning.
 
-Core learning functionality does not depend on speech support.
+Runtime speech exceptions are handled as non-fatal failures. Core learning functionality does not depend on speech support.
 
 ## Printing includes unexpected browser headers/footers
 
-TableSpark supplies print CSS, but the browser controls print-dialog options such as headers, footers, margins, paper size, and scale. Disable browser headers/footers in the print dialog if you want a cleaner worksheet.
+TableSpark supplies print CSS and blank worksheet Name/Date lines, but the browser controls print-dialog options such as headers, footers, margins, paper size, and scale. Disable browser headers/footers in the print dialog if you want a cleaner worksheet.
+
+The active offline profile name is not automatically inserted into the printable worksheet header.
 
 ## Dark/system theme appears wrong
 
@@ -212,10 +294,11 @@ For `system` theme, TableSpark follows `prefers-color-scheme`. Check your operat
 
 Compare:
 
-- Node version (CI uses Node 22);
+- Node version (CI uses Node 22.12.0);
 - whether Chromium is installed for local E2E;
 - case sensitivity of filenames (Linux CI is case-sensitive);
 - committed files versus local uncommitted files;
+- secret-scan output;
 - production dependency audit output.
 
 Use GitHub Actions job logs to identify the exact failing step before changing code.
