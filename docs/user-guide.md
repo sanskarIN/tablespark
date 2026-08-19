@@ -13,6 +13,8 @@ Controls:
 - **Table step** — interval between tables. For example, start 2, end 10, step 2 produces tables 2, 4, 6, 8, and 10.
 - **Hide answers for practice worksheet** — changes solved equations into blank-answer prompts.
 
+TableSpark protects the interface from excessively large generated output. If a range would produce more than the supported worksheet-row budget, reduce the range or increase the table step.
+
 ### Study sheet
 
 With worksheet blanks disabled, equations include answers:
@@ -35,7 +37,7 @@ Speech answer controls are intentionally hidden in blank worksheet mode so they 
 
 ### Print
 
-Use **Print study sheet** or **Print practice worksheet**. TableSpark print CSS hides navigation and configuration controls and formats the equation cards for paper.
+Use **Print study sheet** or **Print practice worksheet**. TableSpark print CSS hides navigation and configuration controls, adds a paper-only worksheet heading with blank Name and Date lines, and formats the equation cards for paper. The active offline profile name is not automatically printed.
 
 Your browser still controls paper size, margins, scaling, headers, and footers.
 
@@ -52,9 +54,16 @@ Open **Practice** to create a drill.
 
 After selecting a preset you can still adjust minimum, maximum, or question count manually.
 
-### Seed
+### Random sessions and reproducible seeds
 
-The seed makes a question sequence reproducible. The same seed, minimum, maximum, and question count generate the same sequence for the current generator algorithm.
+A new Practice screen starts with a random unsigned 32-bit seed. Choose **New random seed** whenever you want another generated sequence.
+
+The visible seed makes a question sequence reproducible. The same seed, minimum, maximum, and question count generate the same sequence for the current generator algorithm. Supported seeds are whole numbers from `0` through `4294967295`.
+
+At the end of a generated session:
+
+- **New random drill** returns to setup with a new random seed.
+- **Repeat this seed** returns to setup while preserving the completed session seed so the same generated questions can be replayed.
 
 A seed is for reproducibility, not security.
 
@@ -72,7 +81,9 @@ Enter a whole-number answer and choose **Check answer**. TableSpark records corr
 
 ### Review mistakes
 
-Choose **Review mistakes** to practice recent incorrect facts again. If no mistakes exist yet, TableSpark explains that there is nothing to review.
+Choose **Review mistakes** to practice recent incorrect facts again. Repeated mistakes for the same commutative fact are deduplicated, so a review does not waste its limited question count repeating equivalent facts such as 4 × 7 and 7 × 4.
+
+If no mistakes exist yet, TableSpark explains that there is nothing to review.
 
 ## 3. Progress
 
@@ -81,10 +92,21 @@ The **Progress** section shows data for the active profile:
 - overall accuracy;
 - total attempts;
 - number of facts practiced;
+- number of mastered facts;
 - number of saved recent mistakes;
 - per-fact mastery percentages;
 - current correct-answer streak per fact;
 - recent incorrect answers and correct answers.
+
+A fact is considered **Mastered** after at least three attempts with 90% or better accuracy. This release intentionally uses a simple transparent rule rather than an opaque adaptive-learning score.
+
+Use **Search facts** to find a multiplication fact such as `4 × 7`. Search treats `×` and `x` consistently and ignores spaces.
+
+Use the **Show** filter to switch among:
+
+- **All practiced facts**;
+- **Needs practice**;
+- **Mastered**.
 
 Mastery keys treat multiplication as commutative: practicing 4 × 7 and 7 × 4 contributes to the same fact key.
 
@@ -96,6 +118,8 @@ Mastery keys treat multiplication as commutative: practicing 4 × 7 and 7 × 4 c
 - **Large-text classroom mode** — increases root text scale.
 - **Reduce motion** — minimizes interface transition/animation durations.
 - **Text-to-speech controls** — enables speaker controls where speech synthesis exists.
+
+When the current browser does not provide a usable speech-synthesis API, the text-to-speech checkbox is disabled and TableSpark explains that the feature is unavailable instead of failing at runtime.
 
 ### Practice defaults
 
@@ -113,7 +137,7 @@ To create a profile:
 
 To switch profiles, choose a profile button.
 
-You cannot delete the last remaining profile. This keeps application state valid.
+You cannot delete the last remaining profile. This keeps application state valid. TableSpark also shows local profile capacity and prevents creating more profiles than the supported persisted-state limit.
 
 ### Export backup
 
@@ -123,21 +147,31 @@ Store the file carefully because profile names and learning history can be perso
 
 ### Import backup
 
-Choose **Import backup** and select a compatible TableSpark JSON file. TableSpark validates the file before replacing current state.
+Choose **Import backup** and select a compatible TableSpark JSON file. TableSpark asks for confirmation before replacement and validates the complete backup before accepting it.
 
 Import can fail when:
 
 - JSON is malformed;
 - schema version is unsupported;
 - required fields are missing/invalid;
-- active profile reference is invalid;
-- file exceeds the UI limit.
+- profile IDs are duplicated;
+- the active profile reference is invalid;
+- mastery counters are mathematically inconsistent;
+- a stored multiplication answer does not match its operands;
+- an attempt's correctness flag does not match its recorded response;
+- the backup exceeds the shared 2 MB persisted-state budget.
 
 Export your current state before importing if you may need to restore it afterward.
 
 ### Reset active progress
 
 This clears mastery and saved mistakes for the selected profile after confirmation. It does not delete the profile itself.
+
+### Local-saving warning
+
+If browser storage rejects a write because of storage limits, browser policy, private-mode restrictions, or another storage error, TableSpark displays **Local saving is unavailable.**
+
+The app can continue operating in memory for the current tab, but changes may not survive reload. Address the browser storage problem before relying on new progress being durable.
 
 ## 5. About
 
@@ -160,7 +194,7 @@ After production PWA assets have been cached, core functionality is designed to 
 - table generation;
 - worksheet mode;
 - practice;
-- progress;
+- progress search/filtering;
 - profiles/settings;
 - local backup creation/import.
 
@@ -182,4 +216,4 @@ If the operating system/browser reserves one of these shortcuts, use normal keyb
 
 ## 8. Privacy reminder
 
-TableSpark has no required cloud account. Local data can still be lost if browser/site storage is cleared. Export a backup before browser cleanup, device migration, or other destructive storage maintenance.
+TableSpark has no required cloud account. Local data can still be lost if browser/site storage is cleared or becomes unavailable. Export a backup before browser cleanup, device migration, or other destructive storage maintenance.
