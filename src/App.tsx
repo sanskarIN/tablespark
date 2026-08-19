@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { StatusBanners } from './components/StatusBanners';
 import { AboutPage } from './features/about/AboutPage';
 import { PracticeDrill } from './features/practice/PracticeDrill';
 import { ProgressDashboard } from './features/progress/ProgressDashboard';
@@ -64,6 +65,8 @@ export default function App() {
           </button>
         ))}
       </nav>
+
+      <div className="content banner-content"><StatusBanners /></div>
 
       <main id="main-content" className="content" tabIndex={-1}>
         {view === 'tables' ? <TableGenerator /> : null}
