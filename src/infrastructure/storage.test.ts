@@ -295,6 +295,15 @@ describe('local persistence', () => {
     expect(readRawState()).toBe('{broken');
   });
 
+  it('classifies blocked storage reads as unavailable instead of invalid', () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('Blocked', 'SecurityError');
+    });
+
+    expect(loadStateResult()).toEqual({ status: 'unavailable', state: null });
+    getItem.mockRestore();
+  });
+
   it('reports storage write failure instead of throwing', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
       throw new DOMException('Quota exceeded', 'QuotaExceededError');
