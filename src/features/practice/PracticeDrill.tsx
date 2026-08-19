@@ -3,6 +3,7 @@ import { difficultyPresets, type DifficultyLevel } from '../../domain/difficulty
 import { generateQuestions, MAX_SEED } from '../../domain/questions';
 import { buildMistakeReview } from '../../domain/review';
 import type { DrillMode, Question } from '../../domain/types';
+import { copy } from '../../i18n/en';
 import { createPracticeSeed } from '../../infrastructure/random';
 import { speak } from '../../infrastructure/speech';
 import { useAppState } from '../../state/useAppState';
@@ -60,7 +61,7 @@ export function PracticeDrill() {
 
   const summary = useMemo(() => {
     if (!finished) return '';
-    return `Score ${score} of ${questions.length}`;
+    return copy.practice.score(score, questions.length);
   }, [finished, questions.length, score]);
 
   const applyDifficulty = (level: DifficultyLevel | 'custom') => {
@@ -72,13 +73,13 @@ export function PracticeDrill() {
       max: preset.max,
       count: preset.count,
     }));
-    setFeedback(`${preset.label}: ${preset.description}`);
+    setFeedback(copy.practice.presetSelected(preset.label, preset.description));
   };
 
   const chooseNewSeed = () => {
     const seed = createPracticeSeed();
     setSetup((value) => ({ ...value, seed }));
-    setFeedback(`New random seed: ${seed}`);
+    setFeedback(copy.practice.randomSeedSelected(seed));
   };
 
   const start = (nextQuestions?: Question[]) => {
@@ -92,10 +93,10 @@ export function PracticeDrill() {
       setRemaining(setup.seconds);
       startedAt.current = performance.now();
       if (state.settings.speechEnabled && generated[0]) {
-        speak(`${generated[0].left} times ${generated[0].right}`);
+        speak(copy.practice.spokenQuestion(generated[0].left, generated[0].right));
       }
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Could not start the drill.');
+      setFeedback(error instanceof Error ? error.message : copy.practice.couldNotStart);
     }
   };
 
@@ -103,12 +104,12 @@ export function PracticeDrill() {
     try {
       const review = buildMistakeReview(activeProfile.mistakes, setup.count);
       if (review.length === 0) {
-        setFeedback('No mistakes to review yet. Complete a drill first.');
+        setFeedback(copy.practice.noMistakes);
         return;
       }
       start(review);
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Could not create mistake review.');
+      setFeedback(error instanceof Error ? error.message : copy.practice.couldNotReview);
     }
   };
 
@@ -116,7 +117,7 @@ export function PracticeDrill() {
     if (!current) return;
     const parsed = Number(response);
     if (!Number.isInteger(parsed)) {
-      setFeedback('Enter a whole-number answer.');
+      setFeedback(copy.practice.wholeNumber);
       return;
     }
 
@@ -130,7 +131,7 @@ export function PracticeDrill() {
       elapsedMs: Math.max(0, now - startedAt.current),
     });
     if (correct) setScore((value) => value + 1);
-    setFeedback(correct ? 'Correct!' : `Not quite. The answer is ${current.answer}.`);
+    setFeedback(correct ? copy.practice.correct : copy.practice.incorrect(current.answer));
 
     const nextIndex = index + 1;
     setIndex(nextIndex);
@@ -138,7 +139,7 @@ export function PracticeDrill() {
     startedAt.current = now;
     const next = questions[nextIndex];
     if (state.settings.speechEnabled && next) {
-      speak(`${next.left} times ${next.right}`);
+      speak(copy.practice.spokenQuestion(next.left, next.right));
     }
   };
 
@@ -154,16 +155,13 @@ export function PracticeDrill() {
     <section className="page-stack" aria-labelledby="practice-title">
       <div className="hero-card">
         <div>
-          <p className="eyebrow">Focused practice</p>
-          <h2 id="practice-title">Drill your multiplication skills</h2>
-          <p>
-            Start with a random mix, or reuse the visible seed to replay exactly the same session.
-            Difficulty presets and mistake review help target the right facts.
-          </p>
+          <p className="eyebrow">{copy.practice.eyebrow}</p>
+          <h2 id="practice-title">{copy.practice.title}</h2>
+          <p>{copy.practice.description}</p>
         </div>
         {setup.mode === 'timed' && isRunning ? (
           <strong className="timer" aria-live="polite">
-            {remaining}s
+            {copy.practice.timer(remaining)}
           </strong>
         ) : null}
       </div>
@@ -177,21 +175,21 @@ export function PracticeDrill() {
           }}
         >
           <label>
-            Difficulty preset
+            {copy.practice.difficultyPreset}
             <select
               defaultValue="custom"
               onChange={(event) =>
                 applyDifficulty(event.target.value as DifficultyLevel | 'custom')
               }
             >
-              <option value="custom">Custom</option>
-              <option value="starter">Starter · 0–5</option>
-              <option value="builder">Builder · 2–12</option>
-              <option value="challenge">Challenge · 2–20</option>
+              <option value="custom">{copy.practice.custom}</option>
+              <option value="starter">{copy.practice.starter}</option>
+              <option value="builder">{copy.practice.builder}</option>
+              <option value="challenge">{copy.practice.challenge}</option>
             </select>
           </label>
           <label>
-            Minimum
+            {copy.practice.minimum}
             <input
               type="number"
               min={0}
@@ -203,7 +201,7 @@ export function PracticeDrill() {
             />
           </label>
           <label>
-            Maximum
+            {copy.practice.maximum}
             <input
               type="number"
               min={0}
@@ -215,7 +213,7 @@ export function PracticeDrill() {
             />
           </label>
           <label>
-            Questions
+            {copy.practice.questions}
             <input
               type="number"
               min={1}
@@ -228,7 +226,7 @@ export function PracticeDrill() {
           </label>
           <div>
             <label>
-              Seed
+              {copy.practice.seed}
               <input
                 type="number"
                 min={0}
@@ -241,24 +239,24 @@ export function PracticeDrill() {
               />
             </label>
             <button className="text-button" type="button" onClick={chooseNewSeed}>
-              New random seed
+              {copy.practice.newRandomSeed}
             </button>
           </div>
           <label>
-            Mode
+            {copy.practice.mode}
             <select
               value={setup.mode}
               onChange={(event) =>
                 setSetup((value) => ({ ...value, mode: event.target.value as DrillMode }))
               }
             >
-              <option value="untimed">Untimed</option>
-              <option value="timed">Timed</option>
+              <option value="untimed">{copy.practice.untimed}</option>
+              <option value="timed">{copy.practice.timed}</option>
             </select>
           </label>
           {setup.mode === 'timed' ? (
             <label>
-              Time limit (seconds)
+              {copy.practice.timeLimit}
               <input
                 type="number"
                 min={10}
@@ -272,10 +270,10 @@ export function PracticeDrill() {
           ) : null}
           <div className="button-row">
             <button className="primary-button" type="submit">
-              Start drill
+              {copy.practice.start}
             </button>
             <button className="secondary-button" type="button" onClick={reviewMistakes}>
-              Review mistakes
+              {copy.practice.reviewMistakes}
             </button>
           </div>
         </form>
@@ -283,9 +281,7 @@ export function PracticeDrill() {
 
       {isRunning && current ? (
         <div className="drill-card">
-          <p>
-            Question {index + 1} of {questions.length}
-          </p>
+          <p>{copy.practice.questionProgress(index + 1, questions.length)}</p>
           <div className="question" aria-live="polite">
             {current.left} × {current.right} = ?
           </div>
@@ -296,7 +292,7 @@ export function PracticeDrill() {
             }}
           >
             <label className="answer-label">
-              Your answer
+              {copy.practice.yourAnswer}
               <input
                 inputMode="numeric"
                 type="number"
@@ -305,7 +301,7 @@ export function PracticeDrill() {
               />
             </label>
             <button className="primary-button" type="submit">
-              Check answer
+              {copy.practice.checkAnswer}
             </button>
           </form>
         </div>
@@ -313,15 +309,15 @@ export function PracticeDrill() {
 
       {finished ? (
         <div className="drill-card center">
-          <h3>Session complete</h3>
+          <h3>{copy.practice.complete}</h3>
           <p className="question">{summary}</p>
-          <p>Seed {setup.seed} can be reused for the same generated drill.</p>
+          <p>{copy.practice.seedReplay(setup.seed)}</p>
           <div className="button-row">
             <button className="primary-button" type="button" onClick={() => resetSession(true)}>
-              New random drill
+              {copy.practice.newRandomDrill}
             </button>
             <button className="secondary-button" type="button" onClick={() => resetSession(false)}>
-              Repeat this seed
+              {copy.practice.repeatSeed}
             </button>
           </div>
         </div>
