@@ -5,7 +5,9 @@ import {
   exportState,
   importState,
   loadState,
+  loadStateResult,
   MAX_BACKUP_BYTES,
+  readRawState,
   saveState,
 } from './storage';
 
@@ -158,9 +160,11 @@ describe('local persistence', () => {
     );
   });
 
-  it('returns null instead of throwing for corrupted local storage', () => {
+  it('marks corrupted local storage invalid while preserving its raw value', () => {
     localStorage.setItem('tablespark.state.v1', '{broken');
+    expect(loadStateResult()).toEqual({ status: 'invalid', state: null });
     expect(loadState()).toBeNull();
+    expect(readRawState()).toBe('{broken');
   });
 
   it('reports storage write failure instead of throwing', () => {
