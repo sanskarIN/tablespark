@@ -7,13 +7,17 @@ Use this document as the release-candidate evidence checklist. Do not mark an it
 | Field | Value |
 | --- | --- |
 | Candidate version | `2.0.12` |
-| Commit SHA | `215386197a059d5e0922cdc7f622919a2e8b65a0` |
-| Pull request | PR `#4` — `feat: continue TableSpark roadmap refinement` |
+| Commit SHA | Record externally after the final tracked-file commit |
+| Pull request | PR `#4` — current TableSpark 2.0.12 release-candidate work |
 | Verification date | Not yet recorded for final 2.0.12 head |
 | Tester/reviewer | Not yet recorded |
 | Production origin | Not yet selected |
 
-The source/package/UI version is prepared as `2.0.12`, but the `v2.0.12` tag must not be created until the exact candidate passes the required automated and manual gates below.
+The source/package/UI version is prepared as `2.0.12`, but the `v2.0.12` tag must not be created until the exact immutable candidate passes the required automated and manual gates below.
+
+### Why the SHA is not hard-coded here
+
+Editing this tracked document creates a new commit. Therefore a SHA written into this file as “the final candidate SHA” would become stale immediately when the file is committed. The immutable final SHA and exact workflow run identifiers must be recorded in PR/check/release metadata **after the last tracked-file change**, without another source/documentation commit.
 
 ## Automated repository gates
 
@@ -21,21 +25,15 @@ Record the exact workflow run or check URL/result after the candidate commit sto
 
 | Gate | Required result | Evidence |
 | --- | --- | --- |
-| CI `quality` | Pass | Exact-head CI run created; currently queued |
-| CI `e2e` | Pass | Exact-head CI run created; currently queued |
-| CodeQL | Pass | Exact-head CodeQL run created; currently queued |
-| Release Visual Evidence | Pass | Exact-head visual-evidence run created; currently queued |
+| CI `quality` | Pass | Await exact final 2.0.12 candidate run |
+| CI `e2e` | Pass | Await exact final 2.0.12 candidate run |
+| CodeQL | Pass | Await exact final 2.0.12 candidate run |
+| Release Visual Evidence | Pass | Await exact final 2.0.12 candidate run |
 | Production dependency audit | No blocking high-severity finding | Covered by CI; final result pending |
 | Repository secret scan | Clean | Covered by CI; final result pending |
 | Visible version consistency | Package + English UI + Hindi UI all `2.0.12` | Unit/catalog and Playwright assertions added; final result pending |
 
-Exact-head workflow run IDs at candidate freeze:
-
-- CI: `32269505578`
-- CodeQL: `32269505330`
-- Release Visual Evidence: `32269505337`
-
-A queued run is not a pass. If any source or documentation file changes after this evidence record, the commit SHA and workflow evidence above become stale and must be replaced with the new candidate.
+A queued run is not a pass. Checks attached only to an older candidate SHA are not evidence for the final 2.0.12 candidate.
 
 ## Real browser screenshots
 
@@ -121,8 +119,9 @@ After the approved `v2.0.12` release tag is published:
 
 - Never replace `Not run` with `Pass` based on source inspection alone.
 - Never use checks from an older candidate SHA as evidence for the final 2.0.12 head.
+- Never hard-code a purported final SHA into a tracked file if that edit itself would create a newer candidate.
 - Never use repository preview illustrations as real release screenshots.
 - Never publish private learner data, backup JSON, or unreadable recovery files as evidence.
-- Keep evidence tied to an immutable commit SHA whenever possible.
-- If the candidate changes after a failure/fix, rerun the affected gates and record the new candidate SHA.
+- Keep final evidence tied to an immutable commit SHA in PR/check/release metadata whenever possible.
+- If the candidate changes after a failure/fix, rerun the affected gates and replace the external candidate record.
 - Do not create or move the `v2.0.12` tag merely to make a workflow start or pass.
