@@ -26,6 +26,7 @@ export default tseslint.config(
       ...jsxA11y.flatConfigs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       ...reactRefresh.configs.vite.rules,
+      'no-undef': 'off',
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
       '@typescript-eslint/no-confusing-void-expression': 'off',
       '@typescript-eslint/no-misused-promises': [
