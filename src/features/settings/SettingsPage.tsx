@@ -1,9 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import {
-  exportState,
-  MAX_BACKUP_BYTES,
-  MAX_PROFILES,
-} from '../../infrastructure/storage';
+import { copy } from '../../i18n/en';
+import { canSpeak } from '../../infrastructure/speech';
+import { exportState, MAX_BACKUP_BYTES, MAX_PROFILES } from '../../infrastructure/storage';
 import { useAppState } from '../../state/useAppState';
 
 function boundedInteger(value: number, min: number, max: number, fallback: number): number {
@@ -25,6 +23,7 @@ export function SettingsPage() {
   const [message, setMessage] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
   const profileLimitReached = state.profiles.length >= MAX_PROFILES;
+  const speechAvailable = canSpeak();
 
   const downloadBackup = () => {
     const blob = new Blob([exportState(state)], { type: 'application/json' });
@@ -34,7 +33,7 @@ export function SettingsPage() {
     anchor.download = `tablespark-backup-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
-    setMessage('Backup exported.');
+    setMessage(copy.settings.backupExported);
   };
 
   const importBackup = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -42,24 +41,24 @@ export function SettingsPage() {
     if (!file) return;
 
     try {
-      if (file.size > MAX_BACKUP_BYTES) throw new Error('Backup file is too large.');
-      const confirmed = window.confirm(
-        'Importing this backup will replace all current TableSpark profiles, progress, and settings. Continue?',
-      );
+      if (file.size > MAX_BACKUP_BYTES) throw new Error(copy.settings.backupTooLarge);
+      const confirmed = window.confirm(copy.settings.confirmBackupImport);
       if (!confirmed) return;
       replaceFromBackup(await file.text());
-      setMessage('Backup imported successfully.');
+      setMessage(copy.settings.backupImported);
     } catch (error) {
-      setMessage(error instanceof Error ? `Import failed: ${error.message}` : 'Import failed.');
+      setMessage(
+        error instanceof Error
+          ? copy.settings.importFailed(error.message)
+          : copy.settings.importFailedGeneric,
+      );
     } finally {
       event.target.value = '';
     }
   };
 
   const confirmProfileDelete = (id: string, name: string) => {
-    const confirmed = window.confirm(
-      `Delete the offline profile “${name}” and its local progress? This cannot be undone.`,
-    );
+    const confirmed = window.confirm(copy.settings.confirmDeleteProfile(name));
     if (confirmed) deleteProfile(id);
   };
 
@@ -67,17 +66,17 @@ export function SettingsPage() {
     <section className="page-stack" aria-labelledby="settings-title">
       <div className="hero-card">
         <div>
-          <p className="eyebrow">Personalize</p>
-          <h2 id="settings-title">Settings</h2>
-          <p>Your preferences and learning data stay in this browser unless you export them.</p>
+          <p className="eyebrow">{copy.settings.eyebrow}</p>
+          <h2 id="settings-title">{copy.settings.title}</h2>
+          <p>{copy.settings.description}</p>
         </div>
       </div>
 
       <div className="panel settings-grid">
         <div>
-          <h3>Appearance & accessibility</h3>
+          <h3>{copy.settings.appearanceAccessibility}</h3>
           <label>
-            Theme
+            {copy.settings.theme}
             <select
               value={state.settings.theme}
               onChange={(event) =>
@@ -86,9 +85,9 @@ export function SettingsPage() {
                 })
               }
             >
-              <option value="system">System</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
+              <option value="system">{copy.settings.systemTheme}</option>
+              <option value="light">{copy.settings.lightTheme}</option>
+              <option value="dark">{copy.settings.darkTheme}</option>
             </select>
           </label>
           <label className="check-row">
@@ -97,7 +96,7 @@ export function SettingsPage() {
               checked={state.settings.largeText}
               onChange={(event) => updateSettings({ largeText: event.target.checked })}
             />
-            Large-text classroom mode
+            {copy.settings.largeText}
           </label>
           <label className="check-row">
             <input
@@ -105,21 +104,28 @@ export function SettingsPage() {
               checked={state.settings.reducedMotion}
               onChange={(event) => updateSettings({ reducedMotion: event.target.checked })}
             />
-            Reduce motion
+            {copy.settings.reducedMotion}
           </label>
           <label className="check-row">
             <input
               type="checkbox"
-              checked={state.settings.speechEnabled}
+              checked={state.settings.speechEnabled && speechAvailable}
+              disabled={!speechAvailable}
+              aria-describedby={!speechAvailable ? 'speech-support-note' : undefined}
               onChange={(event) => updateSettings({ speechEnabled: event.target.checked })}
             />
-            Text-to-speech controls
+            {copy.settings.speech}
           </label>
+          {!speechAvailable ? (
+            <p id="speech-support-note" className="help-text">
+              {copy.settings.speechUnavailable}
+            </p>
+          ) : null}
         </div>
         <div>
-          <h3>Practice defaults</h3>
+          <h3>{copy.settings.practiceDefaults}</h3>
           <label>
-            Default questions
+            {copy.settings.defaultQuestions}
             <input
               type="number"
               min={1}
@@ -138,7 +144,7 @@ export function SettingsPage() {
             />
           </label>
           <label>
-            Timed drill seconds
+            {copy.settings.timedSeconds}
             <input
               type="number"
               min={10}
@@ -160,9 +166,9 @@ export function SettingsPage() {
       </div>
 
       <div className="panel">
-        <h3>Offline profiles</h3>
+        <h3>{copy.settings.profiles}</h3>
         <p id="profile-capacity">
-          {state.profiles.length} of {MAX_PROFILES} local profiles in use.
+          {copy.settings.profileCapacity(state.profiles.length, MAX_PROFILES)}
         </p>
         <div className="profile-list">
           {state.profiles.map((profile) => (
@@ -182,7 +188,7 @@ export function SettingsPage() {
                 disabled={state.profiles.length === 1}
                 onClick={() => confirmProfileDelete(profile.id, profile.name)}
               >
-                Delete
+                {copy.settings.delete}
               </button>
             </div>
           ))}
@@ -192,7 +198,7 @@ export function SettingsPage() {
           onSubmit={(event) => {
             event.preventDefault();
             if (profileLimitReached) {
-              setMessage(`Profile limit reached. Delete a profile before adding another.`);
+              setMessage(copy.settings.profileLimit);
               return;
             }
             addProfile(newProfileName);
@@ -200,7 +206,7 @@ export function SettingsPage() {
           }}
         >
           <label>
-            New profile name
+            {copy.settings.newProfileName}
             <input
               maxLength={40}
               value={newProfileName}
@@ -210,27 +216,24 @@ export function SettingsPage() {
             />
           </label>
           <button className="secondary-button" type="submit" disabled={profileLimitReached}>
-            Add profile
+            {copy.settings.addProfile}
           </button>
         </form>
       </div>
 
       <div className="panel">
-        <h3>Data & privacy</h3>
-        <p>
-          Backups contain local profile names, mastery statistics, and recent practice mistakes.
-          Review the JSON before sharing it.
-        </p>
+        <h3>{copy.settings.dataPrivacy}</h3>
+        <p>{copy.settings.backupNotice}</p>
         <div className="button-row">
           <button className="secondary-button" type="button" onClick={downloadBackup}>
-            Export backup
+            {copy.settings.exportBackup}
           </button>
           <button
             className="secondary-button"
             type="button"
             onClick={() => fileInput.current?.click()}
           >
-            Import backup
+            {copy.settings.importBackup}
           </button>
           <input
             ref={fileInput}
@@ -243,27 +246,21 @@ export function SettingsPage() {
             className="text-button danger"
             type="button"
             onClick={() => {
-              if (window.confirm('Reset progress for the active profile?')) {
+              if (window.confirm(copy.settings.confirmReset)) {
                 resetProgress();
-                setMessage('Progress reset.');
+                setMessage(copy.settings.progressReset);
               }
             }}
           >
-            Reset active progress
+            {copy.settings.resetProgress}
           </button>
         </div>
       </div>
 
       <div className="panel prose-panel">
-        <h3>Updates & about</h3>
-        <p>
-          TableSpark uses an auto-updating Progressive Web App service worker in production.
-          Browser update timing can vary, so reopen the app if a newly deployed version is waiting.
-        </p>
-        <p>
-          Version 0.1.0 · MIT License · Made by the Sanskar. Full project, support, privacy, and
-          funding details are available on the About page.
-        </p>
+        <h3>{copy.settings.updatesAbout}</h3>
+        <p>{copy.settings.updateNotice}</p>
+        <p>{copy.settings.versionSummary}</p>
       </div>
 
       {message ? (
