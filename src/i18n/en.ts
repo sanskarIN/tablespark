@@ -26,6 +26,15 @@ export const copy = {
       'Changes can still work in this tab, but they may not survive a reload. Free browser storage or allow site storage, then export a backup when saving becomes available again.',
     offlineTitle: 'You’re offline.',
     offlineBody: 'Table generation, practice, progress, and local profiles still work.',
+    offlineReadyTitle: 'Offline use is ready.',
+    offlineReadyBody:
+      'TableSpark has cached the current app shell for offline use on this device. You can dismiss this message.',
+    dismissOfflineReady: 'Dismiss',
+    updateTitle: 'A TableSpark update is ready.',
+    updateBody:
+      'Your current screen will not be interrupted automatically. Apply the update when you are ready to reload the app.',
+    updateNow: 'Update now',
+    updateLater: 'Later',
     welcomeTitle: 'Welcome to TableSpark',
     welcomeBody:
       'Start with custom tables, then use Practice to build mastery. Your data stays on this device by default.',
@@ -199,7 +208,7 @@ export const copy = {
     unreadableDiscardFailed: 'Could not discard unreadable local data from browser storage.',
     updatesAbout: 'Updates & about',
     updateNotice:
-      'TableSpark uses an auto-updating Progressive Web App service worker in production. Browser update timing can vary, so reopen the app if a newly deployed version is waiting.',
+      'TableSpark checks its production service worker for updates and shows a non-blocking prompt when a new app version is ready. You choose when to reload and apply it.',
     versionSummary:
       'Version 0.1.0 · MIT License · Made by the Sanskar. Full project, support, privacy, and funding details are available on the About page.',
   },
