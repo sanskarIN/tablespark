@@ -124,8 +124,8 @@ export function PracticeDrill() {
       if (state.settings.speechEnabled && generated[0]) {
         speak(copy.practice.spokenQuestion(generated[0].left, generated[0].right));
       }
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : copy.practice.couldNotStart);
+    } catch {
+      setFeedback(copy.practice.couldNotStart);
     }
   };
 
@@ -137,8 +137,8 @@ export function PracticeDrill() {
         return;
       }
       start(review, 'mistake-review');
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : copy.practice.couldNotReview);
+    } catch {
+      setFeedback(copy.practice.couldNotReview);
     }
   };
 
