@@ -6,6 +6,9 @@
 .banner.warning { border-color: color-mix(in srgb, #d97706 55%, var(--border)); }
 .banner.welcome { box-shadow: var(--shadow); }
 .help-text { margin: -.35rem 0 .9rem; color: var(--muted); font-size: .9rem; }
+.recovery-panel { margin: 1rem 0; padding: 1rem; border: 1px solid color-mix(in srgb, #d97706 55%, var(--border)); border-radius: var(--radius-md); background: color-mix(in srgb, #d97706 8%, var(--surface)); }
+.recovery-panel h4 { margin: 0 0 .5rem; }
+.recovery-panel p { max-width: 75ch; margin: 0 0 1rem; color: var(--muted); }
 .fatal-error { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 1rem; padding: 2rem; text-align: center; background: var(--bg); color: var(--text); }
 .fatal-error p { max-width: 55ch; color: var(--muted); }
 
