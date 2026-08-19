@@ -39,10 +39,10 @@ export function TableGenerator() {
         items: buildWorksheet(generateTable(config), { blankStyle }),
         error: '',
       };
-    } catch (error) {
+    } catch {
       return {
         items: [],
-        error: error instanceof Error ? error.message : copy.tables.invalidSettings,
+        error: copy.tables.invalidSettings,
       };
     }
   }, [blankStyle, config, copy.tables.invalidSettings]);
