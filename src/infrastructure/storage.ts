@@ -35,24 +35,29 @@ const profileSchema = z.object({
   mistakes: z.array(attemptSchema).max(100),
 });
 
-const persistedStateSchema = z.object({
-  schemaVersion: z.literal(1),
-  activeProfileId: z.string(),
-  profiles: z.array(profileSchema).min(1),
-  settings: z.object({
-    theme: z.enum(['system', 'light', 'dark']),
-    largeText: z.boolean(),
-    reducedMotion: z.boolean(),
-    soundEnabled: z.boolean(),
-    speechEnabled: z.boolean(),
-    defaultQuestionCount: z.number().int().min(1).max(200),
-    defaultTimeLimitSeconds: z.number().int().min(10).max(3600),
-  }),
-}).superRefine((value, context) => {
-  if (!value.profiles.some((profile) => profile.id === value.activeProfileId)) {
-    context.addIssue({ code: 'custom', path: ['activeProfileId'], message: 'Active profile must exist.' });
-  }
-});
+const persistedStateSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    activeProfileId: z.string(),
+    profiles: z.array(profileSchema).min(1),
+    settings: z.object({
+      theme: z.enum(['system', 'light', 'dark']),
+      largeText: z.boolean(),
+      reducedMotion: z.boolean(),
+      speechEnabled: z.boolean(),
+      defaultQuestionCount: z.number().int().min(1).max(200),
+      defaultTimeLimitSeconds: z.number().int().min(10).max(3600),
+    }),
+  })
+  .superRefine((value, context) => {
+    if (!value.profiles.some((profile) => profile.id === value.activeProfileId)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['activeProfileId'],
+        message: 'Active profile must exist.',
+      });
+    }
+  });
 
 function parseState(raw: string): PersistedState {
   const json: unknown = JSON.parse(raw);
