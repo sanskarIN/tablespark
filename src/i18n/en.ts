@@ -160,8 +160,6 @@ export const copy = {
     title: 'Settings',
     description: 'Your preferences and learning data stay in this browser unless you export them.',
     appearanceAccessibility: 'Appearance & accessibility',
-    language: 'Language',
-    languageHelp: 'Choose the interface language for this browser.',
     theme: 'Theme',
     systemTheme: 'System',
     lightTheme: 'Light',
