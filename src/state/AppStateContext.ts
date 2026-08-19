@@ -4,6 +4,7 @@ import type { AppSettings, Attempt, PersistedState, Profile } from '../domain/ty
 export interface AppStateValue {
   readonly state: PersistedState;
   readonly activeProfile: Profile;
+  readonly persistenceAvailable: boolean;
   readonly setActiveProfile: (id: string) => void;
   readonly addProfile: (name: string) => void;
   readonly deleteProfile: (id: string) => void;
