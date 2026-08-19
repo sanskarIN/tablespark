@@ -4,6 +4,12 @@ All notable changes to TableSpark are documented here. The project follows seman
 
 ## [Unreleased]
 
+No post-2.0.12 changes have been assigned yet.
+
+## 2.0.12 — release candidate — 2026-08-19
+
+The source/package/UI version is prepared as **2.0.12**. The `v2.0.12` Git tag and public release are intentionally still pending exact-head automated verification plus the documented manual/external release gates.
+
 ### Added
 
 - Strict TypeScript React PWA architecture.
@@ -51,9 +57,11 @@ All notable changes to TableSpark are documented here. The project follows seman
 - An exhaustive tracked-file reference documenting all 156 tracked files at the documentation-completeness checkpoint, including every config, policy, workflow, ADR, asset, E2E spec, script, source file, test, state module, and stylesheet.
 - Project governance, privacy, security, support, localization, accessibility, deployment-evaluation, native-packaging-evaluation, and engineering documentation.
 - ADR 0004 documenting preservation of unreadable local state until explicit recovery.
+- A locale-catalog regression assertion that keeps the visible English/Hindi version synchronized with `package.json`.
 
 ### Changed
 
+- Application/package and visible English/Hindi release metadata now target version `2.0.12`.
 - Practice sessions no longer begin from the same fixed seed; the generated seed remains visible so a session can be repeated exactly.
 - Mistake review now selects unique commutative facts instead of repeating equivalent recent mistakes.
 - Mistake-review completion no longer shows generated-seed replay controls.
