@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { copy } from '../i18n/en';
-import { pwaCopy } from '../i18n/pwa';
+import { useLocale } from '../i18n/LocaleContext';
 import { readBooleanFlag, writeBooleanFlag } from '../infrastructure/browserPreferences';
 import {
   isBrowserInstallPromptEvent,
@@ -19,6 +18,8 @@ type ApplyUpdate = () => Promise<void>;
 
 export function StatusBanners() {
   const { persistenceAvailable, unreadableStoredState } = useAppState();
+  const { messages } = useLocale();
+  const { copy, pwa } = messages;
   const [online, setOnline] = useState(() => navigator.onLine);
   const [showWelcome, setShowWelcome] = useState(() => !readBooleanFlag(ONBOARDING_KEY));
   const [offlineReady, setOfflineReady] = useState(false);
@@ -124,15 +125,15 @@ export function StatusBanners() {
       {installPrompt ? (
         <div className="banner update" role="status">
           <div>
-            <strong>{pwaCopy.installTitle}</strong>
-            <span>{pwaCopy.installBody}</span>
+            <strong>{pwa.installTitle}</strong>
+            <span>{pwa.installBody}</span>
           </div>
           <div className="banner-actions">
             <button className="primary-button" type="button" onClick={() => void install()}>
-              {pwaCopy.installNow}
+              {pwa.installNow}
             </button>
             <button className="text-button" type="button" onClick={() => setInstallPrompt(null)}>
-              {pwaCopy.installLater}
+              {pwa.installLater}
             </button>
           </div>
         </div>
