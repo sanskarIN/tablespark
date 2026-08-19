@@ -380,6 +380,7 @@ export function SettingsPage() {
             className="visually-hidden"
             type="file"
             accept="application/json,.json"
+            aria-label={copy.settings.importBackup}
             onChange={(event) => void importBackup(event)}
           />
           <button
