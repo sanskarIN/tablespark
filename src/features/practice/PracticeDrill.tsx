@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { difficultyPresets, type DifficultyLevel } from '../../domain/difficulty';
 import { generateQuestions, MAX_SEED } from '../../domain/questions';
+import { buildMistakeReview } from '../../domain/review';
 import type { DrillMode, Question } from '../../domain/types';
 import { createPracticeSeed } from '../../infrastructure/random';
 import { speak } from '../../infrastructure/speech';
@@ -99,17 +100,16 @@ export function PracticeDrill() {
   };
 
   const reviewMistakes = () => {
-    const unique = activeProfile.mistakes
-      .slice(0, setup.count)
-      .map((attempt, mistakeIndex) => ({
-        ...attempt.question,
-        id: `review-${mistakeIndex}-${attempt.question.id}`,
-      }));
-    if (unique.length === 0) {
-      setFeedback('No mistakes to review yet. Complete a drill first.');
-      return;
+    try {
+      const review = buildMistakeReview(activeProfile.mistakes, setup.count);
+      if (review.length === 0) {
+        setFeedback('No mistakes to review yet. Complete a drill first.');
+        return;
+      }
+      start(review);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Could not create mistake review.');
     }
-    start(unique);
   };
 
   const submit = () => {
