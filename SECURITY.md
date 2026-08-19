@@ -21,7 +21,7 @@ Include:
 - expected impact;
 - suggested mitigation if you have one.
 
-Do not send passwords, tokens, private keys, real learner records, or unrelated sensitive information.
+Do not send passwords, tokens, private keys, real learner records, raw recovery artifacts, or unrelated sensitive information.
 
 ## Security model
 
@@ -31,13 +31,17 @@ Primary security boundaries include:
 
 - validation of persisted/imported JSON using a versioned schema;
 - explicit rejection of unsupported state versions;
+- preservation of existing unreadable local state instead of automatic overwrite;
 - a shared 2 MB persistence/import budget to bound local state processing;
 - validation that profile IDs are unique and the active profile exists;
+- validation that mastery keys are canonical multiplication facts;
 - validation that mastery counters are internally consistent;
 - validation that imported multiplication answers match their operands;
 - validation that recorded correctness matches the stored response;
+- validation that saved mistake history contains only incorrect attempts;
 - browser-origin isolation for local storage;
 - user-visible warning when browser storage cannot persist changes;
+- explicit recovery UI for invalid stored state;
 - no use of `dangerouslySetInnerHTML` for user-controlled content;
 - no custom cryptography;
 - structured logging with both sensitive-field-name and sensitive-value redaction;
@@ -68,11 +72,26 @@ Imported backups are untrusted input. TableSpark therefore:
 1. rejects input above the byte-size budget before JSON parsing;
 2. checks the persisted schema version;
 3. validates all required object shapes and numeric bounds;
-4. verifies mathematical and progress invariants;
+4. verifies canonical mastery keys plus mathematical/progress invariants;
 5. verifies profile identity consistency;
-6. replaces current state only after validation succeeds and the user confirms the destructive operation.
+6. verifies mistake history contains only incorrect attempts;
+7. replaces current state only after validation succeeds and the user confirms the destructive operation.
 
 Do not weaken these checks merely to accept manually edited backup files. Schema changes should use a tested migration instead.
+
+## Unreadable stored-state boundary
+
+A local value that fails parsing, migration, or validation is not equivalent to an empty store. TableSpark classifies it as unreadable and pauses automatic persistence so a temporary default state cannot destroy the original value.
+
+The recovery UI allows the user to:
+
+- download the exact raw stored text for private recovery/inspection;
+- import a valid backup as an explicit replacement;
+- discard the unreadable value only after confirmation.
+
+Raw recovery downloads can contain learner information. They are never sent to TableSpark infrastructure or written to structured logs. Users and maintainers should not attach them to public issues without reviewing and redacting personal content.
+
+This recovery design is documented in ADR 0004.
 
 ## Dependency and CI security
 
