@@ -213,7 +213,7 @@ export const hindiMessages = {
       updateNotice:
         'TableSpark उत्पादन सेवा वर्कर के जरिए अपडेट जाँचता है और नया संस्करण तैयार होने पर बिना बाधा वाला संकेत दिखाता है। पुनः लोड करके अपडेट कब लागू करना है, यह आप चुनते हैं।',
       versionSummary:
-        'संस्करण 0.1.0 · MIT लाइसेंस · Made by the Sanskar. पूरी परियोजना, सहयोग, गोपनीयता और फंडिंग जानकारी परिचय पेज पर उपलब्ध है।',
+        'संस्करण 2.0.12 · MIT लाइसेंस · Made by the Sanskar. पूरी परियोजना, सहयोग, गोपनीयता और फंडिंग जानकारी परिचय पेज पर उपलब्ध है।',
     },
     about: {
       eyebrow: 'ओपन-सोर्स शिक्षा',
@@ -222,7 +222,7 @@ export const hindiMessages = {
       logoAlt: 'TableSpark लोगो',
       project: 'परियोजना',
       versionLabel: 'संस्करण:',
-      version: '0.1.0',
+      version: '2.0.12',
       licenseLabel: 'लाइसेंस:',
       license: 'MIT',
       privacyLabel: 'गोपनीयता:',
