@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatEquation, generateTable, validateTableConfig } from './tables';
+import { formatEquation, generateTable, MAX_RENDERED_ROWS, validateTableConfig } from './tables';
 
 const base = { from: 2, to: 3, multiplierFrom: 1, multiplierTo: 3, step: 1 } as const;
 
@@ -36,7 +36,7 @@ describe('multiplication tables', () => {
         multiplierTo: 1000,
         step: 1,
       }),
-    ).toThrow('more than 5000 rows');
+    ).toThrow(`more than ${MAX_RENDERED_ROWS} rows`);
   });
 
   it('formats equations consistently', () => {
