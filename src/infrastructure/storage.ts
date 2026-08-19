@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { masteryKey } from '../domain/questions';
 import type { PersistedState } from '../domain/types';
 import { logger } from './logger';
 import { migratePersistedState } from './migrations';
@@ -6,6 +7,14 @@ import { migratePersistedState } from './migrations';
 const STORAGE_KEY = 'tablespark.state.v1';
 export const MAX_BACKUP_BYTES = 2_000_000;
 export const MAX_PROFILES = 100;
+
+function isCanonicalMasteryKey(key: string): boolean {
+  const match = /^(\d{1,4})x(\d{1,4})$/.exec(key);
+  if (!match) return false;
+  const left = Number(match[1]);
+  const right = Number(match[2]);
+  return left <= 1000 && right <= 1000 && masteryKey(left, right) === key;
+}
 
 const masteryStatSchema = z
   .object({
@@ -16,6 +25,13 @@ const masteryStatSchema = z
     lastAttemptAt: z.string().max(64),
   })
   .superRefine((value, context) => {
+    if (!isCanonicalMasteryKey(value.key)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['key'],
+        message: 'Mastery key must be a canonical multiplication fact.',
+      });
+    }
     if (value.correct > value.attempts) {
       context.addIssue({
         code: 'custom',
@@ -86,6 +102,16 @@ const profileSchema = z
         });
       }
     }
+
+    value.mistakes.forEach((attempt, index) => {
+      if (attempt.correct) {
+        context.addIssue({
+          code: 'custom',
+          path: ['mistakes', index, 'correct'],
+          message: 'Saved mistake history cannot contain correct attempts.',
+        });
+      }
+    });
   });
 
 const persistedStateSchema = z
