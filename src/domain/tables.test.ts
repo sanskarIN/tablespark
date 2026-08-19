@@ -21,7 +21,9 @@ describe('multiplication tables', () => {
   });
 
   it('rejects invalid ranges and steps', () => {
-    expect(() => validateTableConfig({ ...base, step: 0 })).toThrow('Step must be greater than zero');
+    expect(() => validateTableConfig({ ...base, step: 0 })).toThrow(
+      'Step must be greater than zero',
+    );
     expect(() => validateTableConfig({ ...base, from: 8, to: 2 })).toThrow('must not exceed');
   });
 
