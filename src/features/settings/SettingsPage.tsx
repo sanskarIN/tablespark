@@ -1,5 +1,10 @@
 import { useRef, useState, type ChangeEvent } from 'react';
+import {
+  MAX_MASTERED_FACTS_GOAL,
+  SESSION_HISTORY_LIMIT_OPTIONS,
+} from '../../domain/sessions';
 import { copy } from '../../i18n/en';
+import { learningCopy } from '../../i18n/learning';
 import { canSpeak } from '../../infrastructure/speech';
 import {
   exportState,
@@ -32,6 +37,7 @@ export function SettingsPage() {
     addProfile,
     deleteProfile,
     updateSettings,
+    setMasteredFactsGoal,
     replaceFromBackup,
     discardUnreadableState,
     resetProgress,
@@ -201,6 +207,60 @@ export function SettingsPage() {
               }
             />
           </label>
+        </div>
+      </div>
+
+      <div className="panel settings-grid learning-records-panel">
+        <div>
+          <h3>{learningCopy.settings.recordsHeading}</h3>
+          <label>
+            {learningCopy.settings.historyRetention}
+            <select
+              value={state.settings.sessionHistoryLimit}
+              aria-describedby="history-retention-help"
+              onChange={(event) =>
+                updateSettings({ sessionHistoryLimit: Number(event.target.value) })
+              }
+            >
+              {SESSION_HISTORY_LIMIT_OPTIONS.map((limit) => (
+                <option value={limit} key={limit}>
+                  {learningCopy.settings.historyOption(limit)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p id="history-retention-help" className="help-text">
+            {learningCopy.settings.historyHelp}
+          </p>
+        </div>
+        <div>
+          <h3>{learningCopy.settings.goalHeading}</h3>
+          <label>
+            {learningCopy.settings.masteredFactsGoal}
+            <input
+              type="number"
+              min={1}
+              max={MAX_MASTERED_FACTS_GOAL}
+              placeholder={learningCopy.settings.goalPlaceholder}
+              value={activeProfile.masteredFactsGoal ?? ''}
+              aria-describedby="mastery-goal-help"
+              onChange={(event) => {
+                const value = event.currentTarget.valueAsNumber;
+                setMasteredFactsGoal(Number.isNaN(value) ? null : value);
+              }}
+            />
+          </label>
+          <p id="mastery-goal-help" className="help-text">
+            {learningCopy.settings.goalHelp}
+          </p>
+          <button
+            className="text-button"
+            type="button"
+            disabled={activeProfile.masteredFactsGoal === null}
+            onClick={() => setMasteredFactsGoal(null)}
+          >
+            {learningCopy.settings.clearGoal}
+          </button>
         </div>
       </div>
 
