@@ -1,6 +1,9 @@
-import { copy } from '../../i18n/en';
+import { useLocale } from '../../i18n/LocaleContext';
 
 export function AboutPage() {
+  const { messages } = useLocale();
+  const { copy } = messages;
+
   return (
     <section className="page-stack" aria-labelledby="about-title">
       <div className="hero-card">
