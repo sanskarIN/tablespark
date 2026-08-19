@@ -25,13 +25,15 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint . --max-warnings 0",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"e2e/**/*.ts\" \"*.{ts,js,json}\" \".vscode/*.json\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"e2e/**/*.ts\" \"*.{ts,js,json}\" \".vscode/*.json\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"e2e/**/*.ts\" \"scripts/**/*.mjs\" \"*.{ts,js,json}\" \".vscode/*.json\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"e2e/**/*.ts\" \"scripts/**/*.mjs\" \"*.{ts,js,json}\" \".vscode/*.json\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"
+    "test:security": "node --test scripts/secret-scanner.test.mjs",
+    "secret:scan": "node scripts/secret-scan.mjs",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run test:security && npm run secret:scan && npm run build"
   },
   "dependencies": {
     "react": "19.1.1",
