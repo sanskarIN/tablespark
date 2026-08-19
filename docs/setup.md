@@ -7,7 +7,7 @@ This guide explains how to prepare a development machine for TableSpark and how 
 TableSpark development requires:
 
 - Git
-- Node.js 22 or newer
+- Node.js 22.12.0 or newer
 - npm 10 or newer
 - a modern browser
 
@@ -33,7 +33,7 @@ What the commands mean:
 - `node --version` asks the Node.js runtime to print its version.
 - `npm --version` asks the Node package manager to print its version.
 
-For this repository, Node.js must be at least major version 22 and npm must be at least major version 10.
+For this repository, Node.js must be at least `22.12.0` and npm must be at least major version 10.
 
 ## Windows 11
 
@@ -68,7 +68,7 @@ node --version
 npm --version
 ```
 
-If your package source still provides Node older than 22, update that package source or install a newer supported Node release before continuing.
+If your package source provides Node older than `22.12.0`, update that package source or install a newer supported Node release before continuing.
 
 ### Optional Visual Studio Code
 
@@ -117,7 +117,7 @@ node --version
 npm --version
 ```
 
-If Node is older than 22, use a supported Node version manager or an official Node package source appropriate for your distribution rather than forcing TableSpark to run on an unsupported runtime.
+If Node is older than `22.12.0`, use a supported Node version manager or an official Node package source appropriate for your distribution rather than forcing TableSpark to run on an unsupported runtime.
 
 ## Clone TableSpark
 
@@ -133,6 +133,22 @@ Command meaning:
 - `git clone <url>` downloads a working copy and Git history from the repository URL.
 - `cd tablespark` changes the terminal's current directory into the cloned project folder.
 
+## Configure repository commit identity
+
+For this repository, configure the requested project email locally:
+
+```bash
+git config user.email "sanskarin@outlook.in"
+```
+
+This writes `user.email` into the current repository's `.git/config`. Omitting `--global` avoids changing unrelated repositories.
+
+Check it with:
+
+```bash
+git config user.email
+```
+
 ## Install project dependencies
 
 ```bash
@@ -141,7 +157,7 @@ npm install
 
 `npm install` reads `package.json`, resolves the pinned direct dependencies and their transitive dependencies, installs them under `node_modules/`, and creates/updates a local package lock for that installation.
 
-Do not commit unrelated dependency changes without reviewing them.
+Do not commit unrelated dependency changes without reviewing them. When a lockfile is introduced/updated, inspect the diff and run the full quality suite before committing it.
 
 ## Start development mode
 
@@ -183,13 +199,35 @@ Run:
 npm run check
 ```
 
-This sequentially checks formatting, lint rules, TypeScript types, tests, and the production build.
+This sequentially checks formatting, lint rules, strict TypeScript types, application tests, security-scanner tests, repository credential-pattern scanning, and the production build.
 
 Then, for browser-level verification:
 
 ```bash
 npm run test:e2e
 ```
+
+For the production dependency security gate:
+
+```bash
+npm audit --omit=dev --audit-level=high
+```
+
+## Run security checks individually
+
+Test the repository scanner itself:
+
+```bash
+npm run test:security
+```
+
+Scan the repository working tree:
+
+```bash
+npm run secret:scan
+```
+
+A successful pattern scan does not prove no secret has ever appeared in Git history. If a real credential is exposed, revoke/rotate it immediately and then remediate repository history as appropriate.
 
 ## Upgrade an unsupported tool
 
@@ -222,7 +260,7 @@ Check:
 node --version
 ```
 
-If Node is below 22, upgrade through the same trusted package manager or version manager used to install it. After upgrading, reopen the terminal and run:
+If Node is below `22.12.0`, upgrade through the same trusted package manager or version manager used to install it. After upgrading, reopen the terminal and run:
 
 ```bash
 node --version
@@ -266,6 +304,10 @@ Development on `localhost` can exercise service-worker behavior, but release ins
 ### `node` or `npm` is not recognized
 
 Close and reopen the terminal after installation. If the command still cannot be found, confirm the tool's installation directory is on your `PATH`.
+
+### Node is installed but `npm run check` rejects the version
+
+Compare `node --version` with `package.json` and `.nvmrc`. Use Node `22.12.0` or newer within the supported major line rather than relying on a system package that only reports `22.0.0`–`22.11.x`.
 
 ### Port 5173 is already in use
 
