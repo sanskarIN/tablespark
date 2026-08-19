@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: TableSpark support
+    url: mailto:supportramsandesh@gmail.com
+    about: Use support email for setup or usage help that is not a reproducible product bug.
+  - name: Security policy
+    url: https://github.com/sanskarIN/tablespark/security/policy
+    about: Read the private vulnerability reporting guidance before sharing security details.
