@@ -8,7 +8,7 @@ import { difficultyPresets, type DifficultyLevel } from '../../domain/difficulty
 import { generateQuestions, MAX_SEED } from '../../domain/questions';
 import { buildMistakeReview } from '../../domain/review';
 import type { DrillMode, PracticeSessionKind, Question } from '../../domain/types';
-import { copy } from '../../i18n/en';
+import { useLocale } from '../../i18n/LocaleContext';
 import { createPracticeSeed } from '../../infrastructure/random';
 import { speak } from '../../infrastructure/speech';
 import { useAppState } from '../../state/useAppState';
@@ -32,6 +32,8 @@ const defaultSetup = {
 
 export function PracticeDrill() {
   const { activeProfile, recordAttempt, recordSession, state } = useAppState();
+  const { messages } = useLocale();
+  const { copy } = messages;
   const [setup, setSetup] = useState<Setup>(() => ({
     ...defaultSetup,
     seed: createPracticeSeed(),
@@ -85,7 +87,7 @@ export function PracticeDrill() {
   const summary = useMemo(() => {
     if (!finished) return '';
     return copy.practice.score(score, questions.length);
-  }, [finished, questions.length, score]);
+  }, [copy.practice, finished, questions.length, score]);
 
   const applyDifficulty = (level: DifficultyLevel | 'custom') => {
     if (level === 'custom') return;
