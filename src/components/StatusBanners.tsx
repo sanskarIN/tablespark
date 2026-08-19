@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { copy } from '../i18n/en';
+import { pwaCopy } from '../i18n/pwa';
 import { readBooleanFlag, writeBooleanFlag } from '../infrastructure/browserPreferences';
+import {
+  isBrowserInstallPromptEvent,
+  type BrowserInstallPromptEvent,
+} from '../infrastructure/installPrompt';
 import {
   PWA_OFFLINE_READY_EVENT,
   PWA_UPDATE_AVAILABLE_EVENT,
@@ -18,6 +23,7 @@ export function StatusBanners() {
   const [showWelcome, setShowWelcome] = useState(() => !readBooleanFlag(ONBOARDING_KEY));
   const [offlineReady, setOfflineReady] = useState(false);
   const [applyUpdate, setApplyUpdate] = useState<ApplyUpdate | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<BrowserInstallPromptEvent | null>(null);
 
   useEffect(() => {
     const goOnline = () => setOnline(true);
@@ -46,9 +52,36 @@ export function StatusBanners() {
     };
   }, []);
 
+  useEffect(() => {
+    const onInstallPrompt = (event: Event) => {
+      if (!isBrowserInstallPromptEvent(event)) return;
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const onInstalled = () => setInstallPrompt(null);
+
+    window.addEventListener('beforeinstallprompt', onInstallPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onInstallPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+
   const dismissWelcome = () => {
     writeBooleanFlag(ONBOARDING_KEY, true);
     setShowWelcome(false);
+  };
+
+  const install = async () => {
+    const prompt = installPrompt;
+    if (!prompt) return;
+    setInstallPrompt(null);
+    try {
+      await prompt.prompt();
+    } catch {
+      // Browser install prompts are optional. A failed prompt must not block learning tasks.
+    }
   };
 
   return (
@@ -84,6 +117,22 @@ export function StatusBanners() {
             </button>
             <button className="text-button" type="button" onClick={() => setApplyUpdate(null)}>
               {copy.status.updateLater}
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {installPrompt ? (
+        <div className="banner update" role="status">
+          <div>
+            <strong>{pwaCopy.installTitle}</strong>
+            <span>{pwaCopy.installBody}</span>
+          </div>
+          <div className="banner-actions">
+            <button className="primary-button" type="button" onClick={() => void install()}>
+              {pwaCopy.installNow}
+            </button>
+            <button className="text-button" type="button" onClick={() => setInstallPrompt(null)}>
+              {pwaCopy.installLater}
             </button>
           </div>
         </div>
