@@ -134,6 +134,7 @@ export const copy = {
     largeText: 'Large-text classroom mode',
     reducedMotion: 'Reduce motion',
     speech: 'Text-to-speech controls',
+    speechUnavailable: 'Text-to-speech is not available in this browser.',
     practiceDefaults: 'Practice defaults',
     defaultQuestions: 'Default questions',
     timedSeconds: 'Timed drill seconds',
