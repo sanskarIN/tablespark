@@ -13,6 +13,7 @@ These verify:
 - table generation order, step sizes, and output budget;
 - input validation;
 - equation formatting;
+- bounded practice-response validation;
 - deterministic question generation and seed bounds;
 - random-session seed helpers;
 - mastery-key normalization;
@@ -41,12 +42,14 @@ These cover:
 
 - local-storage round trips;
 - portable JSON export/import;
-- corrupted storage handling;
+- corrupted storage classification without raw-value destruction;
+- raw recovery-state reads;
 - storage write failures;
 - malformed and oversized backup rejection;
 - profile identity validation;
-- mastery-counter invariants;
+- canonical mastery keys and mastery-counter invariants;
 - multiplication-answer and attempt-correctness invariants;
+- mistake-history semantics;
 - unsupported schema versions;
 - migration boundary behavior;
 - safe lightweight browser preference flags;
@@ -64,8 +67,12 @@ Testing Library verifies the application through accessible roles and labels rat
 - solved/blank worksheet mode;
 - printable worksheet metadata;
 - mastery search and filters;
+- mistake-review completion behavior;
 - unavailable speech fallback UI;
-- user-visible persistence-failure warning.
+- user-visible persistence-write failure warning;
+- unreadable local-state preservation and explicit discard recovery.
+
+The unreadable-state regression specifically verifies that an invalid stored value survives initial render unchanged until the user confirms discard.
 
 ### Security-scanner tests
 
@@ -203,7 +210,8 @@ Automated tests do not replace final manual checks. Before a release, inspect:
 - offline behavior after initial load;
 - PWA installability on the release origin;
 - backup export and re-import;
-- persistence-failure warning behavior where practical;
+- persistence-write failure warning behavior where practical;
+- unreadable-state recovery download/import/discard behavior;
 - text-to-speech availability/fallback behavior.
 
 Record release-candidate results in `what_changed.md`.
