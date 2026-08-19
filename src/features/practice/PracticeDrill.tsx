@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { difficultyPresets, type DifficultyLevel } from '../../domain/difficulty';
 import { generateQuestions } from '../../domain/questions';
 import type { DrillMode, Question } from '../../domain/types';
 import { speak } from '../../infrastructure/speech';
@@ -46,6 +47,13 @@ export function PracticeDrill() {
     if (!finished) return '';
     return `Score ${score} of ${questions.length}`;
   }, [finished, questions.length, score]);
+
+  const applyDifficulty = (level: DifficultyLevel | 'custom') => {
+    if (level === 'custom') return;
+    const preset = difficultyPresets[level];
+    setSetup((value) => ({ ...value, min: preset.min, max: preset.max, count: preset.count }));
+    setFeedback(`${preset.label}: ${preset.description}`);
+  };
 
   const start = (nextQuestions?: Question[]) => {
     try {
@@ -107,13 +115,14 @@ export function PracticeDrill() {
         <div>
           <p className="eyebrow">Focused practice</p>
           <h2 id="practice-title">Drill your multiplication skills</h2>
-          <p>Use a reproducible seed for deterministic sessions, or review your recent mistakes.</p>
+          <p>Choose a progression preset or custom range, use a reproducible seed, and review recent mistakes.</p>
         </div>
         {setup.mode === 'timed' && isRunning ? <strong className="timer" aria-live="polite">{remaining}s</strong> : null}
       </div>
 
       {!isRunning && !finished ? (
         <form className="control-grid" onSubmit={(event) => { event.preventDefault(); start(); }}>
+          <label>Difficulty preset<select defaultValue="custom" onChange={(event) => applyDifficulty(event.target.value as DifficultyLevel | 'custom')}><option value="custom">Custom</option><option value="starter">Starter · 0–5</option><option value="builder">Builder · 2–12</option><option value="challenge">Challenge · 2–20</option></select></label>
           <label>Minimum<input type="number" min={0} max={1000} value={setup.min} onChange={(event) => setSetup((value) => ({ ...value, min: Number(event.target.value) }))} /></label>
           <label>Maximum<input type="number" min={0} max={1000} value={setup.max} onChange={(event) => setSetup((value) => ({ ...value, max: Number(event.target.value) }))} /></label>
           <label>Questions<input type="number" min={1} max={200} value={setup.count} onChange={(event) => setSetup((value) => ({ ...value, count: Number(event.target.value) }))} /></label>
