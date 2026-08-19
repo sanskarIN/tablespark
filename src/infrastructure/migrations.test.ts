@@ -8,7 +8,9 @@ describe('persisted state migrations', () => {
   });
 
   it('rejects unknown schema versions explicitly', () => {
-    expect(() => migratePersistedState({ schemaVersion: 99 })).toThrow('Unsupported backup schema version');
+    expect(() => migratePersistedState({ schemaVersion: 99 })).toThrow(
+      'Unsupported backup schema version',
+    );
   });
 
   it('rejects non-object roots', () => {
