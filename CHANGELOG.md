@@ -65,8 +65,11 @@ All notable changes to TableSpark are documented here. The project follows seman
 - The interface locale preference is stored separately from exported learner-state JSON.
 - Persistence moved to schema version 2 while retaining the existing localStorage key so valid schema-1 data can be migrated in place.
 - Persistence and imported backups now share the same size and profile-count constraints.
-- Startup storage handling now distinguishes empty, valid, and unreadable stored state.
-- Ordinary backup export is disabled while unreadable stored data is being preserved because the visible state is temporary.
+- Startup storage handling now distinguishes empty storage, validated state, an existing returned value that is invalid, and browser storage whose read operation is unavailable.
+- Automatic writes remain paused when startup storage could not be read, preventing temporary defaults from overwriting unknown inaccessible data.
+- Backup replacement is transactional: a validated replacement must be saved successfully before it replaces current in-memory state or reports success.
+- Ordinary backup export is disabled while unreadable stored data is being preserved or while startup storage reads are unavailable because visible state is temporary in those cases.
+- Backup import is disabled when startup storage reads are unavailable because TableSpark will not overwrite unknown inaccessible state.
 - Release packaging now publishes a checksum file for the exact ZIP artifact.
 - Native packaging remains deferred after architecture evaluation; the PWA remains the canonical product for the current requirements.
 - Static-host candidates are documented without activating a production deployment before repository-owner approval.
@@ -79,24 +82,31 @@ All notable changes to TableSpark are documented here. The project follows seman
 - Schema-2 validation also checks session-summary bounds, generated/review seed semantics, supported retention limits, retained-history length, and optional goal bounds.
 - Both imported and current persisted state are limited to the 2 MB byte budget.
 - Existing unreadable local data is never automatically overwritten by temporary defaults.
+- Unknown storage contents are not overwritten when the browser blocks the initial learner-state read.
+- Destructive backup replacement leaves current state unchanged if the validated replacement cannot be durably written.
 - Structured logging redacts sensitive field names and recognizable credential/email values.
 - Repository CI tests and runs the built-in credential-pattern scanner without printing matched secret values.
 - GitHub Actions use scoped permissions.
 - Production dependency auditing is part of CI.
-- The deep security model now documents localStorage/import/browser API/dependency/Actions/release trust boundaries and the architectural consequences of any future backend/authentication feature.
+- The deep security model documents localStorage/import/browser API/dependency/Actions/release trust boundaries and the architectural consequences of any future backend/authentication feature.
 
 ### Accessibility
 
 - The in-app shortcut reference uses dialog semantics with an accessible name and description.
 - Stable browser checks verify the skip link, main/navigation landmarks, native control labels, image `alt` attributes, and keyboard access to shortcut help.
-- The manual accessibility document now includes explicit NVDA, Narrator, VoiceOver, and TalkBack verification rows without claiming unexecuted passes.
+- The manual accessibility document includes explicit NVDA, Narrator, VoiceOver, and TalkBack verification rows without claiming unexecuted passes.
 - Printed classroom output keeps local profile identity out of learner metadata by default.
 - Locale switching updates the document language so assistive technology can apply the appropriate language rules.
 
 ### Fixed
 
 - Browser-storage write failures no longer crash the app or silently imply durable saving.
-- Corrupted or newly-invalid local state is preserved for recovery instead of being destroyed by the next automatic save.
+- Corrupted or newly invalid local state is preserved for recovery instead of being destroyed by the next automatic save.
+- Browser storage read failures are no longer misclassified as corrupted learner data or routed into a recovery flow for a value that was never read.
+- Batched profile additions cannot exceed the documented 100-profile capacity by observing stale render state.
+- Failed backup writes no longer replace current in-memory state or report a successful destructive import.
+- Table and practice validation failures now use the active locale instead of exposing raw English domain exception text in Hindi UI.
+- Invalid backup feedback now uses localized generic copy instead of embedding raw parser/schema exception messages from another language.
 - Onboarding and locale preference storage failures no longer break application startup or interaction.
 - Speech synthesis exceptions no longer escape into user workflows.
 - Seed validation rejects negative, fractional, and out-of-range values rather than silently coercing them through 32-bit arithmetic.
