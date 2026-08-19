@@ -210,7 +210,7 @@ export const copy = {
     updateNotice:
       'TableSpark checks its production service worker for updates and shows a non-blocking prompt when a new app version is ready. You choose when to reload and apply it.',
     versionSummary:
-      'Version 0.1.0 · MIT License · Made by the Sanskar. Full project, support, privacy, and funding details are available on the About page.',
+      'Version 2.0.12 · MIT License · Made by the Sanskar. Full project, support, privacy, and funding details are available on the About page.',
   },
   about: {
     eyebrow: 'Open source learning',
@@ -220,7 +220,7 @@ export const copy = {
     logoAlt: 'TableSpark logo',
     project: 'Project',
     versionLabel: 'Version:',
-    version: '0.1.0',
+    version: '2.0.12',
     licenseLabel: 'License:',
     license: 'MIT',
     privacyLabel: 'Privacy:',
