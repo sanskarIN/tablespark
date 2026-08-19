@@ -18,6 +18,9 @@ export const copy = {
     shortcut: (number: number) => `Alt+${number}`,
   },
   status: {
+    recoveryTitle: 'Stored learning data needs recovery.',
+    recoveryBody:
+      'TableSpark could not validate existing local data and has not overwritten it. Open Settings → Data & privacy to download, replace, or discard it. New changes are temporary until recovery is resolved.',
     storageTitle: 'Local saving is unavailable.',
     storageBody:
       'Changes can still work in this tab, but they may not survive a reload. Free browser storage or allow site storage, then export a backup when saving becomes available again.',
@@ -164,6 +167,17 @@ export const copy = {
       `Delete the offline profile “${name}” and its local progress? This cannot be undone.`,
     confirmReset: 'Reset progress for the active profile?',
     progressReset: 'Progress reset.',
+    recoveryTitle: 'Recover unreadable local data',
+    recoveryBody:
+      'TableSpark found existing local data that does not pass the current validation rules. It is being preserved instead of overwritten. You can download the raw value for inspection/recovery, import a valid backup to replace it, or explicitly discard it.',
+    downloadUnreadable: 'Download unreadable local data',
+    discardUnreadable: 'Discard unreadable local data',
+    unreadableDownloaded: 'Unreadable local data downloaded for recovery.',
+    unreadableUnavailable: 'Unreadable local data could not be read from browser storage.',
+    confirmDiscardUnreadable:
+      'Discard the unreadable local TableSpark data? This permanently removes that stored value. Download it first if you may need to recover it.',
+    unreadableDiscarded: 'Unreadable local data discarded. Local saving has resumed.',
+    unreadableDiscardFailed: 'Could not discard unreadable local data from browser storage.',
     updatesAbout: 'Updates & about',
     updateNotice:
       'TableSpark uses an auto-updating Progressive Web App service worker in production. Browser update timing can vary, so reopen the app if a newly deployed version is waiting.',
