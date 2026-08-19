@@ -15,20 +15,25 @@ describe('question generation', () => {
   });
 
   it('keeps operands and products valid across generated ranges', () => {
-    fc.assert(fc.property(
-      fc.integer({ min: 0, max: 50 }),
-      fc.integer({ min: 0, max: 50 }),
-      fc.integer(),
-      (a, b, seed) => {
-        const min = Math.min(a, b);
-        const max = Math.max(a, b);
-        return generateQuestions({ min, max, count: 25, seed }).every((question) =>
-          question.left >= min && question.left <= max &&
-          question.right >= min && question.right <= max &&
-          question.answer === question.left * question.right,
-        );
-      },
-    ));
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 50 }),
+        fc.integer({ min: 0, max: 50 }),
+        fc.integer(),
+        (a, b, seed) => {
+          const min = Math.min(a, b);
+          const max = Math.max(a, b);
+          return generateQuestions({ min, max, count: 25, seed }).every(
+            (question) =>
+              question.left >= min &&
+              question.left <= max &&
+              question.right >= min &&
+              question.right <= max &&
+              question.answer === question.left * question.right,
+          );
+        },
+      ),
+    );
   });
 
   it('normalizes mastery keys for commutative facts', () => {
