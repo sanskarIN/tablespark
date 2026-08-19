@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { readBooleanFlag, writeBooleanFlag } from '../infrastructure/browserPreferences';
+import { useAppState } from '../state/useAppState';
 
 const ONBOARDING_KEY = 'tablespark.onboarding.dismissed.v1';
 
 export function StatusBanners() {
+  const { persistenceAvailable } = useAppState();
   const [online, setOnline] = useState(() => navigator.onLine);
   const [showWelcome, setShowWelcome] = useState(() => !readBooleanFlag(ONBOARDING_KEY));
 
@@ -25,6 +27,13 @@ export function StatusBanners() {
 
   return (
     <div className="banner-stack no-print">
+      {!persistenceAvailable ? (
+        <div className="banner warning" role="alert">
+          <strong>Local saving is unavailable.</strong> Changes can still work in this tab, but they
+          may not survive a reload. Free browser storage or allow site storage, then export a backup
+          when saving becomes available again.
+        </div>
+      ) : null}
       {!online ? (
         <div className="banner warning" role="status">
           <strong>You’re offline.</strong> Table generation, practice, progress, and local profiles
