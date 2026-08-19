@@ -4,7 +4,7 @@ Last updated: 2026-08-19
 
 ## Summary
 
-TableSpark is designed to work without an online account. Core learning data is stored locally in the browser. The application code in this repository does not send profile names, mastery data, mistakes, answers, or settings to a TableSpark server because no TableSpark backend is required for the core product.
+TableSpark is designed to work without an online account. Core learning data is stored locally in the browser. The application code in this repository does not send profile names, mastery data, mistakes, session summaries, goals, answers, or settings to a TableSpark server because no TableSpark backend is required for the core product.
 
 ## Data stored locally
 
@@ -14,12 +14,36 @@ The current application may store:
 - profile creation timestamps;
 - multiplication fact mastery counts and streaks;
 - recent incorrect practice attempts;
-- settings such as theme, text size, reduced motion, speech preference, and drill defaults;
+- bounded practice-session summaries containing completion time, session kind/mode, question count, correct count, elapsed time, and the replay seed for generated drills;
+- an optional per-profile mastered-facts goal with no deadline or streak requirement;
+- settings such as theme, text size, reduced motion, speech preference, drill defaults, and session-history retention;
 - a small first-run onboarding dismissal flag.
 
-Persisted learning state is stored under a versioned `localStorage` key in the browser. The application limits serialized learning state to a 2 MB byte budget and limits the number of offline profiles to the supported application capacity.
+Persisted learning state is stored under the existing versioned `localStorage` key in the browser. The key remains stable so older valid data can be migrated. The internal persisted schema is currently version 2. Schema-1 learning data is migrated locally by adding empty session history, no mastery goal, and the default retention setting before validation; the migration does not upload the old or new data.
+
+The application limits serialized learning state to a 2 MB byte budget, limits the number of offline profiles to the supported application capacity, and caps session history at supported retention values. Reducing the retention setting immediately removes older session summaries from local application state.
 
 If a browser refuses a storage write, TableSpark keeps the current in-memory state usable for the tab and displays a warning that local saving is unavailable. Do not assume new progress is durable while that warning is visible.
+
+## Session history scope
+
+Session history is intentionally summary-only. It does not duplicate every submitted answer. Per-question mastery statistics and recent incorrect attempts continue to serve the learning/review features, while a session summary records only the fields needed to understand recent practice volume and outcome.
+
+Generated-drill summaries retain the visible deterministic seed so a learner can identify the seed associated with that session. Mistake-review summaries do not claim a generated replay seed.
+
+Users can choose from supported retention limits in Settings. Lowering the limit trims older summaries immediately. Resetting the active profile’s progress clears its mastery statistics, recent mistakes, and session summaries while leaving the optional goal setting available for the learner to reuse or clear separately.
+
+## Optional mastery goal
+
+A profile can store an optional target number of mastered facts. The goal:
+
+- is local to that profile;
+- has no deadline;
+- does not create a daily streak requirement;
+- does not trigger punishment or loss for inactivity;
+- can be cleared at any time.
+
+It is a progress reference only, not an account, ranking, or behavioral-scoring system.
 
 ## Unreadable local-data recovery
 
@@ -41,12 +65,12 @@ Ordinary **Export backup** is disabled while unreadable data is being preserved 
 
 ## Backups
 
-The **Export backup** action creates a JSON file containing validated local application state. That file can include profile names and learning history. Treat it as a personal file.
+The **Export backup** action creates a JSON file containing validated local application state. That file can include profile names, mastery records, recent mistakes, session summaries, optional mastery goals, and preferences. Treat it as a personal file.
 
 The **Import backup** action reads a selected JSON file locally. Before replacement, TableSpark:
 
 - applies the same 2 MB byte budget used for current persisted state;
-- checks the persisted schema version;
+- checks or migrates the persisted schema version when a supported migration exists;
 - validates required objects and numeric bounds;
 - verifies unique profile identities and a valid active-profile reference;
 - verifies canonical mastery fact keys;
@@ -54,6 +78,8 @@ The **Import backup** action reads a selected JSON file locally. Before replacem
 - verifies stored multiplication answers match their operands;
 - verifies recorded correctness matches the saved response;
 - verifies saved mistake history contains only incorrect attempts;
+- validates session-summary count/correctness bounds, replay-seed semantics, and supported retention;
+- validates optional goal bounds;
 - asks for confirmation before replacing current data.
 
 A successfully imported valid backup also resolves an unreadable-data recovery state because the user has explicitly chosen a valid replacement.
@@ -62,7 +88,7 @@ TableSpark does not automatically upload backup or recovery files.
 
 ## Printed worksheets
 
-Printed worksheet headers provide blank Name and Date lines. TableSpark does not automatically insert the active offline profile name into printed worksheet metadata. This reduces accidental disclosure when a worksheet is printed or shared.
+Printed learner-facing worksheet headers provide blank Name and Date lines. TableSpark does not automatically insert the active offline profile name into printed worksheet metadata. Answer-key output omits learner Name/Date metadata. This reduces accidental disclosure when a worksheet is printed or shared.
 
 ## Browser and platform behavior
 
@@ -75,6 +101,10 @@ If browser sync is enabled, browser-managed storage behavior may differ by vendo
 When text-to-speech is enabled, TableSpark calls the browser’s Web Speech synthesis interface. The exact voice implementation is controlled by the browser/operating system and may vary by platform. TableSpark does not intentionally transmit speech text to its own server.
 
 If the browser does not provide a usable synthesis API, the control is disabled. If a platform synthesis call fails unexpectedly, TableSpark treats the failure as non-fatal.
+
+## Progressive Web App lifecycle
+
+The production service worker can cache the app shell for offline use. When a new app version is ready, TableSpark surfaces a non-blocking update notice and lets the user choose when to reload rather than forcing an update during an active task. Service-worker caching is controlled by the browser and can be removed by clearing site data.
 
 ## Logging
 
@@ -90,7 +120,7 @@ The source repository includes a local credential-pattern scanner that runs in C
 
 ## Deleting local data
 
-You can reset the active profile’s learning progress from Settings. You can also delete individual profiles when more than one exists. Deleting a browser profile or clearing TableSpark site storage can remove all locally stored application data. Export a backup first if you want to keep it.
+You can reset the active profile’s learning progress from Settings. This clears its mastery statistics, recent mistakes, and session summaries. You can clear the optional mastery goal separately. You can also delete individual profiles when more than one exists. Deleting a browser profile or clearing TableSpark site storage can remove all locally stored application data. Export a backup first if you want to keep it.
 
 When TableSpark reports unreadable local data, use the dedicated recovery download before choosing **Discard unreadable local data** if there is any chance you may need the original value. Discarding is irreversible within TableSpark.
 
