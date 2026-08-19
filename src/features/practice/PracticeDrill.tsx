@@ -17,6 +17,8 @@ interface Setup {
   seconds: number;
 }
 
+type SessionKind = 'generated' | 'mistake-review';
+
 const defaultSetup = {
   min: 2,
   max: 12,
@@ -34,6 +36,7 @@ export function PracticeDrill() {
     seconds: state.settings.defaultTimeLimitSeconds,
   }));
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [sessionKind, setSessionKind] = useState<SessionKind>('generated');
   const [index, setIndex] = useState(0);
   const [response, setResponse] = useState('');
   const [score, setScore] = useState(0);
@@ -82,9 +85,10 @@ export function PracticeDrill() {
     setFeedback(copy.practice.randomSeedSelected(seed));
   };
 
-  const start = (nextQuestions?: Question[]) => {
+  const start = (nextQuestions?: Question[], kind: SessionKind = 'generated') => {
     try {
       const generated = nextQuestions ?? generateQuestions(setup);
+      setSessionKind(kind);
       setQuestions(generated);
       setIndex(0);
       setScore(0);
@@ -107,7 +111,7 @@ export function PracticeDrill() {
         setFeedback(copy.practice.noMistakes);
         return;
       }
-      start(review);
+      start(review, 'mistake-review');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : copy.practice.couldNotReview);
     }
@@ -145,6 +149,7 @@ export function PracticeDrill() {
 
   const resetSession = (randomize: boolean) => {
     setQuestions([]);
+    setSessionKind('generated');
     setFeedback('');
     if (randomize) {
       setSetup((value) => ({ ...value, seed: createPracticeSeed() }));
@@ -311,14 +316,34 @@ export function PracticeDrill() {
         <div className="drill-card center">
           <h3>{copy.practice.complete}</h3>
           <p className="question">{summary}</p>
-          <p>{copy.practice.seedReplay(setup.seed)}</p>
+          <p>
+            {sessionKind === 'generated'
+              ? copy.practice.seedReplay(setup.seed)
+              : copy.practice.reviewCompleteNote}
+          </p>
           <div className="button-row">
-            <button className="primary-button" type="button" onClick={() => resetSession(true)}>
-              {copy.practice.newRandomDrill}
-            </button>
-            <button className="secondary-button" type="button" onClick={() => resetSession(false)}>
-              {copy.practice.repeatSeed}
-            </button>
+            {sessionKind === 'generated' ? (
+              <>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => resetSession(true)}
+                >
+                  {copy.practice.newRandomDrill}
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => resetSession(false)}
+                >
+                  {copy.practice.repeatSeed}
+                </button>
+              </>
+            ) : (
+              <button className="primary-button" type="button" onClick={() => resetSession(false)}>
+                {copy.practice.backToSetup}
+              </button>
+            )}
           </div>
         </div>
       ) : null}
