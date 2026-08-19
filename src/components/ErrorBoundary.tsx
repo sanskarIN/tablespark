@@ -1,8 +1,13 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { logger } from '../infrastructure/logger';
 
-interface Props { readonly children: ReactNode }
-interface State { readonly hasError: boolean }
+interface Props {
+  readonly children: ReactNode;
+}
+
+interface State {
+  readonly hasError: boolean;
+}
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = { hasError: false };
@@ -14,7 +19,6 @@ export class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, info: ErrorInfo): void {
     logger.error('ui_error_boundary', {
       errorType: error.name,
-      message: error.message.slice(0, 200),
       componentDepth: info.componentStack?.split('\n').length ?? 0,
     });
   }
@@ -25,8 +29,17 @@ export class ErrorBoundary extends Component<Props, State> {
         <main className="fatal-error" role="alert">
           <img src="/logo.svg" alt="" width="72" height="72" />
           <h1>TableSpark hit an unexpected error</h1>
-          <p>Your local learning data has not been intentionally cleared. Reload the app to try again.</p>
-          <button className="primary-button" type="button" onClick={() => window.location.reload()}>Reload TableSpark</button>
+          <p>
+            Your local learning data has not been intentionally cleared. Reload the app to try
+            again.
+          </p>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => window.location.reload()}
+          >
+            Reload TableSpark
+          </button>
         </main>
       );
     }
