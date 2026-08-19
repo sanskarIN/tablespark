@@ -5,12 +5,11 @@ import {
   isMastered,
   type MasteryFilter,
 } from '../../domain/progress';
-import { copy } from '../../i18n/en';
-import { learningCopy } from '../../i18n/learning';
+import { useLocale } from '../../i18n/LocaleContext';
 import { useAppState } from '../../state/useAppState';
 
-function formatSessionDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
+function formatSessionDate(value: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value));
@@ -18,6 +17,8 @@ function formatSessionDate(value: string): string {
 
 export function ProgressDashboard() {
   const { activeProfile, state } = useAppState();
+  const { locale, messages } = useLocale();
+  const { copy, learning } = messages;
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<MasteryFilter>('all');
   const allStats = useMemo(() => Object.values(activeProfile.mastery), [activeProfile.mastery]);
@@ -66,11 +67,11 @@ export function ProgressDashboard() {
       <div className="panel goal-panel">
         <div className="section-heading">
           <div>
-            <h3>{learningCopy.progress.goalHeading}</h3>
+            <h3>{learning.progress.goalHeading}</h3>
             <p>
               {goal === null
-                ? learningCopy.progress.noGoal
-                : learningCopy.progress.goalProgress(masteredCount, goal)}
+                ? learning.progress.noGoal
+                : learning.progress.goalProgress(masteredCount, goal)}
             </p>
           </div>
           {goal !== null ? <strong className="goal-percent">{goalPercent}%</strong> : null}
@@ -80,7 +81,7 @@ export function ProgressDashboard() {
             <div className="progress-track" aria-label={`${goalPercent}%`}>
               <span style={{ width: `${goalPercent}%` }} />
             </div>
-            {masteredCount >= goal ? <p>{learningCopy.progress.goalComplete}</p> : null}
+            {masteredCount >= goal ? <p>{learning.progress.goalComplete}</p> : null}
           </>
         ) : null}
       </div>
@@ -151,9 +152,9 @@ export function ProgressDashboard() {
       <div className="panel">
         <div className="section-heading">
           <div>
-            <h3>{learningCopy.progress.recentSessions}</h3>
+            <h3>{learning.progress.recentSessions}</h3>
             <p>
-              {learningCopy.progress.retainedSessions(
+              {learning.progress.retainedSessions(
                 activeProfile.sessions.length,
                 state.settings.sessionHistoryLimit,
               )}
@@ -161,7 +162,7 @@ export function ProgressDashboard() {
           </div>
         </div>
         {activeProfile.sessions.length === 0 ? (
-          <p className="empty-state">{learningCopy.progress.noSessions}</p>
+          <p className="empty-state">{learning.progress.noSessions}</p>
         ) : (
           <ul className="session-list">
             {activeProfile.sessions.slice(0, 12).map((session) => (
@@ -169,27 +170,26 @@ export function ProgressDashboard() {
                 <div>
                   <strong>
                     {session.kind === 'generated'
-                      ? learningCopy.progress.generated
-                      : learningCopy.progress.mistakeReview}
+                      ? learning.progress.generated
+                      : learning.progress.mistakeReview}
                   </strong>
-                  <time dateTime={session.completedAt}>{formatSessionDate(session.completedAt)}</time>
+                  <time dateTime={session.completedAt}>
+                    {formatSessionDate(session.completedAt, locale)}
+                  </time>
                 </div>
                 <span>
                   {session.mode === 'timed'
-                    ? learningCopy.progress.timed
-                    : learningCopy.progress.untimed}
+                    ? learning.progress.timed
+                    : learning.progress.untimed}
                 </span>
                 <span>
-                  {learningCopy.progress.sessionScore(
-                    session.correctCount,
-                    session.questionCount,
-                  )}
+                  {learning.progress.sessionScore(session.correctCount, session.questionCount)}
                 </span>
                 <span>
-                  {learningCopy.progress.sessionDuration(Math.round(session.elapsedMs / 1000))}
+                  {learning.progress.sessionDuration(Math.round(session.elapsedMs / 1000))}
                 </span>
                 {session.seed !== null ? (
-                  <code>{learningCopy.progress.sessionSeed(session.seed)}</code>
+                  <code>{learning.progress.sessionSeed(session.seed)}</code>
                 ) : null}
               </li>
             ))}
