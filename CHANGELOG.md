@@ -45,6 +45,10 @@ All notable changes to TableSpark are documented here. The project follows seman
 - Dependency-free repository credential-pattern scanner with a dedicated Node test suite.
 - GitHub Actions CI, CodeQL, Dependabot, and tagged release automation.
 - SHA-256 integrity metadata alongside packaged web release artifacts.
+- A formal `npm run test:docs` gate that tests the local Markdown-link checker and validates repository-local documentation targets in `npm run check`, CI, and tagged-release verification.
+- A comprehensive documentation system covering commands, configuration, CI/CD, domain rules, state/persistence, schema v2, security/trust boundaries, maintenance, glossary, localization, accessibility, release evidence, deployment/native packaging evaluations, and user/release operations.
+- An audience/task-oriented documentation index with source-of-truth hierarchy and update matrix.
+- An exhaustive tracked-file reference documenting all 156 tracked files at the documentation-completeness checkpoint, including every config, policy, workflow, ADR, asset, E2E spec, script, source file, test, state module, and stylesheet.
 - Project governance, privacy, security, support, localization, accessibility, deployment-evaluation, native-packaging-evaluation, and engineering documentation.
 - ADR 0004 documenting preservation of unreadable local state until explicit recovery.
 
@@ -66,6 +70,7 @@ All notable changes to TableSpark are documented here. The project follows seman
 - Release packaging now publishes a checksum file for the exact ZIP artifact.
 - Native packaging remains deferred after architecture evaluation; the PWA remains the canonical product for the current requirements.
 - Static-host candidates are documented without activating a production deployment before repository-owner approval.
+- Documentation-link validation moved from an optional direct utility into the maintained package/CI/release quality gate.
 
 ### Security
 
@@ -78,6 +83,7 @@ All notable changes to TableSpark are documented here. The project follows seman
 - Repository CI tests and runs the built-in credential-pattern scanner without printing matched secret values.
 - GitHub Actions use scoped permissions.
 - Production dependency auditing is part of CI.
+- The deep security model now documents localStorage/import/browser API/dependency/Actions/release trust boundaries and the architectural consequences of any future backend/authentication feature.
 
 ### Accessibility
 
@@ -96,6 +102,7 @@ All notable changes to TableSpark are documented here. The project follows seman
 - Seed validation rejects negative, fractional, and out-of-range values rather than silently coercing them through 32-bit arithmetic.
 - Practice response input can no longer create unbounded integer values outside the supported application range.
 - The browser smoke journey no longer depends on the removed worksheet hide-answers checkbox and now exercises the worksheet composer instead.
+- Quality-gate documentation no longer references an undeclared `docs:check` script; the supported documentation command is now `npm run test:docs`.
 
 ## [0.1.0] - 2026-08-19
 
