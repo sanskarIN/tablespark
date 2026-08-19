@@ -28,7 +28,11 @@ export function generateTable(config: TableConfig): TableRow[] {
   const rows: TableRow[] = [];
 
   for (let multiplicand = config.from; multiplicand <= config.to; multiplicand += config.step) {
-    for (let multiplier = config.multiplierFrom; multiplier <= config.multiplierTo; multiplier += 1) {
+    for (
+      let multiplier = config.multiplierFrom;
+      multiplier <= config.multiplierTo;
+      multiplier += 1
+    ) {
       rows.push({ multiplicand, multiplier, product: multiplicand * multiplier });
     }
   }
