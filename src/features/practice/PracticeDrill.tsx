@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  isValidPracticeResponse,
+  MAX_PRACTICE_RESPONSE,
+  MIN_PRACTICE_RESPONSE,
+} from '../../domain/answers';
 import { difficultyPresets, type DifficultyLevel } from '../../domain/difficulty';
 import { generateQuestions, MAX_SEED } from '../../domain/questions';
 import { buildMistakeReview } from '../../domain/review';
@@ -120,7 +125,7 @@ export function PracticeDrill() {
   const submit = () => {
     if (!current) return;
     const parsed = Number(response);
-    if (!Number.isInteger(parsed)) {
+    if (!isValidPracticeResponse(parsed)) {
       setFeedback(copy.practice.wholeNumber);
       return;
     }
@@ -301,6 +306,9 @@ export function PracticeDrill() {
               <input
                 inputMode="numeric"
                 type="number"
+                min={MIN_PRACTICE_RESPONSE}
+                max={MAX_PRACTICE_RESPONSE}
+                step={1}
                 value={response}
                 onChange={(event) => setResponse(event.target.value)}
               />
