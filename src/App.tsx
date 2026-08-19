@@ -51,14 +51,14 @@ export default function App() {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
-        Skip to content
+        {copy.shell.skipToContent}
       </a>
       <header className="topbar no-print">
         <button
           className="brand"
           type="button"
           onClick={() => setView('tables')}
-          aria-label="Go to multiplication tables"
+          aria-label={copy.shell.goToTables}
         >
           <img src="/logo.svg" alt="" width="42" height="42" />
           <span>
@@ -66,12 +66,12 @@ export default function App() {
             <small>{copy.tagline}</small>
           </span>
         </button>
-        <div className="profile-chip" title="Active offline profile">
+        <div className="profile-chip" title={copy.shell.activeProfile}>
           {activeProfile.name}
         </div>
       </header>
 
-      <nav className="navigation no-print" aria-label="Primary navigation">
+      <nav className="navigation no-print" aria-label={copy.shell.primaryNavigation}>
         {views.map((item, index) => (
           <button
             key={item}
@@ -79,7 +79,7 @@ export default function App() {
             className={view === item ? 'nav-button active' : 'nav-button'}
             onClick={() => setView(item)}
             aria-current={view === item ? 'page' : undefined}
-            title={`Alt+${index + 1}`}
+            title={copy.shell.shortcut(index + 1)}
           >
             {copy.navigation[item]}
           </button>
@@ -101,7 +101,7 @@ export default function App() {
       <footer className="footer no-print">
         <span>{copy.credit}</span>
         <a href="https://buymeacoffee.com/sanskarIN" target="_blank" rel="noreferrer">
-          Support TableSpark
+          {copy.shell.support}
         </a>
       </footer>
     </div>
