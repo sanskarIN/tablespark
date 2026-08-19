@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '../domain/types';
-import { clearState, exportState, importState, loadState, saveState } from './storage';
+import {
+  clearState,
+  exportState,
+  importState,
+  loadState,
+  MAX_BACKUP_BYTES,
+  saveState,
+} from './storage';
 
 const state: PersistedState = {
   schemaVersion: 1,
@@ -38,6 +45,69 @@ describe('local persistence', () => {
 
   it('rejects malformed backup data', () => {
     expect(() => importState('{"schemaVersion":99}')).toThrow();
+  });
+
+  it('rejects backup data above the application size budget', () => {
+    expect(() => importState(' '.repeat(MAX_BACKUP_BYTES + 1))).toThrow(
+      'Backup data cannot exceed',
+    );
+  });
+
+  it('rejects duplicate profile IDs', () => {
+    const profile = state.profiles[0]!;
+    const invalid = {
+      ...state,
+      profiles: [profile, { ...profile, name: 'Duplicate' }],
+    };
+    expect(() => importState(JSON.stringify(invalid))).toThrow('Profile IDs must be unique');
+  });
+
+  it('rejects impossible mastery counters', () => {
+    const profile = state.profiles[0]!;
+    const invalid = {
+      ...state,
+      profiles: [
+        {
+          ...profile,
+          mastery: {
+            '4x7': {
+              key: '4x7',
+              attempts: 2,
+              correct: 3,
+              streak: 3,
+              lastAttemptAt: '2026-08-19T00:00:00.000Z',
+            },
+          },
+        },
+      ],
+    };
+    expect(() => importState(JSON.stringify(invalid))).toThrow(
+      'Correct answers cannot exceed attempts',
+    );
+  });
+
+  it('rejects inconsistent question answers and attempt correctness', () => {
+    const profile = state.profiles[0]!;
+    const invalid = {
+      ...state,
+      profiles: [
+        {
+          ...profile,
+          mistakes: [
+            {
+              question: { id: 'bad', left: 4, right: 7, answer: 99 },
+              response: 28,
+              correct: true,
+              answeredAt: '2026-08-19T00:00:00.000Z',
+              elapsedMs: 500,
+            },
+          ],
+        },
+      ],
+    };
+    expect(() => importState(JSON.stringify(invalid))).toThrow(
+      'Question answer must match its operands',
+    );
   });
 
   it('returns null instead of throwing for corrupted local storage', () => {
