@@ -31,6 +31,7 @@ function validFixture() {
       build: { frontendDist: '../dist', devUrl: 'http://localhost:5173' },
       app: {
         security: {
+          capabilities: ['main-capability'],
           csp: { 'default-src': "'self'" },
           devCsp: { 'default-src': "'self' http:" },
         },
@@ -61,10 +62,12 @@ test('reports version, security, icon, and target drift', () => {
   fixture.iosConfig.bundle.iOS.minimumSystemVersion = '13.0';
   fixture.tauriConfig.bundle.icon = ['icons/icon.ico'];
   fixture.tauriConfig.app.security.csp = null;
+  fixture.tauriConfig.app.security.capabilities = ['main-capability', 'unexpected-capability'];
 
   const errors = validateNativeConfiguration(fixture);
   assert.ok(errors.some((error) => error.includes('Cargo version')));
   assert.ok(errors.some((error) => error.includes('Content Security Policy')));
+  assert.ok(errors.some((error) => error.includes('main-capability')));
   assert.ok(errors.some((error) => error.includes('Android minSdkVersion')));
   assert.ok(errors.some((error) => error.includes('iOS minimumSystemVersion')));
   assert.ok(errors.some((error) => error.includes('native bundle icon declaration')));
