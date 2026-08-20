@@ -1,85 +1,60 @@
 # TableSpark Command Reference
 
-This document explains the repository commands, what each command actually does, when to use it, what it produces, and common failure modes. It is written for contributors who may be new to Node.js tooling as well as maintainers preparing a release.
+Run commands from the repository root unless a section says otherwise. TableSpark 2.0.12 supports web/PWA plus Tauri 2 native Windows, macOS, Linux, Android, and iOS/iPadOS build paths.
 
-## Command environment
-
-Run project commands from the repository root, the directory that contains `package.json`.
-
-Supported runtime baseline from `package.json`:
-
-- Node.js `>=22.12.0`
-- npm `>=10.0.0`
-
-The repository also contains `.nvmrc` so Node version managers can select the intended Node release line.
-
-Check your installed versions:
+## Runtime baseline
 
 ```bash
 node --version
 npm --version
 ```
 
-The first command prints the active Node.js runtime. The second prints the npm package-manager version.
+Supported baseline:
 
-## Installation
+```text
+Node >= 22.12.0
+npm >= 10
+```
 
-### `npm install`
+Native work additionally needs Rust and the target platform SDK/toolchain.
+
+```bash
+rustc --version
+cargo --version
+rustup --version
+```
+
+## Dependency installation
 
 ```bash
 npm install
 ```
 
-Meaning:
-
-- reads `package.json`;
-- resolves the declared application and development dependencies;
-- installs them under `node_modules/`;
-- creates/updates npm's local dependency metadata as applicable to the environment.
-
-Use this after cloning the repository and whenever dependency declarations change.
-
-CI intentionally uses:
+CI uses:
 
 ```bash
 npm install --no-fund --no-audit
 ```
 
-`--no-fund` suppresses npm's funding-summary output during installation. `--no-audit` prevents the install step from performing a separate audit because the repository has an explicit production-audit gate later in CI.
+The explicit production advisory audit is run separately rather than being duplicated during installation.
 
-## Development server
+## Web development
 
-### `npm run dev`
+### Start Vite
 
 ```bash
 npm run dev
 ```
 
-Expands to:
-
-```bash
-vite
-```
-
-Purpose:
-
-- starts Vite's development server;
-- serves the application from source with fast development transforms;
-- defaults to port `5173` because `vite.config.ts` fixes that port with `strictPort: true`.
-
-Default development URL:
+Development URL:
 
 ```text
 http://localhost:5173
 ```
 
-If port 5173 is already occupied, Vite fails instead of silently choosing another port because `strictPort` is enabled. Stop the conflicting process or intentionally change the configuration in a reviewed commit.
+The port is strict because Tauri’s `devUrl` expects 5173.
 
-The development server is not release evidence. Production behavior should be checked through `npm run build` plus `npm run preview` or Playwright's production-preview server.
-
-## Production build
-
-### `npm run build`
+### Production web build
 
 ```bash
 npm run build
@@ -87,48 +62,21 @@ npm run build
 
 Expands to:
 
-```bash
+```text
 tsc -b && vite build
 ```
 
-This is two commands joined with `&&`, which means Vite builds only if TypeScript succeeds.
+Output:
 
-Step 1 — `tsc -b`:
+```text
+dist/
+```
 
-- runs TypeScript build mode;
-- follows the project references declared in `tsconfig.json`;
-- validates application and Node/config TypeScript projects;
-- stops the build on type errors.
-
-Step 2 — `vite build`:
-
-- creates the optimized production web application;
-- applies the PWA plugin configuration;
-- emits static files into `dist/`;
-- creates source maps because `vite.config.ts` enables `build.sourcemap`;
-- targets modern ES2022-capable browsers/runtime behavior.
-
-The `dist/` directory is generated output and must not be hand-edited.
-
-## Production preview
-
-### `npm run preview`
+### Preview production web build
 
 ```bash
 npm run preview
 ```
-
-Expands to:
-
-```bash
-vite preview
-```
-
-Purpose:
-
-- serves the already-built production output;
-- defaults to port `4173` with `strictPort: true`;
-- lets maintainers test the actual built application rather than the development transform pipeline.
 
 Default preview URL:
 
@@ -136,567 +84,469 @@ Default preview URL:
 http://localhost:4173
 ```
 
-Run `npm run build` first if no current `dist/` exists.
-
-Playwright starts preview automatically through `playwright.config.ts`.
-
-## Type checking
-
-### `npm run typecheck`
+## Type/lint/format
 
 ```bash
 npm run typecheck
-```
-
-Expands to:
-
-```bash
-tsc -b --pretty false
-```
-
-Purpose:
-
-- checks the TypeScript project graph without relying on the production bundle step;
-- uses plain machine-readable terminal formatting because `--pretty false` disables color/decorative output;
-- catches invalid imports, type mismatches, unsupported object shapes, missing locale messages, invalid test fixtures, and strict-mode issues.
-
-Run this after changing TypeScript domain types, persistence schemas, message catalogs, React props/state, or tooling configuration.
-
-## Linting
-
-### `npm run lint`
-
-```bash
 npm run lint
-```
-
-Expands to:
-
-```bash
-eslint . --max-warnings 0
-```
-
-Meaning:
-
-- scans the repository files covered by `eslint.config.js`;
-- applies JavaScript, TypeScript, React Hooks, React Refresh, and JSX accessibility rules;
-- treats every warning as a failing result because `--max-warnings 0` is used.
-
-Important lint configuration choices:
-
-- strict type-aware TypeScript linting is enabled;
-- consistent type-only imports are required;
-- recommended `jsx-a11y` rules are enabled;
-- test files may use non-null assertions where needed for focused fixtures;
-- generated directories such as `dist`, coverage output, Playwright reports, and test results are ignored.
-
-Do not solve lint errors by globally disabling rules unless the project has a documented reason. Prefer the smallest correct code change.
-
-## Formatting
-
-### `npm run format`
-
-```bash
 npm run format
-```
-
-Runs Prettier in write mode over the repository's TypeScript/TSX, E2E, script, root config, and VS Code JSON patterns.
-
-Use this when a formatting check fails locally.
-
-The command intentionally writes files, so review the diff afterward:
-
-```bash
-git diff
-```
-
-### `npm run format:check`
-
-```bash
 npm run format:check
 ```
 
-Runs the same Prettier path patterns in verification mode instead of modifying files.
-
-Use this before committing and in CI. A failure means one or more covered files differ from the project's formatting rules.
-
-Markdown documentation is not currently part of the package-level Prettier command. Markdown quality is instead protected by review and the local documentation-link gate.
+`format`/`format:check` cover maintained source/config patterns including `src-tauri/**/*.json`. Rust source formatting is handled by Cargo separately.
 
 ## Application tests
 
-### `npm run test`
-
 ```bash
 npm run test
-```
-
-Expands to:
-
-```bash
-vitest run
-```
-
-Meaning:
-
-- starts Vitest once;
-- uses the jsdom browser-like environment configured in `vitest.config.ts`;
-- loads `src/test/setup.ts` before tests;
-- runs domain, infrastructure, integration, localization, state/UI, and component tests;
-- exits when the test suite finishes.
-
-This is the normal non-watch test command used by `npm run check`.
-
-### `npm run test:watch`
-
-```bash
 npm run test:watch
-```
-
-Expands to:
-
-```bash
-vitest
-```
-
-Purpose:
-
-- keeps Vitest open;
-- watches source files;
-- reruns affected tests while developing.
-
-Do not use watch mode as release verification because it is interactive and does not represent a single immutable pass.
-
-### `npm run test:coverage`
-
-```bash
 npm run test:coverage
 ```
 
-Expands to:
+The normal test suite includes domain, persistence, state/integration, localization, PWA-adapter, and platform-runtime tests.
 
-```bash
-vitest run --coverage
-```
+## Browser E2E
 
-Coverage configuration:
-
-- V8-based coverage provider through the installed Vitest coverage package;
-- text summary in the terminal;
-- HTML coverage report;
-- includes `src/**/*.{ts,tsx}`;
-- excludes browser bootstrap/type declaration/test setup paths documented in `vitest.config.ts`.
-
-Coverage is diagnostic evidence, not a substitute for meaningful assertions.
-
-## Browser end-to-end tests
-
-### Browser installation
-
-On a new machine:
+Install Chromium when needed:
 
 ```bash
 npx playwright install chromium
 ```
 
-On Linux/CI where system libraries may also be missing:
+Minimal Linux:
 
 ```bash
 npx playwright install --with-deps chromium
 ```
 
-`npx` runs the locally installed Playwright command from the project dependency set.
-
-### `npm run test:e2e`
+Run normal browser journeys:
 
 ```bash
 npm run test:e2e
 ```
 
-Expands to:
-
-```bash
-playwright test
-```
-
-Playwright behavior from `playwright.config.ts`:
-
-- tests live in `e2e/`;
-- Chromium is the configured project;
-- Playwright starts `npm run build && npm run preview -- --host 127.0.0.1` automatically;
-- the browser tests use `http://127.0.0.1:4173`;
-- tests can run in parallel locally;
-- CI uses one worker and up to two retries;
-- a trace is retained on first retry;
-- committed `test.only` is forbidden in CI.
-
-Because Playwright builds and previews the production app, E2E failures can reveal integration problems that jsdom tests cannot.
-
-### Run one E2E file
+Run one file:
 
 ```bash
 npx playwright test e2e/smoke.spec.ts
 ```
 
-Replace the file with another spec as needed, for example:
-
-```bash
-npx playwright test e2e/print.spec.ts
-npx playwright test e2e/localization.spec.ts
-npx playwright test e2e/localized-errors.spec.ts
-npx playwright test e2e/accessibility.spec.ts
-```
-
-### Run one named test
+Run one named test:
 
 ```bash
 npx playwright test -g "Hindi interface selection persists across reload"
 ```
 
-`-g` filters tests by title. Use a sufficiently specific title to avoid selecting unrelated tests.
-
 ## Visual release evidence
 
-The release-evidence Playwright spec is intentionally skipped during normal E2E unless the explicit environment flag is set.
-
-Generate the real browser screenshots locally with:
+Linux/macOS-compatible shell:
 
 ```bash
 CAPTURE_RELEASE_EVIDENCE=1 npx playwright test e2e/release-evidence.spec.ts
 ```
 
-On Windows PowerShell:
+PowerShell:
 
 ```powershell
 $env:CAPTURE_RELEASE_EVIDENCE='1'
 npx playwright test e2e/release-evidence.spec.ts
 ```
 
-Generated screenshots are written under:
+Output is written below `test-results/release-evidence/` and is ignored/generated evidence rather than source.
 
-```text
-test-results/release-evidence/
-```
+## Repository security
 
-The GitHub workflow `.github/workflows/visual-evidence.yml` runs the same spec in Chromium and uploads the screenshots as an Actions artifact. These are real browser captures from the built application, not manually drawn release screenshots.
-
-## Repository security tests
-
-### `npm run test:security`
+Test scanner implementation:
 
 ```bash
 npm run test:security
 ```
 
-Expands to:
-
-```bash
-node --test scripts/secret-scanner.test.mjs
-```
-
-Purpose:
-
-- uses Node's built-in test runner;
-- validates the dependency-free repository secret-scanner implementation;
-- confirms supported credential signatures are detected;
-- confirms ordinary text remains clean;
-- verifies reported findings do not echo the matched credential value.
-
-This command tests the scanner implementation. It does not scan the repository itself.
-
-### `npm run secret:scan`
+Scan repository:
 
 ```bash
 npm run secret:scan
 ```
 
-Expands to:
+A clean scan does not make it safe to commit credentials/signing keys. Real exposed credentials must be revoked/rotated.
 
-```bash
-node scripts/secret-scan.mjs
-```
-
-Purpose:
-
-- walks the intended repository files;
-- uses `scripts/secret-scanner.mjs` to test supported credential patterns;
-- reports safe finding metadata instead of printing the full matched secret.
-
-A clean scan is defense in depth, not proof that no secret exists. Real exposed credentials must be revoked/rotated even if a later scanner run is clean.
-
-## Documentation link integrity
-
-### `npm run test:docs`
+## Documentation integrity
 
 ```bash
 npm run test:docs
 ```
 
-Expands to:
+This runs the link-checker test suite and validates supported local Markdown targets.
+
+## Native configuration integrity
+
+### Tests
 
 ```bash
-node --test scripts/link-checker.test.mjs && node scripts/link-check.mjs
+npm run test:native-config
 ```
 
-This is the formal documentation integrity command used by `npm run check`, CI, and therefore the tagged release verification gate.
+Uses Node’s built-in test runner to verify the native configuration validator itself.
 
-Step 1 tests the link-checker implementation.
-
-Step 2 scans repository Markdown and verifies supported **local** link/image targets resolve against the checked-out repository.
-
-The check is intentionally local/offline. It does not request every external website and therefore does not guarantee external URL availability.
-
-If a local documentation link is broken, fix the path or intentionally remove/update the reference. Do not weaken the checker solely to make a stale path pass.
-
-### Direct documentation commands
-
-For debugging, the two stages can still be run separately:
+### Check real repository config
 
 ```bash
-node --test scripts/link-checker.test.mjs
-node scripts/link-check.mjs
+npm run native:config:check
 ```
 
-The package-level `test:docs` command is preferred for normal verification because it represents the maintained gate.
+Checks maintained native invariants including:
 
-## Full local quality gate
+- version consistency;
+- Tauri version source;
+- application identifier;
+- frontend paths;
+- production/development CSP;
+- explicit `main-capability` selection;
+- bundle icons;
+- required scripts/dependencies;
+- Android/iOS minimum versions.
 
-### `npm run check`
+These checks do not require Rust or platform SDKs.
+
+## Aggregate shared quality gate
 
 ```bash
 npm run check
 ```
 
-Expands to this exact sequence:
+Current exact order:
 
 ```text
-npm run format:check
-&& npm run lint
-&& npm run typecheck
-&& npm run test
-&& npm run test:security
-&& npm run secret:scan
-&& npm run test:docs
-&& npm run build
+format:check
+→ lint
+→ typecheck
+→ test
+→ test:security
+→ secret:scan
+→ test:docs
+→ test:native-config
+→ native:config:check
+→ build
 ```
 
-Because the steps use `&&`, the command stops at the first failure.
+Because shell `&&` chaining is used, execution stops on the first failed stage.
 
-Interpretation:
+`npm run check` does not include Playwright E2E, Rust/native compilation, or network-backed production dependency audit; those remain separate gates.
 
-1. formatting must be clean;
-2. lint/accessibility rules must be clean;
-3. TypeScript must compile under strict project settings;
-4. application tests must pass;
-5. secret-scanner implementation tests must pass;
-6. repository secret scan must pass;
-7. documentation-link implementation + local link integrity must pass;
-8. the production PWA must build.
-
-`npm run check` does **not** include Playwright E2E or the network/advisory-based production dependency audit. CI runs those as separate gates.
-
-Recommended pre-PR sequence:
-
-```bash
-npm run check
-npm run test:e2e
-```
-
-## Dependency security audit
-
-CI/release guidance uses:
+## Production dependency audit
 
 ```bash
 npm audit --omit=dev --audit-level=high
 ```
 
-Meaning:
+Do not lower the severity threshold solely to obtain a green release.
 
-- examines installed production dependency metadata;
-- ignores development-only packages for this release-security gate;
-- exits non-zero for high or critical findings covered by npm advisory data.
+# Native desktop commands
 
-Do not lower the threshold merely to obtain a green check. Investigate the dependency and document a conscious risk decision if remediation is not immediately possible.
-
-## Git commands used by this project
-
-### Clone
+## Tauri environment information
 
 ```bash
-git clone https://github.com/sanskarIN/tablespark.git
-cd tablespark
+npm run native:info
 ```
 
-`git clone` downloads repository history and creates a working tree. `cd tablespark` changes the terminal's current directory into the clone.
+Use this first when diagnosing Rust/system SDK/toolchain problems.
 
-### Inspect working tree
+## Generate native icons
+
+```bash
+npm run native:icons
+```
+
+Expands to:
+
+```bash
+tauri icon public/logo.svg
+```
+
+Output is generated under `src-tauri/icons/` and ignored by Git.
+
+## Native preparation
+
+```bash
+npm run native:prepare
+```
+
+Currently delegates to native icon generation. Package build commands invoke it automatically.
+
+## Run desktop native development
+
+```bash
+npm run native:dev
+```
+
+Tauri starts the configured `beforeDevCommand` (`npm run dev`) and loads the Vite development URL into the native system webview.
+
+## Check Rust formatting
+
+```bash
+npm run native:fmt:check
+```
+
+Write formatting:
+
+```bash
+npm run native:fmt
+```
+
+## Cargo type/compile check
+
+```bash
+npm run native:check
+```
+
+Expands to a Cargo check against `src-tauri/Cargo.toml`.
+
+## Aggregate Rust/native check
+
+```bash
+npm run check:native
+```
+
+Runs native Rust formatting verification followed by `cargo check`.
+
+## Compile current desktop host without installers/signing
+
+```bash
+npm run native:build:ci
+```
+
+This:
+
+1. generates native TableSpark icons;
+2. runs Tauri build integration/front-end production build;
+3. compiles the current host target;
+4. passes `--no-bundle --no-sign`.
+
+Use this for local CI-equivalent compile validation.
+
+## Build host-supported desktop packages
+
+```bash
+npm run native:build
+```
+
+This creates the bundles supported by the current operating system/toolchain. Public distribution may additionally require signing/notarization appropriate to the target.
+
+# Android commands
+
+Android commands require Java, Android SDK/NDK, and Rust Android targets.
+
+## Generate/initialize Android project
+
+```bash
+npm run android:init
+```
+
+The generated Android project lives under ignored `src-tauri/gen/`.
+
+CI can avoid re-installing Rust targets when it already installed them:
+
+```bash
+npm run android:init -- --skip-targets-install
+```
+
+## Android development
+
+```bash
+npm run android:dev
+```
+
+Use the device/emulator selection behavior supplied by the Tauri/Android toolchain.
+
+## Debug APK
+
+```bash
+npm run android:build:debug
+```
+
+This generates icons first and compiles a debug APK. It is build evidence, not a production-signed Play Store artifact.
+
+## Android production package command
+
+```bash
+npm run android:build
+```
+
+Production release output requires a separately configured owner-controlled signing setup. Do not commit keystores/passwords.
+
+# iOS/iPadOS commands
+
+iOS commands require macOS/Xcode.
+
+## Generate/initialize iOS project
+
+```bash
+npm run ios:init
+```
+
+CI can use:
+
+```bash
+npm run ios:init -- --skip-targets-install
+```
+
+Generated Xcode project files live under ignored `src-tauri/gen/`.
+
+## iOS development
+
+```bash
+npm run ios:dev
+```
+
+## Physical-device development host
+
+```bash
+npm run ios:dev:device
+```
+
+This adds Tauri’s `--host` behavior. When the Tauri CLI provides `TAURI_DEV_HOST`, `vite.config.ts` uses that host/HMR address so a physical iOS device can reach the development frontend.
+
+## iOS simulator build
+
+```bash
+npm run ios:build:simulator
+```
+
+Current script compiles a debug `aarch64-sim` target after native icon preparation.
+
+This is simulator compile evidence, not device signing/App Store evidence.
+
+## iOS production build command
+
+```bash
+npm run ios:build
+```
+
+Requires Apple signing/provisioning as appropriate to the intended distribution path. Keep private keys/profiles outside Git.
+
+# Git/release commands
+
+## Inspect working tree/history
 
 ```bash
 git status
-```
-
-Shows the active branch and modified/untracked/staged files.
-
-### Inspect recent history
-
-```bash
 git log -5 --oneline
-```
-
-Shows the five newest commits in compact form.
-
-### Inspect changes
-
-```bash
 git diff
-```
-
-Shows unstaged changes.
-
-```bash
 git diff --staged
 ```
 
-Shows changes already staged for the next local commit.
-
-### Configure the intended project email
+## Project-local commit email
 
 ```bash
 git config user.email "sanskarin@outlook.in"
-```
-
-This configures the current repository clone's commit email unless `--global` is used.
-
-Check it with:
-
-```bash
 git config user.email
 ```
 
-### Create a focused commit
+## Focused local commit
 
 ```bash
 git add <paths>
-git commit -m "docs: explain example area"
+git commit -m "fix: example focused change"
 ```
 
-`git add` stages selected changes. `git commit` creates a local commit containing the staged snapshot and message.
-
-### Push the active branch
+## Push branch
 
 ```bash
 git push origin <branch-name>
 ```
 
-`origin` is normally the GitHub remote created by cloning. The branch argument determines which branch is published.
+## TableSpark 2.0.12 tag
 
-## Release tag commands
-
-For a version such as 0.1.0:
+Only after the exact candidate passes intended gates:
 
 ```bash
-git tag -a v0.1.0 -m "TableSpark v0.1.0"
-git push origin v0.1.0
+git tag -a v2.0.12 -m "TableSpark v2.0.12"
+git push origin v2.0.12
 ```
 
-`-a` creates an annotated tag. The pushed `v*.*.*` tag triggers `.github/workflows/release.yml`.
+Never silently move an already-public release tag to a different commit. Use a new patch version for a corrective release.
 
-Do not reuse or silently move an already-public release tag. Publish a corrective patch version instead.
+# Web release checksum
 
-## Release checksum verification
-
-On Linux/macOS or a compatible shell:
+Linux/macOS-compatible shell:
 
 ```bash
 sha256sum -c tablespark-web.zip.sha256
 ```
 
-A correct artifact reports:
-
-```text
-tablespark-web.zip: OK
-```
-
-On Windows PowerShell:
+PowerShell:
 
 ```powershell
 Get-FileHash .\tablespark-web.zip -Algorithm SHA256
 Get-Content .\tablespark-web.zip.sha256
 ```
 
-Compare the hexadecimal digest values exactly.
+The checksum proves byte identity relative to the workflow-produced digest; it is not a publisher signature.
 
-The checksum verifies artifact integrity against the workflow-generated digest. It is not a digital signature and does not independently prove publisher identity.
+# Common failures
 
-## Common command failures
+## `npm` / `node` missing
 
-### `npm: command not found`
+Install/fix supported Node/npm and reopen terminal.
 
-Node.js/npm is missing from PATH. Install/repair the supported Node.js version and open a new terminal.
+## Node engine warning
 
-### Engine warning
+Use Node 22.12.0 or newer according to `package.json`/`.nvmrc`.
 
-Your Node/npm version is older than `package.json` requires. Upgrade before debugging unrelated failures.
+## Port 5173 in use
 
-### Port 5173 or 4173 already in use
+Stop the conflicting process. Do not casually change the port because Tauri `devUrl` is synchronized to 5173 and checked by the native config gate.
 
-Because strict ports are enabled, stop the existing process rather than assuming Vite chose another port.
-
-### Playwright browser missing
-
-Run:
+## Missing Playwright browser
 
 ```bash
 npx playwright install chromium
 ```
 
-### Linux Playwright dependency error
-
-Run:
+## Rust/Tauri failure
 
 ```bash
-npx playwright install --with-deps chromium
+npm run native:info
+npm run check:native
 ```
 
-### Format check fails
+Inspect the first system/toolchain/compiler error rather than changing unrelated application code.
 
-Run:
+## Linux native library failure
 
-```bash
-npm run format
+Install the distribution-equivalent WebKitGTK/GTK/build dependencies documented in `docs/setup.md` and used by `.github/workflows/native.yml`.
+
+## Android NDK/Rust target failure
+
+Verify SDK/NDK environment, Java, and Rust Android targets. `npm run native:info` can help identify missing pieces.
+
+## iOS simulator/device target failure
+
+Verify macOS/Xcode/CocoaPods and the appropriate Rust target. Distinguish source compile errors from signing/provisioning failures.
+
+## Native config check fails
+
+Fix the named maintained invariant rather than weakening the validator to accept unintended drift.
+
+## Native link does not open
+
+The native opener is intentionally allowlisted. Confirm the destination exactly matches `src-tauri/capabilities/default.json`; do not broaden permission casually.
+
+## CSP breaks native runtime
+
+Treat CSP changes as security-sensitive. Add only the minimum required source/protocol and update the config test/security docs where appropriate; do not revert to `csp: null` just to make a feature work.
+
+# What generated output should not be committed
+
+```text
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
 ```
 
-Then inspect the diff and rerun `npm run format:check`.
-
-### Typecheck fails after schema/i18n changes
-
-Update every typed fixture/catalog consumer rather than weakening the type. Schema and localization type failures are intentional safeguards.
-
-### Documentation link check fails
-
-Run:
-
-```bash
-npm run test:docs
-```
-
-Read each reported source file/target and correct the repository-local path. If the checker itself parsed/resolved valid Markdown incorrectly, add a focused checker regression test before changing the implementation.
-
-### Secret scan reports a real credential
-
-Do not simply delete the line and declare the incident resolved. Revoke/rotate the credential, remove it from current source, assess repository history exposure, and follow `SECURITY.md`.
-
-## Maintainer rule
-
-When adding, removing, or changing an npm script, update all of these together when relevant:
-
-- `package.json`;
-- `README.md` if the command is important for normal contributors;
-- `docs/development.md`;
-- `docs/testing.md`;
-- `docs/quality-gates.md`;
-- `docs/commands-reference.md`;
-- `docs/configuration-reference.md`;
-- CI/release workflows;
-- `what_changed.md`.
-
-This prevents command documentation and automation from drifting apart.
+Also never commit production signing material such as Android keystores, Apple private keys/certificates, provisioning profiles, or signing passwords.
