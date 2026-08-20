@@ -90,6 +90,58 @@ jobs:
             git add what_changed.md
             git commit -m "docs: record 2026-08-20 verification repair checkpoint"
           fi
+      - name: Synchronize tracked-file inventory
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('docs/repository-file-reference.md')
+          text = path.read_text(encoding='utf-8')
+          if '**171 explicitly listed tracked files**' not in text:
+              print('Tracked-file inventory is already synchronized or has changed unexpectedly.')
+              raise SystemExit(0)
+
+          text = text.replace(
+              'The inventory below contains **171 explicitly listed tracked files**. Directories are not counted separately. The previous documentation checkpoint contained 156 tracked files; this cross-platform phase added exactly 15 tracked files and removed none.',
+              'The inventory below contains **173 explicitly listed tracked files**. Directories are not counted separately. The native-support checkpoint contained 171 tracked files; verification repair added exactly two permanent root files: `package-lock.json` and `tsconfig.e2e.json`.',
+              1,
+          )
+          text = text.replace(
+              '# 1. Root configuration and repository metadata — 16 files',
+              '# 1. Root configuration and repository metadata — 18 files',
+              1,
+          )
+          text = text.replace(
+              '14. `tsconfig.node.json` — strict Node/tooling/E2E TypeScript project.',
+              '14. `tsconfig.node.json` — strict Node/tooling TypeScript project, deliberately isolated from browser E2E globals.',
+              1,
+          )
+          text = re.sub(
+              r'^(\d+)\. ',
+              lambda match: f"{int(match.group(1)) + 2}. " if int(match.group(1)) >= 17 else match.group(0),
+              text,
+              flags=re.MULTILINE,
+          )
+          anchor = '16. `vitest.config.ts` — jsdom/Vitest/coverage configuration.\n'
+          additions = (
+              '17. `package-lock.json` — reproducible npm dependency graph used by deterministic CI/release installs.\n'
+              '18. `tsconfig.e2e.json` — strict DOM-aware Playwright TypeScript project for browser-context E2E code.\n'
+          )
+          if anchor not in text:
+              raise SystemExit('Unable to locate root inventory insertion anchor.')
+          text = text.replace(anchor, anchor + additions, 1)
+          text = text.replace('this exhaustive 171-file map.', 'this exhaustive 173-file map.', 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+          if git diff --quiet -- docs/repository-file-reference.md; then
+            echo "No repository inventory changes were required."
+          else
+            git add docs/repository-file-reference.md
+            git commit -m "docs: synchronize tracked-file inventory after verification repair"
+          fi
       - name: Mark one-shot repair complete
         if: steps.guard.outputs.run == 'true'
         shell: bash
