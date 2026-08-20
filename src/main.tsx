@@ -8,22 +8,25 @@ import {
   dispatchPwaOfflineReady,
   dispatchPwaUpdateAvailable,
 } from './infrastructure/pwaEvents';
+import { shouldRegisterPwaServiceWorker } from './platform/runtime';
 import { AppStateProvider } from './state/AppStateProvider';
 import './styles.css';
 import './status.css';
 import './shortcuts.css';
 import './learning.css';
 
-let updateSW: ReturnType<typeof registerSW> | undefined;
-updateSW = registerSW({
-  immediate: true,
-  onNeedRefresh() {
-    if (updateSW) dispatchPwaUpdateAvailable(updateSW);
-  },
-  onOfflineReady() {
-    dispatchPwaOfflineReady();
-  },
-});
+if (shouldRegisterPwaServiceWorker()) {
+  let updateSW: ReturnType<typeof registerSW> | undefined;
+  updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      if (updateSW) dispatchPwaUpdateAvailable(updateSW);
+    },
+    onOfflineReady() {
+      dispatchPwaOfflineReady();
+    },
+  });
+}
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Application root element was not found.');
