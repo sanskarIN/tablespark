@@ -23,12 +23,12 @@ export const copy = {
       'TableSpark could not validate existing local data and has not overwritten it. Open Settings → Data & privacy to download, replace, or discard it. New changes are temporary until recovery is resolved.',
     storageTitle: 'Local saving is unavailable.',
     storageBody:
-      'Changes can still work in this tab, but they may not survive a reload. Free browser storage or allow site storage, then export a backup when saving becomes available again.',
+      'Changes can still work in this session, but they may not survive a reload or restart. Restore local app storage access, then export a backup when saving becomes available again.',
     offlineTitle: 'You’re offline.',
     offlineBody: 'Table generation, practice, progress, and local profiles still work.',
     offlineReadyTitle: 'Offline use is ready.',
     offlineReadyBody:
-      'TableSpark has cached the current app shell for offline use on this device. You can dismiss this message.',
+      'TableSpark has cached the current web app shell for offline use on this device. You can dismiss this message.',
     dismissOfflineReady: 'Dismiss',
     updateTitle: 'A TableSpark update is ready.',
     updateBody:
@@ -158,7 +158,8 @@ export const copy = {
   settings: {
     eyebrow: 'Personalize',
     title: 'Settings',
-    description: 'Your preferences and learning data stay in this browser unless you export them.',
+    description:
+      'Your preferences and learning data stay in this browser or installed app unless you export them.',
     appearanceAccessibility: 'Appearance & accessibility',
     theme: 'Theme',
     systemTheme: 'System',
@@ -167,7 +168,7 @@ export const copy = {
     largeText: 'Large-text classroom mode',
     reducedMotion: 'Reduce motion',
     speech: 'Text-to-speech controls',
-    speechUnavailable: 'Text-to-speech is not available in this browser.',
+    speechUnavailable: 'Text-to-speech is not available in this device runtime.',
     practiceDefaults: 'Practice defaults',
     defaultQuestions: 'Default questions',
     timedSeconds: 'Timed drill seconds',
@@ -201,14 +202,14 @@ export const copy = {
     downloadUnreadable: 'Download unreadable local data',
     discardUnreadable: 'Discard unreadable local data',
     unreadableDownloaded: 'Unreadable local data downloaded for recovery.',
-    unreadableUnavailable: 'Unreadable local data could not be read from browser storage.',
+    unreadableUnavailable: 'Unreadable local data could not be read from local app storage.',
     confirmDiscardUnreadable:
       'Discard the unreadable local TableSpark data? This permanently removes that stored value. Download it first if you may need to recover it.',
     unreadableDiscarded: 'Unreadable local data discarded. Local saving has resumed.',
-    unreadableDiscardFailed: 'Could not discard unreadable local data from browser storage.',
+    unreadableDiscardFailed: 'Could not discard unreadable local data from app storage.',
     updatesAbout: 'Updates & about',
     updateNotice:
-      'TableSpark checks its production service worker for updates and shows a non-blocking prompt when a new app version is ready. You choose when to reload and apply it.',
+      'Web/PWA builds use a non-blocking service-worker update prompt. Packaged desktop and mobile builds update through their platform package or store channel and do not force-reload active work.',
     versionSummary:
       'Version 2.0.12 · MIT License · Made by the Sanskar. Full project, support, privacy, and funding details are available on the About page.',
   },
@@ -216,7 +217,7 @@ export const copy = {
     eyebrow: 'Open source learning',
     title: 'About TableSpark',
     description:
-      'TableSpark is an offline-first multiplication practice tool built for learners, families, and classrooms.',
+      'TableSpark is an offline-first multiplication practice tool built for learners, families, and classrooms across web, desktop, Android, and iOS.',
     logoAlt: 'TableSpark logo',
     project: 'Project',
     versionLabel: 'Version:',
@@ -225,7 +226,7 @@ export const copy = {
     license: 'MIT',
     privacyLabel: 'Privacy:',
     privacy:
-      'Core learning data is stored locally in your browser. No account or donation is required.',
+      'Core learning data is stored locally in this browser or installed app. No account or donation is required.',
     creditLabel: 'Credit:',
     contactSupport: 'Contact & support',
     businessOutlook: 'Business: sanskarin@outlook.in',
