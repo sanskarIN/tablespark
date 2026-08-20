@@ -1,568 +1,422 @@
 # TableSpark Security and Trust Model
 
-This document expands the public `SECURITY.md` policy into an engineering threat/trust-boundary reference for maintainers.
+This engineering reference expands `SECURITY.md` for the current TableSpark 2.0.12 architecture: one local-first React/TypeScript product delivered as web/PWA or through a thin Tauri 2 shell on Windows, macOS, Linux, Android, and iOS/iPadOS.
 
-It describes the **current** architecture: an offline-first static browser/PWA application with no required TableSpark backend, login, payment processor, remote analytics SDK, or production API secret.
+Core learning requires no TableSpark backend, login, payment processor, advertising SDK, remote analytics SDK, or production application API secret.
 
-If any of those architectural facts change, this security model must be reviewed before treating the new design as equivalent.
+Any future change to those facts requires a new threat-boundary review rather than assuming this document still applies unchanged.
 
 # Security goals
 
 TableSpark aims to:
 
-- protect local learner data from accidental application destruction;
-- reject malformed/semantically impossible imported state;
-- distinguish missing, invalid, and inaccessible browser state so recovery logic does not destroy unknown data;
+- prevent accidental destruction of local learner data;
+- reject malformed or semantically impossible state/imports;
+- distinguish empty, valid, invalid-returned, and unavailable storage states;
 - make destructive backup replacement durable before reporting success;
-- avoid creating a remote credential/account attack surface for core learning;
-- avoid logging learner content or recognizable credentials;
-- prevent oversized local input from consuming unbounded processing/storage resources;
-- keep repository credentials out of source/history;
-- use least-privilege CI permissions;
-- keep external funding/support navigation user-initiated;
-- make update/install behavior user-controlled and non-blocking;
-- provide reproducible release artifacts and integrity metadata.
+- keep learner state local by default;
+- keep native permissions narrowly scoped;
+- keep production signing/store credentials out of source and untrusted CI;
+- constrain native webview content using CSP;
+- prevent external support/funding links from navigating the packaged app webview away from TableSpark;
+- bound local input/state processing;
+- avoid logging learner content/credentials;
+- use least-privilege GitHub Actions permissions;
+- preserve user-controlled update/install behavior;
+- produce reproducible candidate artifacts/evidence without overstating signing/release status.
 
-It does **not** claim that browser localStorage is encrypted secure storage or that a device/browser account compromise can be prevented by application code.
+TableSpark does **not** claim that browser/system-webview local storage is encrypted secure storage or that application code can protect data after full device/browser-account compromise.
 
 # Assets worth protecting
 
 ## Learner-local data
 
-Potentially personal local information includes:
+Potentially personal data includes:
 
-- profile names;
-- profile identifiers/timestamps;
-- mastery/accuracy history;
+- profile names/IDs/timestamps;
+- mastery/accuracy/streak history;
 - recent mistakes;
 - session summaries;
-- optional mastery goals;
-- learning/accessibility settings.
+- optional goals;
+- learning/accessibility settings;
+- backup JSON;
+- known-invalid raw recovery data.
 
-## Raw recovery data
+## Repository/release trust assets
 
-Unreadable stored text can contain any data previously written or manually injected under the learner-state key. It may be malformed but still personal.
-
-## Backup files
-
-Exported JSON is intentionally portable and human-readable. Once downloaded, its security is controlled by the user's filesystem/sharing choices rather than TableSpark's browser origin.
-
-## Repository/release integrity
-
-Important engineering assets include:
-
-- source code;
-- workflow definitions;
-- dependencies;
+- source/history integrity;
 - GitHub token permissions;
-- release tags;
-- release ZIP/checksum artifacts;
-- repository history.
+- dependency/toolchain integrity;
+- release tags/artifact identity;
+- Android signing keys/keystores;
+- Apple signing keys/certificates/provisioning credentials;
+- Windows/macOS signing private keys;
+- store/developer API credentials.
+
+These signing/release assets must never be mixed with learner backup data or normal source fixtures.
 
 # Trust boundaries
 
-## 1. Browser UI input
+## 1. User/browser inputs
 
-Learner-entered values are not automatically trusted simply because they came from an `<input>` element.
+Table ranges, practice answers, profile names, search/filter values, settings, and imported file contents are untrusted input.
+
+Domain/schema code validates bounds and invariants before these values become trusted application state.
+
+React renders user strings as text, not raw HTML. Do not introduce `dangerouslySetInnerHTML` for imported/user content.
+
+## 2. Runtime local storage
+
+Browser `localStorage`/native system-webview storage is convenient local persistence, not a secret vault.
+
+The application must treat returned serialized learner state as untrusted input every time it is restored/imported.
+
+A browser/PWA origin and each native application installation have separate platform-managed storage sandboxes. TableSpark does not request broad native filesystem access to discover/copy another installation’s private storage.
+
+Validated backup export/import is the supported cross-platform portability mechanism.
+
+### Startup states
+
+The storage adapter distinguishes:
+
+```text
+empty
+loaded
+invalid
+unavailable
+```
+
+- `empty`: read succeeded, no learner value exists;
+- `loaded`: read succeeded and value migrates/validates;
+- `invalid`: read succeeded and returned a value that cannot be safely trusted;
+- `unavailable`: the read operation itself threw before any learner value was obtained.
+
+`invalid` preserves the raw returned value for explicit recovery.
+
+`unavailable` must never be treated as empty/corrupt because TableSpark does not know what storage contains. Automatic writes remain paused so temporary defaults cannot overwrite unknown inaccessible data.
+
+## 3. Backup import
+
+Backup JSON is fully untrusted.
+
+Pipeline:
+
+```text
+text byte-size budget
+→ JSON parse
+→ supported schema migration
+→ structural validation
+→ semantic validation
+→ startup storage must be known/readable
+→ confirmation
+→ durable save
+→ only then replace current React state/report success
+```
+
+Validation includes identity, mastery, multiplication, attempt, mistake, session, retention, seed, settings, and goal invariants plus the shared 2 MB budget.
+
+If durable replacement fails, current state remains unchanged.
+
+## 4. Raw recovery files
+
+Known-invalid raw recovery data may contain personal content or arbitrary malformed text.
+
+It is exported only for private recovery/inspection and must not be logged, published as CI evidence, or automatically uploaded.
+
+## 5. Browser APIs/system webviews
+
+Speech synthesis, printing, local storage, file/download behavior, service workers, and install prompts are supplied by the active browser/system webview/platform.
+
+These capabilities can fail or differ by host. TableSpark treats optional failures as non-fatal where appropriate and does not claim identical platform implementation details.
+
+# Web/PWA boundary
+
+Web/PWA builds can register the generated service worker.
+
+The service worker supports offline app-shell caching and non-blocking update-ready behavior. Optional browser install prompts are user initiated.
+
+Web update/install behavior is a browser-origin boundary, not a native package updater.
+
+# Native Tauri boundary
+
+The native shell packages the shared frontend and exposes only the minimum native bridge currently needed.
+
+## Rust shell
+
+`src-tauri/src/lib.rs` constructs Tauri and registers only the opener plugin beyond core Tauri behavior.
+
+The shell does not reimplement learning/persistence/domain features in Rust.
+
+## Capability selection
+
+`src-tauri/tauri.conf.json` explicitly selects:
+
+```text
+main-capability
+```
+
+The native config gate rejects accidental selection of additional capabilities.
+
+`src-tauri/capabilities/default.json` scopes that capability to the `main` window.
+
+## Native permissions currently granted
+
+- Tauri `core:default`;
+- URL opening for exact maintained TableSpark email/GitHub/source/funding destinations.
+
+Not granted:
+
+- general shell/process execution;
+- arbitrary filesystem access;
+- arbitrary URL opening;
+- authentication credential access;
+- unrestricted network API access;
+- background learner-data upload;
+- broad device sensors/APIs.
+
+Any future native permission addition must state:
+
+1. concrete product requirement;
+2. why browser/shared behavior is insufficient;
+3. minimum operation/resource scope;
+4. privacy consequences;
+5. tests/real-platform verification;
+6. rollback/failure behavior.
+
+# Native external navigation boundary
+
+Web anchors behave normally in browsers.
+
+Inside native builds, `src/platform/openExternalUrl.ts` delegates maintained destinations to the OS through `@tauri-apps/plugin-opener`.
+
+This prevents normal support/project/funding navigation from replacing the packaged application webview.
+
+The capability allowlist must remain exact. Broad wildcard URL access should be treated as a security change, not a convenience refactor.
+
+# Native Content Security Policy
+
+Packaged native assets use an explicit production CSP in `src-tauri/tauri.conf.json`.
+
+Production policy principles:
+
+- default to packaged/self/Tauri asset sources;
+- allow only required Tauri IPC transport;
+- permit required local style/font/image sources;
+- block object/frame embedding;
+- block form submission/base-URL rewriting;
+- avoid arbitrary remote HTTP/HTTPS execution/content sources.
+
+A separate `devCsp` permits local HTTP/WebSocket transport needed by Vite/Tauri development.
+
+The native config gate requires both CSPs to exist.
+
+Never solve a runtime problem by returning production CSP to `null`. Add the narrowest required directive/source and review why it is necessary.
+
+# Native update boundary
+
+Packaged native builds deliberately skip PWA service-worker registration.
+
+Their assets belong to the native package/store lifecycle. Running a second browser-style service-worker update layer inside the packaged application would create conflicting update ownership.
+
+The repository currently does not enable a Tauri updater plugin or generate updater artifacts.
+
+If a native updater is introduced later, it must use signed update metadata/artifacts and receive a dedicated security/release design review.
+
+# Mobile development host boundary
+
+Physical iOS development may require a reachable frontend host. Vite only uses the Tauri-provided `TAURI_DEV_HOST` when that environment value exists.
+
+Ordinary native/web development does not intentionally bind Vite network-wide by default.
+
+Development CSP permits the HTTP/WebSocket transport needed for that workflow; production CSP does not inherit those broad development allowances.
+
+# Generated native output boundary
+
+Ignored generated paths:
+
+```text
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
+```
+
+- `target/` is Rust build output;
+- `gen/` contains Tauri-generated Android/iOS project files;
+- `icons/` is generated from `public/logo.svg`.
+
+Maintained security-sensitive configuration must remain in tracked Tauri/config/capability files rather than hidden in generated output.
+
+# Native icon/input boundary
+
+`public/logo.svg` is the source identity asset used to generate platform icons.
+
+Native build scripts regenerate icons before package compilation. Generated icons are not accepted as an independent manually maintained source of truth.
+
+# Native signing and distribution boundary
+
+Cross-platform compilation does not equal public signed release.
+
+## Signing material that must not enter source
 
 Examples:
 
-- table ranges;
-- practice range/count/seed;
-- practice answers;
-- profile names;
-- session-retention selection;
-- optional mastery goal.
-
-Protection layers include:
-
-- HTML input constraints for usability;
-- domain validation for mathematical/application rules;
-- provider checks for cross-state actions;
-- persisted-schema validation when data returns from storage/import.
-
-HTML `min`, `max`, and input types are not security boundaries by themselves because script/manual DOM changes can bypass them.
-
-## 2. Browser localStorage
-
-LocalStorage is treated as persistent but **untrusted on read** and potentially **unavailable as an API**.
-
-Reasons:
-
-- users/devtools/extensions can modify it;
-- older app versions may have stored different schemas;
-- browser sync/restore can reintroduce unexpected data;
-- corruption/truncation can occur;
-- another script running in the same origin would share origin storage permissions;
-- privacy/origin/browser policy can make `getItem()` throw before any learner value is returned.
-
-When a learner-state value is successfully returned, it runs through:
-
 ```text
-byte budget
-→ JSON parsing
-→ migration
-→ structural validation
-→ semantic validation
+*.jks
+*.keystore
+keystore.properties
+*.p8
+*.p12
+*.mobileprovision
+Windows/macOS signing private keys
+store/developer API tokens
+signing passwords
 ```
 
-A returned value that fails this pipeline is preserved for recovery rather than trusted or overwritten.
+`.gitignore` blocks common artifacts as defense in depth. Real secret storage still requires protected release tooling/local signing environments.
 
-A storage read that throws is a different condition. TableSpark has not obtained a value and therefore cannot safely call the store empty or the learner data corrupt. In that state the app:
+## Pull-request CI rule
 
-- uses temporary in-memory defaults only so core UI remains usable;
-- marks local persistence unavailable;
-- does not activate known-invalid-value recovery controls;
-- suppresses automatic learner-state writes;
-- disables trusted backup import/export actions that could overwrite or misrepresent unknown inaccessible state;
-- requires browser storage access to be restored and the app reloaded before normal persistence/recovery can be trusted.
+Untrusted/fork PR jobs must not receive production signing secrets.
 
-This protects against a subtle data-loss failure where an unreadable existing browser value could otherwise be replaced by a freshly created default merely because `getItem()` threw.
+Native CI therefore uses:
 
-## 3. Backup file import
+- unsigned/no-bundle desktop compile paths;
+- Android debug APK;
+- iOS simulator build.
 
-A selected `.json` file is fully untrusted.
+These are source/build evidence only.
 
-It may be:
+## Production distribution evidence
 
-- malformed JSON;
-- an unsupported schema;
-- intentionally adversarial large data;
-- mathematically inconsistent;
-- generated by another application;
-- manually edited;
-- a valid older TableSpark backup.
+Before calling a native package released, verify:
 
-Import shares the same validator pipeline as persistence loading and uses a 2 MB byte budget before parsing.
+- intended source SHA/version;
+- correct package/bundle identifier;
+- platform signing/publisher identity;
+- installation/upgrade/replacement behavior;
+- real target host/device behavior;
+- store/developer-account ownership when relevant.
 
-The application does not merge arbitrary backup fragments into current state. It validates a complete replacement state and asks for user confirmation before destructive replacement.
+# Native configuration drift boundary
 
-Replacement is transactional:
+`scripts/native-config.mjs` plus tests/check validate high-risk static invariants without requiring platform SDKs.
 
-```text
-validate replacement
-→ verify startup storage was readable
-→ write replacement
-→ if write succeeds, replace React state
-→ report success
-```
+Current checks include:
 
-If validation fails, startup storage was unreadable, or the replacement write fails, current in-memory state is left unchanged and import is reported as failed. This prevents a “successful import” message for state that exists only in memory and would disappear on reload.
+- package/Cargo version consistency;
+- Tauri package-version source;
+- app identifier;
+- frontend paths;
+- CSP/devCSP presence;
+- exactly one selected `main-capability`;
+- required native icons;
+- native/mobile scripts/dependencies;
+- Android/iOS minimum versions.
 
-## 4. Recovery text download
+A failed gate should normally be fixed by correcting the maintained configuration, not weakening the validator.
 
-Raw unreadable-state download is a **data preservation action**, not validation.
+# Repository/CI trust boundary
 
-A successful download does not mean the data is safe/valid to re-import.
+GitHub workflow changes can execute commands with repository token permissions and may process artifacts/secrets.
 
-Maintain privacy by never automatically uploading or logging the raw value.
+Principles:
 
-## 5. Browser APIs
+- least privileges;
+- reviewed third-party action updates;
+- no production signing secrets in PR CI;
+- secret scanning without echoing matched values;
+- exact-head evidence for release decisions;
+- debug artifacts not mislabeled as production packages.
 
-Optional browser capabilities are treated as progressive integrations.
+Native Cross-Platform workflow uses read-only repository access.
 
-### Speech synthesis
+# Dependency/supply-chain boundary
 
-- availability is feature-detected;
-- unsupported state disables the control;
-- runtime exceptions are non-fatal;
-- learning remains usable without audio.
+The application depends on npm and Rust/Tauri ecosystems plus platform SDKs/toolchains.
 
-Browser/OS speech implementations can have platform-specific privacy behavior outside this repository. TableSpark itself does not provide a remote speech server.
+Review dependency/toolchain upgrades for:
 
-### PWA service worker
+- publisher/repository ownership/provenance;
+- install/build scripts;
+- breaking migrations;
+- new capabilities/permissions;
+- changed platform minimums;
+- changed signing/distribution behavior;
+- runtime/bundle impact.
 
-The service worker controls cached application assets under its origin/scope.
+Production npm dependency audit and CodeQL are defense layers, not proof of supply-chain safety.
 
-Security considerations:
+# Logging boundary
 
-- only deploy from an approved HTTPS origin;
-- verify intended scope/path;
-- avoid caching private remote API responses if such APIs are ever introduced without an explicit cache/privacy design;
-- new versions should not force-reload an active task.
+Structured logs should contain technical events, not learner content.
 
-### Install prompt
+Logger redaction covers sensitive-looking keys/recognizable sensitive values. Do not deliberately log secrets/backup/recovery contents and rely on redaction as the only defense.
 
-`beforeinstallprompt` is accepted only when the event exposes the expected callable prompt method. The app cannot and should not fabricate browser install support.
+# External services/funding boundary
 
-## 6. External navigation
+Buy Me a Coffee and GitHub are external services reached only through explicit user navigation.
 
-GitHub, email, and Buy Me a Coffee links leave the application origin.
+Core TableSpark learning does not require those services.
 
-Rules:
+Native opener permission is scoped only to maintained destinations rather than broad arbitrary external navigation.
 
-- external navigation must be user-initiated;
-- donations remain optional;
-- no sensitive learner state is appended to links/query strings;
-- external sites have their own privacy/security policies.
+# Release artifact boundary
 
-## 7. Dependencies
-
-Third-party packages execute in developer/CI build contexts and some execute in the browser bundle.
-
-Current runtime dependency surface is deliberately small: React, React DOM, and Zod.
-
-Review dependency changes for:
-
-- ownership/provenance;
-- release notes;
-- install scripts;
-- transitive dependency changes;
-- browser permissions/network behavior;
-- bundle impact;
-- known advisories.
-
-Dependabot and `npm audit` are signals, not proofs of safety.
-
-## 8. GitHub Actions
-
-Workflow YAML is executable supply-chain configuration.
-
-Threats include:
-
-- overly broad token permissions;
-- unsafe interpolation of untrusted PR data into shell commands;
-- compromised third-party actions;
-- secrets reaching untrusted code;
-- sensitive artifacts being uploaded publicly/too broadly.
-
-Current workflows use scoped permissions documented in `docs/ci-cd.md`.
-
-## 9. Release artifacts
-
-The release workflow produces:
+Tagged web releases publish:
 
 ```text
 tablespark-web.zip
 tablespark-web.zip.sha256
 ```
 
-The SHA-256 file provides integrity comparison against the exact workflow-produced ZIP.
+The SHA-256 file provides byte-integrity comparison, not publisher-signature proof.
 
-It does **not** provide:
+Native debug/unsigned/simulator CI output is not a signed distribution artifact.
 
-- a cryptographic signature tied to the maintainer's private signing key;
-- proof that the GitHub account/repository was uncompromised;
-- reproducible-build equivalence across environments by itself.
+Production native artifact authenticity depends on platform signing identity and release-channel verification.
 
-If release assurance requirements increase, consider signed provenance/artifact attestations as a separate reviewed feature rather than describing a checksum as a signature.
+# Accessibility/privacy boundary
 
-# Current absence of remote account/backend secrets
+The shared semantic React UI reduces divergence, but system webviews/assistive technologies differ.
 
-Core TableSpark currently has no required:
+Automated browser accessibility tests do not prove NVDA/Narrator/VoiceOver/TalkBack behavior in packaged native applications. Human platform verification is a release gate.
 
-- username/password login;
-- session cookie;
-- OAuth token;
-- remote database credential;
-- payment credential;
-- private API key;
-- analytics ingestion key required for learning;
-- server endpoint for learner progress.
+Printed output deliberately avoids automatically inserting local learner profile names.
 
-This reduces the attack surface significantly.
+# Future backend/auth boundary
 
-It also means features requiring cross-device/cloud sync cannot be added “for free.” Adding a backend would introduce new concerns:
+Adding accounts, cloud sync, remote learner storage, analytics, payments, or authentication would fundamentally change this threat model.
 
-- authentication/authorization;
-- account recovery;
-- transport/API security;
-- server-side validation;
-- database tenancy/isolation;
-- retention/deletion policy;
-- breach response;
-- child/student privacy implications;
-- secrets management;
-- abuse/rate limiting;
-- monitoring/logging controls.
+Before implementation, define at minimum:
 
-A backend feature needs a new ADR/security/privacy design before implementation.
+- server/data ownership;
+- authentication/session model;
+- transport/storage encryption requirements;
+- retention/deletion controls;
+- authorization boundaries;
+- privacy consent/notice;
+- secret/key management;
+- incident response;
+- age/learner-data implications;
+- native/web sync-conflict behavior.
 
-# Input/data validation defenses
+Do not bolt a backend onto the current local-first trust model and continue using “no remote learner data” claims.
 
-## Size budget
+# Security review checklist
 
-Learner state/import text is capped at:
+For a release candidate verify:
 
-```text
-2,000,000 bytes
-```
-
-This limits:
-
-- parsing work;
-- in-memory validator load;
-- localStorage growth;
-- accidental huge backups.
-
-It is not intended as a denial-of-service defense against arbitrary JavaScript already executing in the origin; it is an application input/resource guardrail.
-
-## Numeric bounds
-
-Question/table/session/settings values are bounded to expected product ranges.
-
-This prevents:
-
-- impossible products/counters;
-- huge generated UI;
-- unbounded answer/session values;
-- malformed backup values becoming trusted typed state.
-
-## Mathematical validation
-
-Imported question answers are recomputed:
-
-```text
-answer === left × right
-```
-
-Attempt correctness is recomputed from response and answer.
-
-This prevents a hand-edited backup from claiming impossible correctness data that violates the product model.
-
-## Mastery invariants
-
-Validator checks:
-
-- canonical fact keys;
-- object key/stat key agreement;
-- `correct <= attempts`;
-- `streak <= correct/attempts`.
-
-## Session invariants
-
-Validator checks:
-
-- `correctCount <= questionCount`;
-- generated session has valid seed;
-- mistake review has `seed: null`;
-- history fits configured retention.
-
-## Identity invariants
-
-- at least one profile;
-- max 100 profiles;
-- unique profile IDs;
-- active profile references an existing profile.
-
-The provider independently enforces the 100-profile capacity inside the functional React state updater, so two batched additions cannot both pass a stale-render capacity check and produce 101 profiles.
-
-# Rendering/XSS boundary
-
-Current UI renders data through React text/value bindings and does not intentionally use `dangerouslySetInnerHTML` for learner/imported content.
-
-That means profile names and other text are escaped as React text instead of parsed as HTML.
-
-Maintain this property. If rich text/HTML rendering is ever introduced:
-
-- treat all stored/imported/user content as untrusted;
-- use an appropriate sanitizer/allowlist design;
-- add XSS regression tests;
-- update security/privacy docs.
-
-Do not manually “sanitize” HTML with ad hoc regular expressions.
-
-# Logging model
-
-File:
-
-```text
-src/infrastructure/logger.ts
-```
-
-Structured logs should contain technical event names/metadata, not learner content.
-
-The logger redacts:
-
-- keys that suggest secrets/tokens/passwords/auth/cookies/emails/names;
-- recognizable sensitive values such as email/credential patterns.
-
-Redaction is defense in depth.
-
-Contributor rule:
-
-> Do not log sensitive data first and rely on redaction to save it later.
-
-Recovery raw text is not a logging payload.
-
-# Repository secret scanner
-
-Files:
-
-```text
-scripts/secret-scan.mjs
-scripts/secret-scanner.mjs
-scripts/secret-scanner.test.mjs
-```
-
-The scanner detects a bounded set of recognizable credential signatures and intentionally reports finding metadata without printing the full matched credential.
-
-It cannot detect:
-
-- every vendor format;
-- arbitrary passwords;
-- encrypted/encoded/custom secrets;
-- secrets embedded in binary/history not included in its scan scope.
-
-If a real secret is committed, assume compromise and rotate/revoke it. A later clean scan does not undo historical exposure.
-
-# Documentation link checker as integrity tooling
-
-The local Markdown link checker is not a security scanner, but broken documentation can lead maintainers to unsafe/outdated procedures.
-
-Files:
-
-```text
-scripts/link-check.mjs
-scripts/link-checker.mjs
-scripts/link-checker.test.mjs
-```
-
-Maintain release/security documentation paths alongside code changes.
-
-# Unreadable-state preservation as a security/reliability control
-
-Automatically overwriting invalid stored state could create data loss from:
-
-- partial migrations;
-- malformed but recoverable user data;
-- browser corruption;
-- application validation bugs.
-
-The current design prefers preservation + explicit choice over silent destruction.
-
-While a successfully-read but invalid state value is preserved:
-
-- automatic learner-state saving is paused;
-- temporary UI state is not represented as a valid backup;
-- ordinary backup export is disabled;
-- raw recovery download is available;
-- a validated backup can replace it only after the replacement is successfully written;
-- discard requires confirmation.
-
-# Storage-read unavailability as a separate control
-
-When `localStorage.getItem()` itself throws, no raw learner value has been obtained. Treating that condition as corruption would create misleading recovery UI, while treating it as empty could destroy unknown data.
-
-Therefore:
-
-- `storageReadUnavailable` is distinct from `unreadableStoredState`;
-- automatic persistence is paused;
-- normal backup export/import is blocked because temporary defaults cannot be trusted as existing learner state;
-- no raw-recovery claim is made;
-- restored browser storage access plus reload is required to reclassify the actual store.
-
-# User-controlled destructive actions
-
-Actions such as:
-
-- backup replacement;
-- profile deletion;
-- progress reset;
-- unreadable-state discard
-
-are intentionally explicit/confirmed in the feature layer.
-
-Confirmation dialogs are usability/data-loss safeguards, not strong authentication. Anyone controlling the browser session/device can still interact with local data.
-
-# Privacy-specific non-goals
-
-Do not silently introduce:
-
-- remote analytics of answers/profiles;
-- ad tracking;
-- behavioral engagement scoring;
-- mandatory donations/payments;
-- cloud upload of raw recovery files;
-- learner ranking based on optional goals;
-- cross-origin sharing of local progress.
-
-Any new telemetry/network feature requires explicit privacy documentation and user-impact review.
-
-# PWA/update security behavior
-
-A service-worker update is announced and user-controlled.
-
-Benefits:
-
-- avoids unexpected reload while answering;
-- makes version transition visible;
-- separates “update available” from “network failure.”
-
-Security fixes may sometimes motivate faster update behavior, but do not silently change update semantics without documenting the UX/security tradeoff.
-
-# Development/test fixture safety
-
-Tests should use:
-
-- synthetic learner names;
-- fake timestamps/ids;
-- intentionally fake credential samples designed for scanner tests;
-- no real account tokens;
-- no copied production/student backups.
-
-Issue reproductions should be redacted/synthetic for the same reason.
-
-# Threats outside application control
-
-TableSpark cannot fully protect data from:
-
-- malware/user account compromise on the device;
-- malicious browser extensions with sufficient access;
-- browser vendor sync/telemetry policy;
-- physical access to an unlocked device/profile;
-- OS backups/filesystem access to exported JSON;
-- compromised GitHub/project maintainer accounts;
-- compromised dependency registries/packages beyond controls available to the project.
-
-Documentation should avoid claiming “local” means “encrypted” or “impossible to access.”
-
-# Security review checklist for new features
-
-Before adding a feature, ask:
-
-1. Does it add network communication?
-2. Does it add a new persistent field/schema?
-3. Does it accept/import new untrusted content/file types?
-4. Does it render HTML/URLs based on user/imported data?
-5. Does it add a dependency or GitHub Action?
-6. Does it require a secret/credential?
-7. Does it request a new browser permission/capability?
-8. Does it create/export more personal learning data?
-9. Does it alter deletion/recovery/retention behavior?
-10. Does it affect children/classroom privacy expectations?
-11. Does it add a production deployment/backend boundary?
-12. Does it require new abuse/rate-limit/auth controls?
-13. Could a browser storage read or write failure change whether existing data is safe to replace?
-
-If yes, update the relevant security/privacy/architecture docs and tests in the same change series.
-
-# Vulnerability-report handling
-
-Public policy lives in `SECURITY.md`.
-
-Sensitive reports should not be filed as public issues when they could expose learner data, meaningful validation bypasses, code execution, secrets, or supply-chain risks.
-
-Maintainers should:
-
-1. acknowledge privately;
-2. reproduce using synthetic data;
-3. assess affected commits/releases;
-4. patch with focused tests;
-5. rotate credentials first if any secret is involved;
-6. verify CI/CodeQL/audit impact;
-7. release/advisory according to severity;
-8. credit reporter if desired.
-
-# Security documentation source-of-truth order
-
-For current behavior:
-
-1. executable validation/source/tests;
-2. `SECURITY.md` for reporting/supported-version public policy;
-3. `PRIVACY.md` for data handling statements;
-4. `docs/security-model.md` for engineering trust boundaries;
-5. `docs/data-schema-v2.md` / state-persistence docs for detailed data invariants;
-6. ADRs for historical architectural decisions.
-
-If documentation conflicts with executable behavior, treat that as a defect and reconcile both before release.
+- imported/current state validation remains intact;
+- four storage startup states behave distinctly;
+- backup replacement remains transactional;
+- profile capacity remains atomic;
+- no learner/recovery data appears in logs/artifacts;
+- native capability remains minimal/explicit;
+- production CSP remains configured;
+- PWA service worker remains disabled in native builds;
+- native external URLs remain exact allowlisted destinations;
+- signing secrets are absent from source/PR CI;
+- native config gate passes;
+- CI/CodeQL/native compile gates pass for exact candidate SHA;
+- signed public native artifacts, if any, are tied to intended SHA/identity;
+- manual real-device/accessibility checks are recorded rather than assumed.
