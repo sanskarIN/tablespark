@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: one-shot-format-repair-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   format:
     runs-on: ubuntu-latest
@@ -28,18 +32,78 @@ jobs:
       - name: Install dependencies
         run: npm install --no-fund --no-audit
 
-      - name: Apply pinned Prettier formatting
-        run: npm run format
-
-      - name: Commit formatter output
+      - name: Configure commit identity
         shell: bash
         run: |
-          if git diff --quiet; then
-            echo "No formatting changes were required."
-            exit 0
-          fi
           git config user.name "Sanskar"
           git config user.email "sanskarin@outlook.in"
-          git add -A
-          git commit -m "style: apply repository-wide Prettier formatting"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Apply and commit pinned Prettier formatting
+        shell: bash
+        run: |
+          npm run format
+          if git diff --quiet; then
+            echo "No formatting changes were required."
+          else
+            git add -A
+            git commit -m "style: apply repository-wide Prettier formatting"
+          fi
+
+      - name: Append verification handoff
+        shell: bash
+        run: |
+          marker="## 2026-08-20 verification repair checkpoint"
+          if grep -Fq "$marker" what_changed.md; then
+            echo "Verification handoff already recorded."
+          else
+            cat >> what_changed.md <<'EOF'
+
+## 2026-08-20 verification repair checkpoint
+
+Fresh GitHub Actions evidence for the cross-platform 2.0.12 candidate exposed real release-gate failures that were not visible from source inspection alone. This checkpoint records the failures and the corrective work without deleting any earlier handoff history.
+
+### Exact failing baseline inspected
+
+Candidate head before this repair series: `aa0fa7068cb0a50921383a2c97768fe4c168c25f`.
+
+Observed workflow outcomes on that exact candidate:
+
+- CI run `32320815521` failed.
+  - `quality` failed at `npm run format:check` because Prettier reported 26 tracked files requiring canonical formatting.
+  - `e2e` failed because Playwright's configured web server could not start; the nested `npm run build` exited with code 2.
+- Release Visual Evidence run `32320815527` failed for the same web-server/build failure, so no screenshot artifact could be produced.
+- Native Cross-Platform run `32320815531` failed.
+  - Desktop Rust checks attempted `tauri::generate_context!()` before generated native icons existed on a clean checkout.
+  - Android project generation succeeded, then its native build exposed the production TypeScript failure directly: Playwright browser-context code was being compiled under the Node-only TypeScript project, so DOM globals/types such as `document`, `HTMLInputElement`, `HTMLSelectElement`, and `HTMLTextAreaElement` were unavailable.
+- CodeQL run `32320815530` succeeded on the same baseline.
+
+### Corrective commits created
+
+The repair was intentionally split into small, reviewable commits:
+
+1. `0f3cced6e15ceeb48d343627abaf968299987bd6` — add a dedicated DOM-aware Playwright TypeScript project.
+2. `2d4564d271740cdcc48ef154983a1bb135b7f047` — remove E2E browser files from the Node-only TypeScript project.
+3. `909e71cd617699ea161009c31fa4defa30c1bc33` — add the E2E project to the root TypeScript build references so strict type checking remains enforced.
+4. `10e5983926218af31d440039dadf183dcbd6f1e3` — make `native:check` generate the required Tauri icons before `cargo check`, so native verification is self-contained on a clean checkout.
+5. The immediately preceding formatter commit, when formatting changes are present, applies the repository-pinned Prettier version instead of weakening or bypassing `format:check`.
+
+### Verification policy after repair
+
+- Do not treat the earlier failed runs as evidence for the repaired head.
+- Do not merge or tag until CI, Release Visual Evidence, Native Cross-Platform, and CodeQL have been inspected for the new exact head.
+- Keep the PR in draft while exact-head automated verification is incomplete or any required release/manual evidence remains outstanding.
+- Signed store/installer publication, physical-device validation, screen-reader validation, fluent Hindi review, production HTTPS/PWA validation, and release signing/notarization remain external/manual gates as documented elsewhere in this repository.
+
+EOF
+          fi
+
+          if git diff --quiet -- what_changed.md; then
+            echo "No handoff changes were required."
+          else
+            git add what_changed.md
+            git commit -m "docs: record 2026-08-20 verification repair checkpoint"
+          fi
+
+      - name: Push repair commits
+        shell: bash
+        run: git push origin "HEAD:${GITHUB_REF_NAME}"
