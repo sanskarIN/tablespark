@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { masteryKey } from '../domain/questions';
+import { masteryKey, MAX_SEED } from '../domain/questions';
+import {
+  isSessionHistoryLimit,
+  MAX_MASTERED_FACTS_GOAL,
+  MAX_SESSION_HISTORY,
+} from '../domain/sessions';
 import type { PersistedState } from '../domain/types';
 import { logger } from './logger';
 import { migratePersistedState } from './migrations';
@@ -11,7 +16,8 @@ export const MAX_PROFILES = 100;
 export type StateLoadResult =
   | { readonly status: 'empty'; readonly state: null }
   | { readonly status: 'loaded'; readonly state: PersistedState }
-  | { readonly status: 'invalid'; readonly state: null };
+  | { readonly status: 'invalid'; readonly state: null }
+  | { readonly status: 'unavailable'; readonly state: null };
 
 function isCanonicalMasteryKey(key: string): boolean {
   const match = /^(\d{1,4})x(\d{1,4})$/.exec(key);
@@ -105,6 +111,41 @@ const attemptSchema = z
     }
   });
 
+const sessionSummarySchema = z
+  .object({
+    id: z.string().min(1).max(200),
+    kind: z.enum(['generated', 'mistake-review']),
+    mode: z.enum(['timed', 'untimed']),
+    completedAt: timestampSchema,
+    questionCount: z.number().int().min(1).max(200),
+    correctCount: z.number().int().min(0).max(200),
+    elapsedMs: z.number().finite().nonnegative(),
+    seed: z.number().int().min(0).max(MAX_SEED).nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.correctCount > value.questionCount) {
+      context.addIssue({
+        code: 'custom',
+        path: ['correctCount'],
+        message: 'Session correct answers cannot exceed its question count.',
+      });
+    }
+    if (value.kind === 'generated' && value.seed === null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['seed'],
+        message: 'Generated sessions must retain their replay seed.',
+      });
+    }
+    if (value.kind === 'mistake-review' && value.seed !== null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['seed'],
+        message: 'Mistake-review sessions must not claim a generated replay seed.',
+      });
+    }
+  });
+
 const profileSchema = z
   .object({
     id: z.string().min(1).max(100),
@@ -112,6 +153,8 @@ const profileSchema = z
     createdAt: timestampSchema,
     mastery: z.record(z.string(), masteryStatSchema),
     mistakes: z.array(attemptSchema).max(100),
+    sessions: z.array(sessionSummarySchema).max(MAX_SESSION_HISTORY),
+    masteredFactsGoal: z.number().int().min(1).max(MAX_MASTERED_FACTS_GOAL).nullable(),
   })
   .superRefine((value, context) => {
     for (const [key, stat] of Object.entries(value.mastery)) {
@@ -137,7 +180,7 @@ const profileSchema = z
 
 const persistedStateSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.literal(2),
     activeProfileId: z.string().min(1).max(100),
     profiles: z.array(profileSchema).min(1).max(MAX_PROFILES),
     settings: z.object({
@@ -147,6 +190,10 @@ const persistedStateSchema = z
       speechEnabled: z.boolean(),
       defaultQuestionCount: z.number().int().min(1).max(200),
       defaultTimeLimitSeconds: z.number().int().min(10).max(3600),
+      sessionHistoryLimit: z
+        .number()
+        .int()
+        .refine(isSessionHistoryLimit, 'Session history limit is not supported.'),
     }),
   })
   .superRefine((value, context) => {
@@ -168,6 +215,14 @@ const persistedStateSchema = z
         });
       }
       profileIds.add(profile.id);
+
+      if (profile.sessions.length > value.settings.sessionHistoryLimit) {
+        context.addIssue({
+          code: 'custom',
+          path: ['profiles', index, 'sessions'],
+          message: 'Session history exceeds the configured retention limit.',
+        });
+      }
     });
   });
 
@@ -189,12 +244,20 @@ function parseState(raw: string): PersistedState {
 }
 
 export function loadStateResult(): StateLoadResult {
+  let raw: string | null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return { status: 'empty', state: null };
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    logger.warn('storage_read_unavailable');
+    return { status: 'unavailable', state: null };
+  }
+
+  if (raw === null) return { status: 'empty', state: null };
+
+  try {
     return { status: 'loaded', state: parseState(raw) };
   } catch {
-    logger.warn('storage_read_failed');
+    logger.warn('storage_data_invalid');
     return { status: 'invalid', state: null };
   }
 }

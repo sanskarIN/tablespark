@@ -5,11 +5,20 @@ import {
   isMastered,
   type MasteryFilter,
 } from '../../domain/progress';
-import { copy } from '../../i18n/en';
+import { useLocale } from '../../i18n/LocaleContext';
 import { useAppState } from '../../state/useAppState';
 
+function formatSessionDate(value: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
 export function ProgressDashboard() {
-  const { activeProfile } = useAppState();
+  const { activeProfile, state } = useAppState();
+  const { locale, messages } = useLocale();
+  const { copy, learning } = messages;
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<MasteryFilter>('all');
   const allStats = useMemo(() => Object.values(activeProfile.mastery), [activeProfile.mastery]);
@@ -19,6 +28,8 @@ export function ProgressDashboard() {
   );
   const totalAttempts = allStats.reduce((sum, stat) => sum + stat.attempts, 0);
   const masteredCount = allStats.filter(isMastered).length;
+  const goal = activeProfile.masteredFactsGoal;
+  const goalPercent = goal === null ? 0 : Math.min(100, Math.round((masteredCount / goal) * 100));
 
   return (
     <section className="page-stack" aria-labelledby="progress-title">
@@ -51,6 +62,28 @@ export function ProgressDashboard() {
           <span>{copy.progress.mistakesSaved}</span>
           <strong>{activeProfile.mistakes.length}</strong>
         </article>
+      </div>
+
+      <div className="panel goal-panel">
+        <div className="section-heading">
+          <div>
+            <h3>{learning.progress.goalHeading}</h3>
+            <p>
+              {goal === null
+                ? learning.progress.noGoal
+                : learning.progress.goalProgress(masteredCount, goal)}
+            </p>
+          </div>
+          {goal !== null ? <strong className="goal-percent">{goalPercent}%</strong> : null}
+        </div>
+        {goal !== null ? (
+          <>
+            <div className="progress-track" aria-label={`${goalPercent}%`}>
+              <span style={{ width: `${goalPercent}%` }} />
+            </div>
+            {masteredCount >= goal ? <p>{learning.progress.goalComplete}</p> : null}
+          </>
+        ) : null}
       </div>
 
       <div className="panel">
@@ -113,6 +146,54 @@ export function ProgressDashboard() {
               </div>
             )}
           </>
+        )}
+      </div>
+
+      <div className="panel">
+        <div className="section-heading">
+          <div>
+            <h3>{learning.progress.recentSessions}</h3>
+            <p>
+              {learning.progress.retainedSessions(
+                activeProfile.sessions.length,
+                state.settings.sessionHistoryLimit,
+              )}
+            </p>
+          </div>
+        </div>
+        {activeProfile.sessions.length === 0 ? (
+          <p className="empty-state">{learning.progress.noSessions}</p>
+        ) : (
+          <ul className="session-list">
+            {activeProfile.sessions.slice(0, 12).map((session) => (
+              <li key={session.id}>
+                <div>
+                  <strong>
+                    {session.kind === 'generated'
+                      ? learning.progress.generated
+                      : learning.progress.mistakeReview}
+                  </strong>
+                  <time dateTime={session.completedAt}>
+                    {formatSessionDate(session.completedAt, locale)}
+                  </time>
+                </div>
+                <span>
+                  {session.mode === 'timed'
+                    ? learning.progress.timed
+                    : learning.progress.untimed}
+                </span>
+                <span>
+                  {learning.progress.sessionScore(session.correctCount, session.questionCount)}
+                </span>
+                <span>
+                  {learning.progress.sessionDuration(Math.round(session.elapsedMs / 1000))}
+                </span>
+                {session.seed !== null ? (
+                  <code>{learning.progress.sessionSeed(session.seed)}</code>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 

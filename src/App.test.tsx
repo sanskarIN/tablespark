@@ -53,17 +53,35 @@ describe('TableSpark application', () => {
     expect(screen.getByText('9 × 1 = 9')).toBeInTheDocument();
   });
 
-  it('switches between solved study sheets and blank worksheets', async () => {
+  it('composes practice worksheets, blank styles, and answer keys', async () => {
     const user = userEvent.setup();
     renderApp();
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Hide answers for practice worksheet' }),
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Printable output' }),
+      'worksheet',
     );
     expect(screen.getByText('2 × 1 = ______')).toBeInTheDocument();
     expect(screen.queryByText('2 × 1 = 2')).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'TableSpark multiplication worksheet' }),
     ).toBeInTheDocument();
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Answer blank style' }),
+      'box',
+    );
+    expect(screen.getByText('2 × 1 = □')).toBeInTheDocument();
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Printable output' }),
+      'answer-key',
+    );
+    expect(screen.getByText('2 × 1 = 2')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'TableSpark multiplication answer key' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Name: ______________________________')).not.toBeInTheDocument();
   });
 
   it('searches and filters practiced facts on the progress dashboard', async () => {

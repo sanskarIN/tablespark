@@ -1,0 +1,78 @@
+.shortcut-help-button {
+  margin-left: auto;
+}
+
+.shortcut-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 48%);
+}
+
+.shortcut-dialog {
+  width: min(640px, 100%);
+  max-height: min(80vh, 720px);
+  overflow: auto;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 25%);
+}
+
+.shortcut-dialog .section-heading {
+  align-items: center;
+}
+
+.shortcut-dialog h2 {
+  margin: 0 0 .35rem;
+}
+
+.shortcut-list {
+  display: grid;
+  gap: .65rem;
+  margin: 0;
+}
+
+.shortcut-list > div {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: .8rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.shortcut-list dt,
+.shortcut-list dd {
+  margin: 0;
+}
+
+.shortcut-list kbd {
+  display: inline-block;
+  min-width: 3.25rem;
+  padding: .3rem .55rem;
+  border: 1px solid var(--border);
+  border-bottom-width: 3px;
+  border-radius: .45rem;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .shortcut-help-button {
+    margin-left: 0;
+  }
+
+  .shortcut-list > div {
+    grid-template-columns: 1fr;
+  }
+}

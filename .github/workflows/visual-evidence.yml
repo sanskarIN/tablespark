@@ -1,0 +1,44 @@
+name: Release Visual Evidence
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.12.0
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm install --no-fund --no-audit
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Capture release evidence
+        env:
+          CAPTURE_RELEASE_EVIDENCE: '1'
+        run: npx playwright test e2e/release-evidence.spec.ts
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: tablespark-release-visual-evidence
+          path: test-results/release-evidence/*.png
+          if-no-files-found: error
+          retention-days: 30

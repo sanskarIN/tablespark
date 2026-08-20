@@ -1,0 +1,69 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "TableSpark",
+  "version": "../package.json",
+  "identifier": "in.sanskar.tablespark",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "TableSpark",
+        "width": 1180,
+        "height": 800,
+        "minWidth": 360,
+        "minHeight": 560,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "capabilities": ["main-capability"],
+      "csp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "ipc: http://ipc.localhost",
+        "font-src": "'self' data:",
+        "img-src": "'self' asset: http://asset.localhost blob: data:",
+        "style-src": "'unsafe-inline' 'self'",
+        "object-src": "'none'",
+        "frame-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'"
+      },
+      "devCsp": {
+        "default-src": "'self' http: https: customprotocol: asset:",
+        "connect-src": "ipc: http://ipc.localhost http: https: ws: wss:",
+        "font-src": "'self' data: http: https:",
+        "img-src": "'self' http: https: asset: http://asset.localhost blob: data:",
+        "style-src": "'unsafe-inline' 'self' http: https:",
+        "object-src": "'none'",
+        "frame-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Education",
+    "shortDescription": "Offline-first multiplication tables, worksheets, practice, and mastery tracking.",
+    "longDescription": "TableSpark is an offline-first multiplication learning application with custom tables, printable worksheets, replayable practice drills, mistake review, mastery tracking, local profiles, English and Hindi interfaces, and portable backups.",
+    "copyright": "Copyright © 2026 Sanskar",
+    "publisher": "Sanskar",
+    "createUpdaterArtifacts": false
+  }
+}

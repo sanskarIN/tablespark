@@ -1,25 +1,21 @@
 # Setup Guide
 
-This guide explains how to prepare a development machine for TableSpark and how to upgrade the required tools when an installed version is out of support.
+This guide prepares a machine for TableSpark 2.0.12 web/PWA development and, when desired, native Windows, macOS, Linux, Android, or iOS/iPadOS development.
 
-## Required tools
+## 1. Shared prerequisites
 
-TableSpark development requires:
+Every contributor needs:
 
-- Git
-- Node.js 22.12.0 or newer
-- npm 10 or newer
-- a modern browser
+- Git;
+- Node.js `22.12.0` or newer;
+- npm `10` or newer;
+- a modern browser.
 
 Recommended editor:
 
-- Visual Studio Code with the built-in TypeScript support plus optional ESLint and Prettier extensions
+- Visual Studio Code with TypeScript, ESLint, and Prettier support.
 
-The project itself does not require a database server, Python, Java, Docker, Android Studio, or platform-specific SDK.
-
-## Check what is already installed
-
-Open a terminal and run:
+Check:
 
 ```bash
 git --version
@@ -27,304 +23,467 @@ node --version
 npm --version
 ```
 
-What the commands mean:
+The repository’s Node requirement is also recorded in `.nvmrc` and `package.json`.
 
-- `git --version` asks Git to print the installed Git version.
-- `node --version` asks the Node.js runtime to print its version.
-- `npm --version` asks the Node package manager to print its version.
-
-For this repository, Node.js must be at least `22.12.0` and npm must be at least major version 10.
-
-## Windows 11
-
-### Install Git
-
-A straightforward option is Windows Package Manager:
-
-```powershell
-winget install --id Git.Git -e
-```
-
-`winget install` installs a package. `--id Git.Git` selects the Git package by its exact identifier, and `-e` means exact matching.
-
-Close and reopen the terminal, then verify:
-
-```powershell
-git --version
-```
-
-### Install Node.js
-
-Install a supported Node.js LTS/current line using your preferred trusted package source. With `winget`, first inspect available Node packages:
-
-```powershell
-winget search Node.js
-```
-
-After installation, open a new terminal and verify:
-
-```powershell
-node --version
-npm --version
-```
-
-If your package source provides Node older than `22.12.0`, update that package source or install a newer supported Node release before continuing.
-
-### Optional Visual Studio Code
-
-```powershell
-winget install --id Microsoft.VisualStudioCode -e
-```
-
-Useful VS Code extensions:
-
-- ESLint (`dbaeumer.vscode-eslint`)
-- Prettier - Code formatter (`esbenp.prettier-vscode`)
-
-The repository already contains `.editorconfig` and formatter/linter configuration, so editor extensions should follow repository rules rather than inventing separate ones.
-
-## macOS
-
-### Homebrew route
-
-If Homebrew is already installed:
-
-```bash
-brew update
-brew install git
-brew install node
-```
-
-Then verify:
-
-```bash
-git --version
-node --version
-npm --version
-```
-
-If `brew install` reports that a formula is already installed, use the upgrade process below instead of installing a duplicate copy.
-
-## Linux
-
-Package names and versions vary by distribution. Distribution repositories sometimes lag behind active Node.js releases, so always verify the resulting version.
-
-After installing Git and Node.js from your trusted distribution/package source, run:
-
-```bash
-git --version
-node --version
-npm --version
-```
-
-If Node is older than `22.12.0`, use a supported Node version manager or an official Node package source appropriate for your distribution rather than forcing TableSpark to run on an unsupported runtime.
-
-## Clone TableSpark
-
-Choose a development folder and run:
+## 2. Clone and install JavaScript dependencies
 
 ```bash
 git clone https://github.com/sanskarIN/tablespark.git
 cd tablespark
+npm install
 ```
 
-Command meaning:
-
-- `git clone <url>` downloads a working copy and Git history from the repository URL.
-- `cd tablespark` changes the terminal's current directory into the cloned project folder.
-
-## Configure repository commit identity
-
-For this repository, configure the requested project email locally:
+Configure the requested project-local commit email if using a normal checkout:
 
 ```bash
 git config user.email "sanskarin@outlook.in"
 ```
 
-This writes `user.email` into the current repository's `.git/config`. Omitting `--global` avoids changing unrelated repositories.
+## 3. Web/PWA development
 
-Check it with:
-
-```bash
-git config user.email
-```
-
-## Install project dependencies
-
-```bash
-npm install
-```
-
-`npm install` reads `package.json`, resolves the pinned direct dependencies and their transitive dependencies, installs them under `node_modules/`, and creates/updates a local package lock for that installation.
-
-Do not commit unrelated dependency changes without reviewing them. When a lockfile is introduced/updated, inspect the diff and run the full quality suite before committing it.
-
-## Start development mode
+Start Vite:
 
 ```bash
 npm run dev
 ```
 
-`npm run dev` executes the repository's `dev` script, which starts Vite's development server. By default this project uses port `5173` and requires that port to be available.
-
-Open:
+Default development URL:
 
 ```text
 http://localhost:5173
 ```
 
-Stop the server with `Ctrl+C` in the terminal where it is running.
+Build/preview:
 
-## Install Playwright browser support
+```bash
+npm run build
+npm run preview
+```
 
-Unit and integration tests do not need a downloaded browser, but end-to-end tests do.
+The web build writes `dist/`.
+
+## 4. Browser end-to-end support
+
+Install Playwright Chromium:
 
 ```bash
 npx playwright install chromium
 ```
 
-`npx` executes a command from the project's installed packages. `playwright install chromium` downloads the Chromium browser build used by Playwright.
-
-On a minimal Linux environment, install the browser and required operating-system libraries together:
+Minimal Linux/CI environments can use:
 
 ```bash
 npx playwright install --with-deps chromium
 ```
 
-## Verify the complete local setup
-
-Run:
-
-```bash
-npm run check
-```
-
-This sequentially checks formatting, lint rules, strict TypeScript types, application tests, security-scanner tests, repository credential-pattern scanning, and the production build.
-
-Then, for browser-level verification:
+Run browser tests:
 
 ```bash
 npm run test:e2e
 ```
 
-For the production dependency security gate:
+## 5. Shared repository verification
+
+```bash
+npm run check
+```
+
+This verifies:
+
+```text
+formatting
+→ lint
+→ strict TypeScript
+→ application tests
+→ secret-scanner tests
+→ repository secret scan
+→ documentation-link tests/check
+→ native configuration tests/check
+→ production web build
+```
+
+Production dependency audit:
 
 ```bash
 npm audit --omit=dev --audit-level=high
 ```
 
-## Run security checks individually
+## 6. Native prerequisites — all native targets
 
-Test the repository scanner itself:
+Native development additionally requires Rust and the platform-specific system dependencies used by Tauri.
 
-```bash
-npm run test:security
-```
-
-Scan the repository working tree:
+Install Rust through the official Rust toolchain appropriate to your platform, then verify:
 
 ```bash
-npm run secret:scan
+rustc --version
+cargo --version
+rustup --version
 ```
 
-A successful pattern scan does not prove no secret has ever appeared in Git history. If a real credential is exposed, revoke/rotate it immediately and then remediate repository history as appropriate.
-
-## Upgrade an unsupported tool
-
-### Git
-
-Check:
+Use stable Rust:
 
 ```bash
-git --version
+rustup update stable
+rustup default stable
 ```
 
-On Windows with `winget`:
+Check the current Tauri environment after `npm install`:
+
+```bash
+npm run native:info
+```
+
+Check maintained native configuration without compiling Rust:
+
+```bash
+npm run test:native-config
+npm run native:config:check
+```
+
+Check Rust formatting/types:
+
+```bash
+npm run check:native
+```
+
+## 7. Native icons
+
+TableSpark keeps one source logo:
+
+```text
+public/logo.svg
+```
+
+Generate platform icons:
+
+```bash
+npm run native:icons
+```
+
+Native build scripts run this automatically. Generated output under `src-tauri/icons/` is ignored because it can be reproduced from the SVG.
+
+## 8. Windows native setup
+
+Required native pieces include:
+
+- Rust stable with the normal Windows MSVC target/toolchain;
+- Microsoft C++/Windows build tools required by Tauri;
+- WebView2 runtime/development availability supplied by supported Windows environments.
+
+After prerequisites:
 
 ```powershell
-winget upgrade --id Git.Git -e
-```
-
-On Homebrew:
-
-```bash
-brew update
-brew upgrade git
-```
-
-### Node.js
-
-Check:
-
-```bash
-node --version
-```
-
-If Node is below `22.12.0`, upgrade through the same trusted package manager or version manager used to install it. After upgrading, reopen the terminal and run:
-
-```bash
-node --version
-npm --version
-```
-
-Then remove and reinstall dependencies only if you encounter native-module or resolution problems after a major runtime change:
-
-```bash
-rm -rf node_modules
 npm install
+npm run native:info
+npm run check:native
+npm run native:dev
 ```
 
-On PowerShell, the equivalent folder removal is:
+Compile without installer bundling/signing:
 
 ```powershell
-Remove-Item -Recurse -Force node_modules
-npm install
+npm run native:build:ci
 ```
 
-Do not delete application source files or exported TableSpark backup files when cleaning dependencies.
+Create host-supported native bundles/installers:
 
-### Project dependencies
+```powershell
+npm run native:build
+```
 
-See outdated direct dependencies:
+Production installer signing is not a source-code prerequisite and must use repository-owner signing material outside Git.
+
+## 9. macOS native setup
+
+Install/verify Xcode command-line/native build tools plus Rust.
 
 ```bash
-npm outdated
+xcodebuild -version
+rustc --version
+npm install
+npm run native:info
+npm run native:dev
 ```
 
-Review updates rather than blindly applying them. Dependabot is configured to propose dependency updates in GitHub so CI can validate them.
+Compile without package signing/bundling:
 
-## Install TableSpark as a PWA
+```bash
+npm run native:build:ci
+```
 
-After a production deployment is served over a secure origin, supported browsers can offer an install action. The exact button differs by browser. Installation creates a standalone app-like window while still using the web application package.
+Create macOS bundles supported by the host:
 
-Development on `localhost` can exercise service-worker behavior, but release installability should be verified from the final secure deployment origin.
+```bash
+npm run native:build
+```
 
-## Common setup problems
+Normal public macOS distribution requires an appropriate Apple signing/notarization or App Store process. Signing credentials are not committed to this repository.
 
-### `node` or `npm` is not recognized
+## 10. Linux native setup
 
-Close and reopen the terminal after installation. If the command still cannot be found, confirm the tool's installation directory is on your `PATH`.
+The exact packages vary by distribution. On Ubuntu/Debian-class environments, the Native Cross-Platform workflow installs the Tauri desktop prerequisites used by CI:
 
-### Node is installed but `npm run check` rejects the version
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libxdo-dev \
+  libssl-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev
+```
 
-Compare `node --version` with `package.json` and `.nvmrc`. Use Node `22.12.0` or newer within the supported major line rather than relying on a system package that only reports `22.0.0`–`22.11.x`.
+Then:
 
-### Port 5173 is already in use
+```bash
+npm install
+npm run native:info
+npm run check:native
+npm run native:dev
+npm run native:build:ci
+```
 
-TableSpark deliberately uses `strictPort`, so Vite will report the conflict instead of silently switching ports. Stop the process using port 5173, then run `npm run dev` again.
+For public packaging:
+
+```bash
+npm run native:build
+```
+
+Test produced packages on the intended Linux distributions rather than assuming one CI image represents all distributions.
+
+## 11. Android native setup
+
+Android development requires:
+
+- Java/JDK;
+- Android SDK tools;
+- Android NDK;
+- Android platform/build tools;
+- Rust Android targets;
+- Android Studio is recommended for emulator/device/IDE workflows but the maintained build commands use the Tauri CLI.
+
+The CI workflow uses Java 17 and the installed Android SDK/NDK on the runner.
+
+Install Rust targets when setting up manually:
+
+```bash
+rustup target add \
+  aarch64-linux-android \
+  armv7-linux-androideabi \
+  i686-linux-android \
+  x86_64-linux-android
+```
+
+Ensure your Android SDK/NDK environment is discoverable by the Tauri toolchain.
+
+Initialize generated Android project files:
+
+```bash
+npm run android:init
+```
+
+Generated project output is placed under `src-tauri/gen/` and is intentionally ignored.
+
+Development run:
+
+```bash
+npm run android:dev
+```
+
+Debug APK build:
+
+```bash
+npm run android:build:debug
+```
+
+Production package build after signing configuration is available:
+
+```bash
+npm run android:build
+```
+
+Maintained Android configuration:
+
+```text
+identifier: in.sanskar.tablespark
+minSdkVersion: 24
+debug suffix: .debug
+```
+
+Never commit `.jks`, `.keystore`, `keystore.properties`, signing passwords, or store credentials.
+
+## 12. iOS/iPadOS native setup
+
+iOS commands require macOS with full Xcode tooling.
+
+Verify:
+
+```bash
+xcodebuild -version
+pod --version
+```
+
+Install the simulator Rust target used in CI:
+
+```bash
+rustup target add aarch64-apple-ios-sim
+```
+
+Initialize generated iOS project files:
+
+```bash
+npm run ios:init
+```
+
+Simulator build:
+
+```bash
+npm run ios:build:simulator
+```
+
+Normal development:
+
+```bash
+npm run ios:dev
+```
+
+For a physical iOS device where Tauri needs a reachable development host:
+
+```bash
+npm run ios:dev:device
+```
+
+Vite reads `TAURI_DEV_HOST` when the Tauri CLI supplies it, so the frontend server listens on the correct development address without exposing every native development session network-wide.
+
+Production build after Apple signing/provisioning is configured:
+
+```bash
+npm run ios:build
+```
+
+Maintained minimum iOS version:
+
+```text
+14.0
+```
+
+Never commit Apple private keys/certificates/provisioning secrets.
+
+## 13. Native generated files
+
+Do not manually treat these as source of truth:
+
+```text
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
+```
+
+They are ignored and regenerated by build/tooling commands.
+
+Tracked native source/configuration lives in the rest of `src-tauri/`.
+
+## 14. Local data while switching platforms
+
+Browser/PWA and native installations use separate platform-managed local storage.
+
+Do not copy private webview storage directories manually.
+
+Use TableSpark:
+
+```text
+Settings → Data & privacy → Export backup
+```
+
+then import that validated JSON in the destination installation.
+
+The same schema/migration/semantic validation rules apply regardless of source platform.
+
+## 15. Native signing setup boundary
+
+Cross-platform development/build support does not require committing signing material.
+
+Before public native distribution, repository owners must configure the relevant platform signing/store process separately.
+
+The repository ignores common signing artifacts:
+
+```text
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+keystore.properties
+```
+
+Treat a signing key exposed in Git/CI logs as compromised.
+
+## 16. Common problems
+
+### `node` / `npm` not found
+
+Reopen the terminal after installation and verify `PATH`.
+
+### Node is too old
+
+Use Node `22.12.0` or newer according to `package.json`/`.nvmrc`.
+
+### Port 5173 is busy
+
+TableSpark uses a strict Vite port. Stop the conflicting process rather than silently changing ports, because Tauri `devUrl` expects 5173.
 
 ### Playwright cannot launch Chromium
-
-Run:
 
 ```bash
 npx playwright install chromium
 ```
 
-On Linux CI/minimal environments use:
+or on minimal Linux:
 
 ```bash
 npx playwright install --with-deps chromium
 ```
 
-For more help, see `docs/troubleshooting.md`.
+### `cargo` / `rustup` unavailable
+
+Install Rust before native work. Web/PWA development itself still does not require Rust.
+
+### Tauri Linux build reports missing WebKit/GTK libraries
+
+Install the native packages shown in the Linux section for the applicable distribution equivalents.
+
+### Android NDK not detected
+
+Verify the Android SDK/NDK installation/environment and run:
+
+```bash
+npm run native:info
+```
+
+before retrying `android:init` or `android:build:debug`.
+
+### Physical iOS app cannot reach Vite
+
+Use:
+
+```bash
+npm run ios:dev:device
+```
+
+and ensure Xcode/device networking is configured. The Tauri CLI supplies `TAURI_DEV_HOST`, which `vite.config.ts` consumes.
+
+### Native link does not open externally
+
+The native opener capability intentionally allows only maintained TableSpark destinations. Do not broaden the capability merely to work around a typo; verify the exact destination and capability first.
+
+## 17. Next documents
+
+- `docs/native-packaging-evaluation.md` — native architecture/platform commands/signing boundaries.
+- `docs/commands-reference.md` — command-by-command reference.
+- `docs/testing.md` — automated/manual verification.
+- `docs/release.md` — release workflow and signing gates.
+- `docs/troubleshooting.md` — additional diagnostics.

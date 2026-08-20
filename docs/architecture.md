@@ -2,181 +2,395 @@
 
 ## Goals
 
-TableSpark uses a modular client architecture that keeps learning rules testable without a browser UI, keeps persistence replaceable, and avoids introducing remote infrastructure that the product does not need.
+TableSpark uses one modular local-first learning application across web/PWA and native Windows, macOS, Linux, Android, and iOS/iPadOS targets.
 
-## High-level structure
+The architecture aims to:
+
+- keep multiplication/learning rules independent of UI/runtime;
+- keep persistence and platform APIs behind explicit adapters;
+- avoid duplicating product logic per operating system;
+- keep native permissions minimal;
+- preserve one learner-data schema and backup format across targets;
+- keep web/PWA support fully functional alongside native packaging;
+- avoid remote infrastructure that the product does not need.
+
+## Delivery architecture
+
+```text
+                       shared TypeScript / React product
+                                   │
+             ┌─────────────────────┴─────────────────────┐
+             │                                           │
+         Web / PWA                                   Tauri 2
+             │                                           │
+      browser runtime                           Rust + system webview
+             │                                           │
+   service worker optional          ┌────────┬────────┬───┴────┬────────┐
+                                    │        │        │        │        │
+                                  Windows   macOS    Linux   Android   iOS/iPadOS
+```
+
+The Tauri layer packages the existing frontend and provides only narrowly scoped native bridging. It is not a second feature implementation.
+
+## Repository structure
 
 ```text
 src/
 ├── components/       Cross-cutting UI states and boundaries
 ├── domain/           Pure business rules and domain types
 ├── features/         User-facing feature modules
-├── i18n/             Externalized interface copy
-├── infrastructure/   Browser adapters and persistence boundaries
+├── i18n/             Typed message catalogs and locale provider
+├── infrastructure/   Runtime-neutral/browser-facing adapters
+├── platform/         Web/native platform detection and bridges
 ├── state/            Application state composition
-├── App.tsx           Product shell and navigation
-└── main.tsx          Browser bootstrap
-scripts/               Repository-only quality/security utilities
+├── App.tsx           Shared product shell/navigation
+└── main.tsx          Shared bootstrap with runtime-aware PWA registration
+
+src-tauri/
+├── Cargo.toml        Rust package/dependencies
+├── build.rs          Tauri build integration
+├── capabilities/     Native permission boundary
+├── src/              Native desktop/mobile entrypoints
+├── tauri.conf.json   Shared native configuration/security/bundle settings
+├── tauri.android.conf.json
+└── tauri.ios.conf.json
+
+scripts/               Repository quality/security/configuration utilities
+e2e/                   Browser-level product journeys
+docs/                  Architecture, operations, release, and user documentation
 ```
 
-### Domain
+Generated output is deliberately not source of truth:
 
-`src/domain/` owns rules that can run independently of React:
+```text
+src-tauri/target/   Rust build output
+src-tauri/gen/      Generated Android/iOS IDE projects
+src-tauri/icons/    Native icons generated from public/logo.svg
+```
 
-- `answers.ts` defines the bounded practice-response contract used by the UI.
-- `tables.ts` validates table ranges and enforces the render-output budget.
-- `questions.ts` validates seeds and produces deterministic seeded practice questions.
-- `mastery.ts` updates mastery statistics and bounded mistake history.
-- `difficulty.ts` defines transparent practice progression presets.
-- `review.ts` builds deduplicated mistake-review sessions.
-- `progress.ts` classifies, searches, filters, and orders mastery facts.
-- `worksheet.ts` maps table rows into solved/blank printable worksheet items.
-- `types.ts` defines immutable product data shapes.
+## Domain layer
 
-The deterministic generator is intentionally explicit so tests and bug reports can reproduce a generated session by seed. Random seed selection is infrastructure convenience; deterministic generation remains domain logic.
+`src/domain/` contains rules that do not depend on React, browser APIs, or Tauri:
 
-### Feature modules
+- bounded practice answers;
+- table range/step validation and render budget;
+- deterministic seeded question generation;
+- mastery and mistake-history updates;
+- difficulty presets;
+- deduplicated mistake review;
+- progress filtering/search/classification;
+- session-history retention and optional goals;
+- worksheet presentation models;
+- immutable product data shapes.
 
-`src/features/` groups UI by user intent rather than generic component type:
+This is the portability core. A multiplication rule should behave identically in Chrome, an Android Tauri webview, and a Windows native package.
 
-- `tables/` — custom table generation, solved/blank worksheet views, and print entry point.
-- `practice/` — random/replayable seeded practice, timed/untimed drills, and mistake review.
-- `progress/` — accuracy, mastery classification, search/filtering, streaks, and mistake summaries.
-- `settings/` — appearance, accessibility, offline profiles, persistence capacity, backup/restore, and unreadable-state recovery.
-- `about/` — project identity, privacy summary, support, license, and funding links.
+## Feature layer
 
-### State
+`src/features/` groups UI by user intent:
 
-`AppStateProvider` wires state transitions explicitly. It is responsible for:
+- `tables/` — custom tables and worksheet composition/printing;
+- `practice/` — generated/replayable drills, timing, feedback, mistake review;
+- `progress/` — mastery/search/history/goals;
+- `settings/` — language, appearance, accessibility, profiles, backup/recovery, learning-record settings;
+- `about/` — identity, version, privacy summary, contact/support/funding links.
 
-- selecting the active offline profile;
-- creating/deleting profiles within the supported capacity;
-- applying settings updates;
-- recording practice attempts via domain logic;
-- replacing state from a validated backup;
-- resetting the active profile's learning progress;
-- exposing whether the latest browser-storage write succeeded;
-- distinguishing an empty store from an existing but unreadable stored value;
-- pausing automatic persistence while unreadable stored data is awaiting explicit recovery.
+Feature modules consume shared state/domain rules. They should not branch into separate Windows/Android/etc. implementations merely because a native package exists.
 
-The provider persists state after changes through the storage adapter. If a normal persistence write fails, current in-memory state remains usable and the UI exposes the durability problem instead of silently implying data was saved.
+## State layer
 
-If an existing stored value fails validation during startup, the provider uses a temporary in-memory default state but deliberately does **not** save it over the unreadable value. The user can replace the value with a valid backup or explicitly discard it. See ADR 0004.
+`AppStateProvider` owns explicit application transitions including:
 
-### Infrastructure
+- active profile selection;
+- profile creation/deletion within the 100-profile cap;
+- settings updates;
+- history retention trimming;
+- attempt/mastery/mistake updates;
+- completed session summaries;
+- optional goals;
+- validated backup replacement;
+- progress reset;
+- persistence health/recovery state.
 
-`src/infrastructure/` contains browser-specific boundaries:
+Important reliability rules:
 
-- `storage.ts` validates, bounds, serializes, restores, and classifies local state while preserving unreadable raw values for recovery.
-- `migrations.ts` centralizes persisted schema-version handling.
-- `speech.ts` wraps optional browser speech synthesis and converts platform failures into a safe fallback.
-- `logger.ts` emits structured events while redacting sensitive field names and recognizable sensitive values.
-- `browserPreferences.ts` safely reads/writes small non-critical browser flags such as onboarding dismissal.
-- `random.ts` creates bounded practice seeds while allowing deterministic injection in tests.
-
-No domain module imports these adapters.
-
-### Repository quality utilities
-
-`scripts/secret-scanner.mjs` is deliberately outside application runtime code. It scans repository text files for a bounded set of common credential signatures and reports only finding metadata. The scanner is tested with Node's built-in test runner and participates in CI.
+- profile capacity is checked inside the latest functional state update so batching cannot create 101 profiles;
+- backup replacement is transactional: validate, durably save, then replace active React state/report success;
+- startup storage-read failure and known-invalid returned data are separate states;
+- temporary defaults never automatically overwrite unknown/inaccessible or preserved invalid data.
 
 ## Persistence model
 
-The current schema version is `1`.
+Current learner schema:
 
-State includes:
+```text
+schemaVersion: 2
+```
 
-- active profile identifier;
-- one or more offline profiles;
-- per-profile mastery and recent mistakes;
-- application settings.
+Stable learner storage key:
 
-Persistence and backup import share a 2 MB byte budget. The storage adapter validates imported JSON before use and verifies structural plus semantic invariants, including:
+```text
+tablespark.state.v1
+```
 
-- active-profile existence;
-- unique profile IDs;
-- valid settings ranges;
-- bounded question operands and correct multiplication answers;
-- attempt correctness matching the recorded response;
-- mistake history containing only incorrect attempts;
-- mastery correct/streak counters not exceeding valid totals;
-- canonical commutative mastery keys;
-- mastery object keys matching stored fact keys.
+Locale preference:
 
-Unsupported versions fail explicitly rather than being interpreted as current data.
+```text
+tablespark.locale.v1
+```
 
-### Initial load states
+Schema number and storage-key suffix intentionally differ. The old key remains discoverable so schema-1 data can migrate locally.
 
-The storage adapter classifies startup into three explicit states:
+A browser/PWA origin and each native installation have separate platform-managed storage. TableSpark does not discover/copy another installation’s private storage.
 
-- `empty` — no persisted TableSpark value exists;
-- `loaded` — a persisted value exists and validates successfully;
-- `invalid` — a value exists but cannot be safely parsed, migrated, or validated.
+Cross-platform data movement uses validated JSON backup export/import.
 
-The distinction matters because `invalid` data must not be treated as disposable empty storage. While an invalid value is preserved, normal automatic persistence is suspended. Settings can download the raw stored text, replace it by importing a valid backup, or discard it after confirmation.
+### Startup storage classification
 
-### Migration rule
+The storage adapter has four explicit outcomes:
 
-Any future persisted schema change must:
+- `empty` — storage read succeeded and no learner value exists;
+- `loaded` — storage read succeeded and the returned value migrates/validates;
+- `invalid` — storage read succeeded, returned a value, but parsing/migration/validation failed;
+- `unavailable` — the storage read operation itself threw before any learner value could be obtained.
 
-1. increment the schema version;
-2. add a migration path in `migrations.ts`;
-3. preserve user data where safe;
-4. add migration tests;
-5. document backup compatibility.
+`invalid` preserves the exact raw returned value for recovery. `unavailable` cannot safely claim that storage is empty or corrupt and therefore pauses automatic learner writes without presenting known-invalid raw recovery controls.
 
-Known old schema shapes should be migrated explicitly. Unknown malformed data should remain preserved for recovery rather than being heuristically repaired.
+### Shared validation
 
-## Offline model
+Persisted/current/imported data uses structural and semantic validation, including:
 
-The PWA service worker is generated during the production build. Static application assets are precached. Core learning workflows do not depend on network requests, so once the application is available locally they can continue offline.
+- profile count/unique IDs/active-profile identity;
+- settings bounds;
+- canonical mastery keys/counters;
+- multiplication answer correctness;
+- attempt correctness semantics;
+- mistake history invariants;
+- bounded session summaries and retention;
+- generated/review seed semantics;
+- optional goal bounds;
+- shared 2 MB encoded-text budget.
 
-External links such as GitHub, email, and Buy Me a Coffee naturally require network access.
+### Schema 1 → 2 migration
 
-## Security and reliability boundaries
+Valid schema-1 data receives:
 
-- Imported data is untrusted and validated before replacement.
-- Existing unreadable local data is preserved until explicit recovery action.
-- Application UI does not render raw HTML from imported/user data.
-- There is no authentication secret, payment credential, or remote API token in the current product.
-- Logs contain technical events rather than learner content and redact sensitive keys/values.
-- Browser storage failure is surfaced to users instead of silently losing durability.
-- Repository secret scanning supplements normal secret-handling discipline.
-- GitHub Actions permissions are scoped per workflow.
-- Dependency auditing and CodeQL run in automation.
+- per-profile `sessions: []`;
+- per-profile `masteredFactsGoal: null`;
+- default session retention `25`;
+- `schemaVersion = 2`.
+
+The result still passes full schema-2 validation.
+
+## Infrastructure layer
+
+`src/infrastructure/` contains runtime-facing adapters that remain usable by the shared product:
+
+- persistence/storage validation and classification;
+- schema migration;
+- speech synthesis wrapper;
+- structured redacted logging;
+- small interface/browser preferences;
+- random seed creation;
+- PWA lifecycle events;
+- optional browser install-prompt modeling.
+
+The native shell deliberately keeps learner state in the same webview/local-storage application model instead of inventing a separate Rust database or native persistence schema.
+
+## Platform layer
+
+`src/platform/` contains the intentionally small runtime split.
+
+### Runtime detection
+
+`runtime.ts` exposes:
+
+- `runtimePlatform`;
+- `isNativeShell`;
+- `isMobileNativeShell`;
+- `shouldRegisterPwaServiceWorker()`.
+
+Build-time values come from Vite/Tauri environment metadata. Tests/non-Vite contexts safely fall back to `web` instead of throwing on absent injected constants.
+
+### External destinations
+
+`openExternalUrl.ts` keeps normal anchor behavior on web builds and uses `@tauri-apps/plugin-opener` in native builds.
+
+The native capability allows only maintained TableSpark destinations. It does not expose arbitrary shell execution or arbitrary filesystem opening.
+
+## Web/PWA lifecycle
+
+Web builds retain the existing PWA behavior:
+
+- generated service worker;
+- precached application shell;
+- offline-ready notification;
+- non-blocking update-ready prompt;
+- optional browser install prompt.
+
+`main.tsx` registers the PWA service worker only when `shouldRegisterPwaServiceWorker()` is true.
+
+## Native lifecycle
+
+Packaged Tauri builds deliberately skip PWA service-worker registration.
+
+Their frontend assets are embedded/served by the native package, so application updates belong to signed installer/store replacement rather than a second browser service-worker updater.
+
+The repository currently does not enable a Tauri native updater plugin. Adding one would require signed update infrastructure and a separate security/release decision.
+
+## Native Rust shell
+
+`src-tauri/src/lib.rs` constructs the application and registers only the opener plugin.
+
+`src-tauri/src/main.rs` is the desktop entrypoint. The library uses Tauri’s mobile entrypoint attribute so the same native shell can be compiled into generated Android/iOS projects.
+
+The native application identifier is:
+
+```text
+in.sanskar.tablespark
+```
+
+## Native permissions
+
+`src-tauri/capabilities/default.json` defines the native IPC boundary.
+
+Current permissions:
+
+- `core:default`;
+- scoped `opener:allow-open-url` entries for maintained TableSpark support/project/funding destinations.
+
+Not granted:
+
+- general shell/process execution;
+- general filesystem access;
+- arbitrary native URL opening;
+- background remote-data collection;
+- broad device APIs.
+
+Future native APIs must be added through least-privilege capabilities and documented/tested.
+
+## Native webview CSP
+
+Production Tauri assets use an explicit CSP that restricts default content to packaged/self assets and Tauri IPC, with only required local image/style/font sources.
+
+A separate development CSP permits the local Vite/HMR transport needed during native development.
+
+Tauri can inject script/style hashes/nonces into bundled assets at compile time. Native CSP configuration is also required by the repository’s native configuration gate.
+
+## Vite/Tauri integration
+
+`vite.config.ts` exposes:
+
+```text
+__TABLESPARK_NATIVE__
+__TABLESPARK_PLATFORM__
+```
+
+It also honors Tauri’s `TAURI_DEV_HOST` when present. This matters for physical iOS development, where the CLI can replace the `localhost` development URL with a reachable host/TUN address.
+
+Ordinary web/desktop/Android local-tunnel development does not unnecessarily expose Vite network-wide when `TAURI_DEV_HOST` is absent.
+
+## Native icons
+
+`public/logo.svg` remains the maintained logo source.
+
+`npm run native:icons` invokes Tauri’s icon generator, producing platform-specific Windows/macOS/Linux/Android/iOS icon assets under `src-tauri/icons/`.
+
+Those generated files are ignored and reproduced before native package builds.
+
+## Platform configuration
+
+### Shared
+
+`src-tauri/tauri.conf.json` defines:
+
+- product name/version source;
+- app identifier;
+- Vite development/build hooks;
+- embedded frontend distribution path;
+- desktop window defaults;
+- production/development CSP;
+- bundle metadata/icons.
+
+### Android
+
+`src-tauri/tauri.android.conf.json` defines:
+
+- minimum SDK 24;
+- `.debug` application-ID suffix for debug installations.
+
+### iOS/iPadOS
+
+`src-tauri/tauri.ios.conf.json` defines minimum system version 14.0.
+
+## Native configuration gate
+
+`scripts/native-config.mjs`, `native-config-check.mjs`, and `native-config.test.mjs` keep maintained native invariants synchronized.
+
+The gate checks:
+
+- Cargo/package version consistency;
+- package-sourced Tauri product version;
+- app identifier;
+- `frontendDist` and `devUrl`;
+- production/development CSP presence;
+- required icon declarations;
+- required native/mobile scripts;
+- Tauri CLI/opener dependencies;
+- Android/iOS minimums.
+
+It is included in `npm run check` without requiring Rust so web CI can catch configuration drift early.
+
+## Native CI architecture
+
+`.github/workflows/native.yml` is separate from ordinary web CI.
+
+It verifies:
+
+- Windows desktop compile;
+- macOS desktop compile;
+- Linux desktop compile;
+- Android debug APK compile;
+- iOS simulator compile;
+- Rust formatting/type checks;
+- generated native icons/frontend integration.
+
+Production signing credentials are intentionally excluded from pull-request CI.
+
+## Signing/distribution boundary
+
+Cross-platform source/build support does not imply signed public packages already exist.
+
+Production native release requires owner-controlled platform signing/distribution setup. Common signing files are ignored by Git and must never be committed.
+
+See `SECURITY.md`, `docs/release.md`, and `docs/release-evidence.md`.
 
 ## Accessibility architecture
 
-Accessibility is implemented as a product constraint rather than a post-processing layer:
+The same semantic React UI is packaged across targets. Shared accessibility structure includes:
 
-- semantic HTML controls;
-- labels, descriptions, status messages, and live regions;
-- visible keyboard focus;
+- native HTML controls;
+- labels/descriptions/live regions;
+- focus visibility;
 - skip navigation;
-- touch target sizing;
-- responsive structure;
-- reduced-motion handling;
-- large-text mode;
-- progressive speech synthesis with unsupported-platform fallback;
-- printable output that does not automatically expose the active profile name;
-- explicit recovery alerts and labelled recovery actions for local-data problems.
+- touch sizing/responsiveness;
+- reduced motion;
+- large text;
+- language metadata;
+- optional speech fallback;
+- profile-safe print output.
 
-See `docs/accessibility.md`.
+System webviews and assistive technologies differ, so real NVDA/Narrator/VoiceOver/TalkBack testing remains a platform release gate rather than being inferred from browser automation.
 
-## Internationalization
+## Localization
 
-User-facing interface copy is externalized in `src/i18n/en.ts`, including dynamic message factories for values such as scores, seeds, profile counts, progress statistics, and recovery states. Domain validation messages remain close to domain rules because they are also error contracts used by tests and non-UI callers.
+`LocaleProvider` and typed message catalogs remain shared across web/native targets.
 
-A locale provider is intentionally deferred until a second locale is introduced. This avoids premature runtime framework complexity while keeping product copy separated from feature structure.
+English/Hindi catalogs use platform-neutral wording for data/update/speech behavior. Visible version metadata is tested against `package.json`.
 
-## Architecture decisions
+## Worksheet/print architecture
 
-Architecture decisions are recorded in `docs/adr/`:
-
-- ADR 0001 — TypeScript React PWA as the primary client.
-- ADR 0002 — local-first persistence.
-- ADR 0003 — deterministic seeded practice.
-- ADR 0004 — preserve unreadable local state until explicit recovery.
+Worksheet math/model is shared. The host browser/system webview owns final print-dialog/engine behavior, so physical/native platform print review remains part of release evidence.
 
 ## Dependency direction
 
@@ -184,10 +398,24 @@ Preferred direction:
 
 ```text
 UI/features → state/application wiring → domain
-UI/features → infrastructure adapters (only where needed)
-infrastructure → domain types/domain constants
-domain → no UI or browser infrastructure
-scripts → no application runtime dependency
+UI/features → infrastructure/platform adapters only when required
+UI/features → i18n provider/messages
+platform → narrow official native bridge packages
+infrastructure → domain types/constants
+domain → no React/browser/Tauri dependency
+src-tauri → packages shared frontend; does not reimplement domain features
+scripts → repository tooling; no application runtime dependency
 ```
 
-Keeping domain code at the bottom of the dependency graph makes it easier to test, reuse, and reason about correctness.
+## Architecture records
+
+Existing ADRs remain historical/current for their scopes:
+
+- ADR 0001 — TypeScript/React PWA foundation;
+- ADR 0002 — local-first persistence;
+- ADR 0003 — deterministic seeded practice;
+- ADR 0004 — preserve unreadable local state until explicit recovery.
+
+The explicit cross-platform requirement supersedes the earlier native-packaging deferral described by old evaluation wording. The current implemented native architecture and rationale live in `docs/native-packaging-evaluation.md`.
+
+Web host selection remains documented separately in `docs/deployment-evaluation.md`.

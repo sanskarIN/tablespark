@@ -7,8 +7,8 @@ import {
 import { difficultyPresets, type DifficultyLevel } from '../../domain/difficulty';
 import { generateQuestions, MAX_SEED } from '../../domain/questions';
 import { buildMistakeReview } from '../../domain/review';
-import type { DrillMode, Question } from '../../domain/types';
-import { copy } from '../../i18n/en';
+import type { DrillMode, PracticeSessionKind, Question } from '../../domain/types';
+import { useLocale } from '../../i18n/LocaleContext';
 import { createPracticeSeed } from '../../infrastructure/random';
 import { speak } from '../../infrastructure/speech';
 import { useAppState } from '../../state/useAppState';
@@ -22,8 +22,6 @@ interface Setup {
   seconds: number;
 }
 
-type SessionKind = 'generated' | 'mistake-review';
-
 const defaultSetup = {
   min: 2,
   max: 12,
@@ -33,7 +31,9 @@ const defaultSetup = {
 };
 
 export function PracticeDrill() {
-  const { activeProfile, recordAttempt, state } = useAppState();
+  const { activeProfile, recordAttempt, recordSession, state } = useAppState();
+  const { messages } = useLocale();
+  const { copy } = messages;
   const [setup, setSetup] = useState<Setup>(() => ({
     ...defaultSetup,
     seed: createPracticeSeed(),
@@ -41,13 +41,15 @@ export function PracticeDrill() {
     seconds: state.settings.defaultTimeLimitSeconds,
   }));
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [sessionKind, setSessionKind] = useState<SessionKind>('generated');
+  const [sessionKind, setSessionKind] = useState<PracticeSessionKind>('generated');
   const [index, setIndex] = useState(0);
   const [response, setResponse] = useState('');
   const [score, setScore] = useState(0);
   const [remaining, setRemaining] = useState(setup.seconds);
   const [feedback, setFeedback] = useState('');
   const startedAt = useRef(0);
+  const sessionStartedAt = useRef(0);
+  const sessionRecorded = useRef(false);
 
   const current = questions[index];
   const finished = questions.length > 0 && index >= questions.length;
@@ -67,10 +69,25 @@ export function PracticeDrill() {
     }
   }, [isRunning, questions.length, remaining, setup.mode]);
 
+  useEffect(() => {
+    if (!finished || sessionRecorded.current) return;
+    sessionRecorded.current = true;
+    recordSession({
+      id: crypto.randomUUID(),
+      kind: sessionKind,
+      mode: setup.mode,
+      completedAt: new Date().toISOString(),
+      questionCount: questions.length,
+      correctCount: score,
+      elapsedMs: Math.max(0, performance.now() - sessionStartedAt.current),
+      seed: sessionKind === 'generated' ? setup.seed : null,
+    });
+  }, [finished, questions.length, recordSession, score, sessionKind, setup.mode, setup.seed]);
+
   const summary = useMemo(() => {
     if (!finished) return '';
     return copy.practice.score(score, questions.length);
-  }, [finished, questions.length, score]);
+  }, [copy.practice, finished, questions.length, score]);
 
   const applyDifficulty = (level: DifficultyLevel | 'custom') => {
     if (level === 'custom') return;
@@ -90,7 +107,7 @@ export function PracticeDrill() {
     setFeedback(copy.practice.randomSeedSelected(seed));
   };
 
-  const start = (nextQuestions?: Question[], kind: SessionKind = 'generated') => {
+  const start = (nextQuestions?: Question[], kind: PracticeSessionKind = 'generated') => {
     try {
       const generated = nextQuestions ?? generateQuestions(setup);
       setSessionKind(kind);
@@ -100,12 +117,15 @@ export function PracticeDrill() {
       setResponse('');
       setFeedback('');
       setRemaining(setup.seconds);
-      startedAt.current = performance.now();
+      const now = performance.now();
+      startedAt.current = now;
+      sessionStartedAt.current = now;
+      sessionRecorded.current = false;
       if (state.settings.speechEnabled && generated[0]) {
         speak(copy.practice.spokenQuestion(generated[0].left, generated[0].right));
       }
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : copy.practice.couldNotStart);
+    } catch {
+      setFeedback(copy.practice.couldNotStart);
     }
   };
 
@@ -117,8 +137,8 @@ export function PracticeDrill() {
         return;
       }
       start(review, 'mistake-review');
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : copy.practice.couldNotReview);
+    } catch {
+      setFeedback(copy.practice.couldNotReview);
     }
   };
 
@@ -194,7 +214,9 @@ export function PracticeDrill() {
             >
               <option value="custom">{copy.practice.custom}</option>
               <option value="starter">{copy.practice.starter}</option>
+              <option value="foundation">{copy.practice.foundation}</option>
               <option value="builder">{copy.practice.builder}</option>
+              <option value="fluency">{copy.practice.fluency}</option>
               <option value="challenge">{copy.practice.challenge}</option>
             </select>
           </label>

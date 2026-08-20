@@ -12,7 +12,7 @@ import {
 } from './storage';
 
 const state: PersistedState = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   activeProfileId: 'p1',
   profiles: [
     {
@@ -21,6 +21,8 @@ const state: PersistedState = {
       createdAt: '2026-08-19T00:00:00.000Z',
       mastery: {},
       mistakes: [],
+      sessions: [],
+      masteredFactsGoal: null,
     },
   ],
   settings: {
@@ -30,6 +32,7 @@ const state: PersistedState = {
     speechEnabled: false,
     defaultQuestionCount: 10,
     defaultTimeLimitSeconds: 60,
+    sessionHistoryLimit: 25,
   },
 };
 
@@ -43,6 +46,32 @@ describe('local persistence', () => {
 
   it('exports and imports a portable JSON backup', () => {
     expect(importState(exportState(state))).toEqual(state);
+  });
+
+  it('migrates a valid schema one backup during import', () => {
+    const legacy = {
+      schemaVersion: 1,
+      activeProfileId: 'p1',
+      profiles: [
+        {
+          id: 'p1',
+          name: 'Learner',
+          createdAt: '2026-08-19T00:00:00.000Z',
+          mastery: {},
+          mistakes: [],
+        },
+      ],
+      settings: {
+        theme: 'system',
+        largeText: false,
+        reducedMotion: false,
+        speechEnabled: false,
+        defaultQuestionCount: 10,
+        defaultTimeLimitSeconds: 60,
+      },
+    };
+
+    expect(importState(JSON.stringify(legacy))).toEqual(state);
   });
 
   it('rejects malformed backup data', () => {
@@ -160,11 +189,119 @@ describe('local persistence', () => {
     );
   });
 
+  it('rejects inconsistent session summaries', () => {
+    const profile = state.profiles[0]!;
+    const invalid = {
+      ...state,
+      profiles: [
+        {
+          ...profile,
+          sessions: [
+            {
+              id: 'session-1',
+              kind: 'generated',
+              mode: 'untimed',
+              completedAt: '2026-08-19T00:00:00.000Z',
+              questionCount: 10,
+              correctCount: 11,
+              elapsedMs: 1000,
+              seed: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(() => importState(JSON.stringify(invalid))).toThrow(
+      'Session correct answers cannot exceed its question count',
+    );
+  });
+
+  it('rejects generated sessions without replay seeds', () => {
+    const profile = state.profiles[0]!;
+    const invalid = {
+      ...state,
+      profiles: [
+        {
+          ...profile,
+          sessions: [
+            {
+              id: 'session-1',
+              kind: 'generated',
+              mode: 'untimed',
+              completedAt: '2026-08-19T00:00:00.000Z',
+              questionCount: 10,
+              correctCount: 8,
+              elapsedMs: 1000,
+              seed: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(() => importState(JSON.stringify(invalid))).toThrow(
+      'Generated sessions must retain their replay seed',
+    );
+  });
+
+  it('rejects session history beyond the selected retention limit', () => {
+    const profile = state.profiles[0]!;
+    const sessions = Array.from({ length: 11 }, (_, index) => ({
+      id: `session-${index}`,
+      kind: 'generated' as const,
+      mode: 'untimed' as const,
+      completedAt: '2026-08-19T00:00:00.000Z',
+      questionCount: 10,
+      correctCount: 8,
+      elapsedMs: 1000,
+      seed: index,
+    }));
+    const invalid = {
+      ...state,
+      settings: { ...state.settings, sessionHistoryLimit: 10 },
+      profiles: [{ ...profile, sessions }],
+    };
+
+    expect(() => importState(JSON.stringify(invalid))).toThrow(
+      'Session history exceeds the configured retention limit',
+    );
+  });
+
+  it('rejects unsupported session retention limits and profile goals', () => {
+    expect(() =>
+      importState(
+        JSON.stringify({
+          ...state,
+          settings: { ...state.settings, sessionHistoryLimit: 11 },
+        }),
+      ),
+    ).toThrow('Session history limit is not supported');
+
+    expect(() =>
+      importState(
+        JSON.stringify({
+          ...state,
+          profiles: [{ ...state.profiles[0]!, masteredFactsGoal: 0 }],
+        }),
+      ),
+    ).toThrow();
+  });
+
   it('marks corrupted local storage invalid while preserving its raw value', () => {
     localStorage.setItem('tablespark.state.v1', '{broken');
     expect(loadStateResult()).toEqual({ status: 'invalid', state: null });
     expect(loadState()).toBeNull();
     expect(readRawState()).toBe('{broken');
+  });
+
+  it('classifies blocked storage reads as unavailable instead of invalid', () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('Blocked', 'SecurityError');
+    });
+
+    expect(loadStateResult()).toEqual({ status: 'unavailable', state: null });
+    getItem.mockRestore();
   });
 
   it('reports storage write failure instead of throwing', () => {

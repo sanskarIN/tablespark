@@ -1,5 +1,10 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { copy } from '../../i18n/en';
+import {
+  MAX_MASTERED_FACTS_GOAL,
+  SESSION_HISTORY_LIMIT_OPTIONS,
+} from '../../domain/sessions';
+import { useLocale } from '../../i18n/LocaleContext';
+import { SUPPORTED_LOCALES, type Locale } from '../../i18n/localePreference';
 import { canSpeak } from '../../infrastructure/speech';
 import {
   exportState,
@@ -28,19 +33,24 @@ export function SettingsPage() {
     state,
     activeProfile,
     unreadableStoredState,
+    storageReadUnavailable,
     setActiveProfile,
     addProfile,
     deleteProfile,
     updateSettings,
+    setMasteredFactsGoal,
     replaceFromBackup,
     discardUnreadableState,
     resetProgress,
   } = useAppState();
+  const { locale, setLocale, messages } = useLocale();
+  const { copy, learning } = messages;
   const [newProfileName, setNewProfileName] = useState('');
   const [message, setMessage] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
   const profileLimitReached = state.profiles.length >= MAX_PROFILES;
   const speechAvailable = canSpeak();
+  const exportBlocked = unreadableStoredState || storageReadUnavailable;
 
   const downloadBackup = () => {
     downloadText(
@@ -80,17 +90,16 @@ export function SettingsPage() {
     if (!file) return;
 
     try {
-      if (file.size > MAX_BACKUP_BYTES) throw new Error(copy.settings.backupTooLarge);
+      if (file.size > MAX_BACKUP_BYTES) {
+        setMessage(copy.settings.backupTooLarge);
+        return;
+      }
       const confirmed = window.confirm(copy.settings.confirmBackupImport);
       if (!confirmed) return;
-      replaceFromBackup(await file.text());
-      setMessage(copy.settings.backupImported);
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? copy.settings.importFailed(error.message)
-          : copy.settings.importFailedGeneric,
-      );
+      const imported = replaceFromBackup(await file.text());
+      setMessage(imported ? copy.settings.backupImported : copy.settings.importFailedGeneric);
+    } catch {
+      setMessage(copy.settings.importFailedGeneric);
     } finally {
       event.target.value = '';
     }
@@ -114,6 +123,23 @@ export function SettingsPage() {
       <div className="panel settings-grid">
         <div>
           <h3>{copy.settings.appearanceAccessibility}</h3>
+          <label>
+            Language / भाषा
+            <select
+              value={locale}
+              aria-describedby="locale-help"
+              onChange={(event) => setLocale(event.target.value as Locale)}
+            >
+              {SUPPORTED_LOCALES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p id="locale-help" className="help-text">
+            Interface language / इंटरफ़ेस भाषा
+          </p>
           <label>
             {copy.settings.theme}
             <select
@@ -204,6 +230,60 @@ export function SettingsPage() {
         </div>
       </div>
 
+      <div className="panel settings-grid learning-records-panel">
+        <div>
+          <h3>{learning.settings.recordsHeading}</h3>
+          <label>
+            {learning.settings.historyRetention}
+            <select
+              value={state.settings.sessionHistoryLimit}
+              aria-describedby="history-retention-help"
+              onChange={(event) =>
+                updateSettings({ sessionHistoryLimit: Number(event.target.value) })
+              }
+            >
+              {SESSION_HISTORY_LIMIT_OPTIONS.map((limit) => (
+                <option value={limit} key={limit}>
+                  {learning.settings.historyOption(limit)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p id="history-retention-help" className="help-text">
+            {learning.settings.historyHelp}
+          </p>
+        </div>
+        <div>
+          <h3>{learning.settings.goalHeading}</h3>
+          <label>
+            {learning.settings.masteredFactsGoal}
+            <input
+              type="number"
+              min={1}
+              max={MAX_MASTERED_FACTS_GOAL}
+              placeholder={learning.settings.goalPlaceholder}
+              value={activeProfile.masteredFactsGoal ?? ''}
+              aria-describedby="mastery-goal-help"
+              onChange={(event) => {
+                const value = event.currentTarget.valueAsNumber;
+                setMasteredFactsGoal(Number.isNaN(value) ? null : value);
+              }}
+            />
+          </label>
+          <p id="mastery-goal-help" className="help-text">
+            {learning.settings.goalHelp}
+          </p>
+          <button
+            className="text-button"
+            type="button"
+            disabled={activeProfile.masteredFactsGoal === null}
+            onClick={() => setMasteredFactsGoal(null)}
+          >
+            {learning.settings.clearGoal}
+          </button>
+        </div>
+      </div>
+
       <div className="panel">
         <h3>{copy.settings.profiles}</h3>
         <p id="profile-capacity">
@@ -264,6 +344,12 @@ export function SettingsPage() {
         <h3>{copy.settings.dataPrivacy}</h3>
         <p>{copy.settings.backupNotice}</p>
 
+        {storageReadUnavailable ? (
+          <p id="storage-read-note" className="help-text">
+            {copy.status.storageBody}
+          </p>
+        ) : null}
+
         {unreadableStoredState ? (
           <div className="recovery-panel" id="recovery-note">
             <h4>{copy.settings.recoveryTitle}</h4>
@@ -283,8 +369,14 @@ export function SettingsPage() {
           <button
             className="secondary-button"
             type="button"
-            disabled={unreadableStoredState}
-            aria-describedby={unreadableStoredState ? 'recovery-note' : undefined}
+            disabled={exportBlocked}
+            aria-describedby={
+              unreadableStoredState
+                ? 'recovery-note'
+                : storageReadUnavailable
+                  ? 'storage-read-note'
+                  : undefined
+            }
             onClick={downloadBackup}
           >
             {copy.settings.exportBackup}
@@ -292,6 +384,8 @@ export function SettingsPage() {
           <button
             className="secondary-button"
             type="button"
+            disabled={storageReadUnavailable}
+            aria-describedby={storageReadUnavailable ? 'storage-read-note' : undefined}
             onClick={() => fileInput.current?.click()}
           >
             {copy.settings.importBackup}
@@ -301,6 +395,8 @@ export function SettingsPage() {
             className="visually-hidden"
             type="file"
             accept="application/json,.json"
+            disabled={storageReadUnavailable}
+            aria-label={copy.settings.importBackup}
             onChange={(event) => void importBackup(event)}
           />
           <button
