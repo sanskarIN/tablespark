@@ -25,6 +25,12 @@ export function validateNativeConfiguration({
   if (tauriConfig.build?.devUrl !== 'http://localhost:5173') {
     errors.push('Tauri devUrl must match the fixed Vite development port.');
   }
+  if (!tauriConfig.app?.security?.csp) {
+    errors.push('Production native Content Security Policy must be configured.');
+  }
+  if (!tauriConfig.app?.security?.devCsp) {
+    errors.push('Native development Content Security Policy must be configured.');
+  }
 
   const requiredIcons = [
     'icons/32x32.png',
