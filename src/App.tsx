@@ -7,6 +7,7 @@ import { SettingsPage } from './features/settings/SettingsPage';
 import { TableGenerator } from './features/tables/TableGenerator';
 import { useLocale } from './i18n/LocaleContext';
 import type { MessageCatalog } from './i18n/messages';
+import { handleExternalLinkClick } from './platform/openExternalUrl';
 import { useAppState } from './state/useAppState';
 
 type View = keyof MessageCatalog['copy']['navigation'];
@@ -183,7 +184,12 @@ export default function App() {
 
       <footer className="footer no-print">
         <span>{copy.credit}</span>
-        <a href="https://buymeacoffee.com/sanskarIN" target="_blank" rel="noreferrer">
+        <a
+          href="https://buymeacoffee.com/sanskarIN"
+          target="_blank"
+          rel="noreferrer"
+          onClick={handleExternalLinkClick}
+        >
           {copy.shell.support}
         </a>
       </footer>
