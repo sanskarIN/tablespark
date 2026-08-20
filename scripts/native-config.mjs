@@ -26,15 +26,32 @@ export function validateNativeConfiguration({
     errors.push('Tauri devUrl must match the fixed Vite development port.');
   }
 
+  const requiredIcons = [
+    'icons/32x32.png',
+    'icons/128x128.png',
+    'icons/128x128@2x.png',
+    'icons/icon.icns',
+    'icons/icon.ico',
+  ];
+  for (const icon of requiredIcons) {
+    if (!tauriConfig.bundle?.icon?.includes(icon)) {
+      errors.push(`Missing native bundle icon declaration: ${icon}.`);
+    }
+  }
+
   const requiredScripts = [
+    'native:icons',
+    'native:prepare',
     'native:dev',
     'native:build',
     'native:build:ci',
     'check:native',
     'android:init',
     'android:build',
+    'android:build:debug',
     'ios:init',
     'ios:build',
+    'ios:build:simulator',
   ];
   for (const script of requiredScripts) {
     if (!packageJson.scripts?.[script]) errors.push(`Missing package script: ${script}.`);
