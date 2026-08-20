@@ -30,6 +30,13 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "category": "Education",
     "shortDescription": "Offline-first multiplication tables, worksheets, practice, and mastery tracking.",
     "longDescription": "TableSpark is an offline-first multiplication learning application with custom tables, printable worksheets, replayable practice drills, mistake review, mastery tracking, local profiles, English and Hindi interfaces, and portable backups.",
