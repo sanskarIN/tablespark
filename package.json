@@ -46,7 +46,7 @@
     "native:build:ci": "npm run native:prepare && tauri build --no-bundle --no-sign",
     "native:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml",
     "native:fmt:check": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
-    "native:check": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "native:check": "npm run native:prepare && cargo check --manifest-path src-tauri/Cargo.toml",
     "check:native": "npm run native:fmt:check && npm run native:check",
     "android:init": "npm run native:prepare && tauri android init --ci",
     "android:dev": "tauri android dev",
