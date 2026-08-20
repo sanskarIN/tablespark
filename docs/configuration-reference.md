@@ -1,545 +1,579 @@
 # TableSpark Configuration Reference
 
-This document explains the repository's configuration files as one system. It covers what each file controls, why the current choices exist, and what should be updated together when a setting changes.
+This document describes TableSpark 2.0.12 configuration as one synchronized web/PWA + Tauri native system.
 
-## Configuration hierarchy
+## Configuration areas
 
-TableSpark configuration can be grouped into seven areas:
+1. product/runtime metadata and package scripts;
+2. TypeScript/Vite/PWA build behavior;
+3. cross-platform Tauri/Rust configuration;
+4. Android/iOS target overrides;
+5. native security capabilities/CSP;
+6. test/E2E/lint/format/editor configuration;
+7. Git/generated-output/signing hygiene;
+8. GitHub Actions/repository automation.
 
-1. runtime/toolchain requirements;
-2. TypeScript compilation and strictness;
-3. Vite/PWA build behavior;
-4. unit/integration testing;
-5. browser E2E testing;
-6. linting/formatting/editor behavior;
-7. Git/environment/repository automation behavior.
+A change in one area often requires coordinated changes elsewhere. The native configuration gate exists specifically to catch several high-risk drift cases automatically.
 
-A configuration change can affect several areas at once. For example, changing the Node version requires updates to `.nvmrc`, `package.json`, GitHub Actions setup steps, and documentation.
+# `package.json`
 
-## `package.json`
+Central Node/project manifest.
 
-`package.json` is the central Node project manifest.
+## Product metadata
 
-### Project metadata
-
-Current metadata identifies:
-
-- package name: `tablespark`;
-- package version: `0.1.0`;
-- package type: ES modules (`"type": "module"`);
-- MIT license;
-- author/contact metadata;
-- GitHub repository and issue links;
-- optional Buy Me a Coffee funding link.
-
-`"private": true` prevents accidental publication to the npm public registry. TableSpark is distributed as a web application/repository, not as a published npm package.
-
-### Runtime engines
-
-```json
-"engines": {
-  "node": ">=22.12.0",
-  "npm": ">=10.0.0"
-}
-```
-
-These values document the minimum supported local/CI toolchain.
-
-When changing the supported Node version, update:
-
-- `package.json` engines;
-- `.nvmrc`;
-- `.github/workflows/ci.yml`;
-- `.github/workflows/codeql.yml` if its setup depends on Node;
-- `.github/workflows/release.yml`;
-- `.github/workflows/visual-evidence.yml`;
-- `README.md`;
-- `docs/setup.md`;
-- `docs/development.md`;
-- `docs/commands-reference.md`;
-- `what_changed.md`.
-
-### Scripts
-
-The manifest defines development, build, formatting, linting, unit/integration testing, E2E testing, repository secret scanning, and the aggregate `check` command. See `docs/commands-reference.md` for a command-by-command explanation.
-
-### Dependencies
-
-Runtime dependencies are intentionally small:
-
-- React;
-- React DOM;
-- Zod.
-
-Development dependencies cover TypeScript, Vite/PWA build tooling, ESLint/Prettier, Testing Library, Vitest, fast-check, Playwright, type declarations, and coverage tooling.
-
-Adding a dependency should have a clear product/testing/build reason. Prefer a small local function over a new third-party package when the package would add more maintenance/security surface than value.
-
-## `.nvmrc`
-
-Current value:
+Current values include:
 
 ```text
-22.12.0
+name: tablespark
+version: 2.0.12
+type: module
+license: MIT
 ```
 
-Node version managers such as nvm can use this file to activate the intended development runtime.
+The semantic product version is separate from persisted learner `schemaVersion: 2` and the stable `tablespark.state.v1` storage key.
 
-Typical nvm workflow:
+Project metadata also records repository/support/funding information and describes the product as supporting web, desktop, Android, and iOS.
 
-```bash
-nvm install
-nvm use
+## Runtime engines
+
+```text
+node >=22.12.0
+npm >=10.0.0
 ```
 
-The first command installs the version named in `.nvmrc` if missing; the second activates it.
+Synchronize Node changes with `.nvmrc`, Actions workflows, setup docs, and any release environment assumptions.
 
-`.nvmrc` is a convenience pin. `package.json` engines remains the broader compatibility contract.
+## Web scripts
 
-## TypeScript project graph
+Important scripts:
 
-### `tsconfig.json`
+```text
+dev
+build
+preview
+typecheck
+lint
+format
+format:check
+test
+test:watch
+test:coverage
+test:e2e
+test:security
+secret:scan
+test:docs
+check
+```
 
-The root TypeScript file is a project-reference coordinator:
+## Native configuration/quality scripts
+
+```text
+test:native-config
+native:config:check
+native:info
+native:fmt
+native:fmt:check
+native:check
+check:native
+```
+
+## Native build scripts
+
+```text
+native:icons
+native:prepare
+native:dev
+native:build
+native:build:ci
+```
+
+`native:prepare` generates icons from `public/logo.svg`.
+
+`native:build:ci` uses Tauri `--no-bundle --no-sign` for host compile verification without requiring production installer signing.
+
+## Android scripts
+
+```text
+android:init
+android:dev
+android:build
+android:build:debug
+```
+
+## iOS scripts
+
+```text
+ios:init
+ios:dev
+ios:dev:device
+ios:build
+ios:build:simulator
+```
+
+`ios:dev:device` uses Tauri `--host` so physical-device development can supply a reachable Vite host through `TAURI_DEV_HOST`.
+
+## Aggregate `check`
+
+Current order:
+
+```text
+format:check
+→ lint
+→ typecheck
+→ test
+→ test:security
+→ secret:scan
+→ test:docs
+→ test:native-config
+→ native:config:check
+→ build
+```
+
+Native Rust/mobile compilation remains separate because it requires platform SDKs.
+
+## Dependencies
+
+Runtime/shared application dependencies include React, React DOM, Zod, and the Tauri opener plugin.
+
+Development dependencies include TypeScript/Vite/Vitest/Playwright/ESLint/Prettier plus the Tauri CLI.
+
+Tauri JavaScript and Rust package versions should be reviewed together when upgrading so CLI/runtime/plugin compatibility remains intentional.
+
+# `.nvmrc`
+
+Pins the intended Node development line used by version managers.
+
+Keep synchronized with `package.json` engines and Actions setup values.
+
+# TypeScript configuration
+
+## `tsconfig.json`
+
+Project-reference root for application and Node/config TypeScript projects.
+
+## `tsconfig.app.json`
+
+Strict application configuration. Important choices include:
+
+- ES2022 target/libraries;
+- bundler module resolution;
+- strict mode;
+- no emit;
+- exact optional-property handling;
+- unchecked-index protection;
+- DOM/Vite/Vitest/testing-library types.
+
+The `src/vite-env.d.ts` declarations add:
+
+```text
+__TABLESPARK_NATIVE__
+__TABLESPARK_PLATFORM__
+```
+
+These are Vite-defined build constants used by `src/platform/runtime.ts`.
+
+## `tsconfig.node.json`
+
+Covers Node/config TypeScript such as Vite/Playwright/Vitest configuration.
+
+# `vite.config.ts`
+
+Vite is the shared frontend build for both web/PWA and Tauri packages.
+
+## Runtime target detection
+
+Vite reads:
+
+```text
+TAURI_ENV_PLATFORM
+TAURI_DEV_HOST
+```
+
+`TAURI_ENV_PLATFORM` determines whether the build is packaged/native versus ordinary web.
+
+Build constants:
+
+```text
+__TABLESPARK_NATIVE__
+__TABLESPARK_PLATFORM__
+```
+
+The shared React runtime uses these constants to decide whether browser/PWA-specific lifecycle behavior should run.
+
+## Mobile development host
+
+When `TAURI_DEV_HOST` exists, the Vite server binds to that supplied host and HMR uses the same host on the configured websocket port. This supports physical iOS development while avoiding broad network binding for ordinary development sessions.
+
+Without `TAURI_DEV_HOST`, normal Vite host behavior remains local.
+
+## Fixed ports
+
+```text
+dev: 5173
+preview: 4173
+```
+
+Strict ports prevent silent divergence from Tauri/Playwright expected URLs.
+
+## PWA plugin
+
+`vite-plugin-pwa` still creates the web/PWA manifest/service worker.
+
+The shared build can contain PWA assets even for native packaging, but `src/main.tsx` does not register the service worker when `__TABLESPARK_NATIVE__` is true.
+
+This keeps one frontend build system while preventing a browser-style service-worker updater inside packaged applications.
+
+## Build target/output
+
+```text
+target: es2022
+sourcemap: true
+frontend output: dist/
+```
+
+# Tauri/Rust configuration
+
+Native maintained source is under `src-tauri/`.
+
+## `src-tauri/Cargo.toml`
+
+Rust package manifest.
+
+Important values:
+
+```text
+package name: tablespark
+package version: 2.0.12
+edition: 2021
+rust-version: 1.77.2
+library crate types: staticlib, cdylib, rlib
+```
+
+Dependencies currently include:
+
+- `tauri`;
+- `tauri-plugin-opener`;
+- `tauri-build` as build dependency.
+
+Release profile favors a small packaged binary with abort panic behavior, LTO, single codegen unit, size optimization, and stripping.
+
+The Cargo package version is validated against `package.json` by the native config gate.
+
+## `src-tauri/build.rs`
+
+Runs `tauri_build::build()` so Tauri build-time configuration/code generation is integrated into Cargo.
+
+## `src-tauri/src/lib.rs`
+
+Shared native application entrypoint.
+
+It:
+
+- uses Tauri’s mobile entrypoint attribute when compiled for mobile;
+- creates the builder;
+- registers only `tauri-plugin-opener` beyond core Tauri behavior;
+- runs the generated application context.
+
+## `src-tauri/src/main.rs`
+
+Desktop executable entrypoint.
+
+On non-debug Windows builds it suppresses the extra console window via the normal `windows_subsystem = "windows"` attribute.
+
+# `src-tauri/tauri.conf.json`
+
+Primary native application configuration.
+
+## Identity/version
+
+```text
+productName: TableSpark
+version: ../package.json
+identifier: in.sanskar.tablespark
+```
+
+The Tauri version source intentionally points to `package.json` so native package version follows the product semantic version.
+
+## Frontend integration
+
+```text
+beforeDevCommand: npm run dev
+devUrl: http://localhost:5173
+beforeBuildCommand: npm run build
+frontendDist: ../dist
+```
+
+These values must remain synchronized with Vite/package scripts. The native config gate checks the critical path/URL values.
+
+## Main window
+
+Current defaults include:
+
+```text
+label: main
+width: 1180
+height: 800
+minWidth: 360
+minHeight: 560
+resizable: true
+fullscreen: false
+center: true
+```
+
+Keep the `main` window label synchronized with native capability window scoping.
+
+## Explicit native capability selection
 
 ```json
-{
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
-}
+"capabilities": ["main-capability"]
 ```
 
-It does not compile source directly. `tsc -b` follows the two referenced projects.
+This intentionally avoids implicit activation of every future capability file. The config gate requires exactly this selection.
 
-### `tsconfig.app.json`
+## Production CSP
 
-Purpose: browser application and jsdom-based tests under `src/`.
+Production native webview CSP restricts packaged content/IPC to the minimum currently needed. Important principles:
 
-Important choices:
+- default to self/Tauri packaged asset protocols;
+- permit Tauri IPC transport;
+- permit local packaged fonts/images/styles as needed;
+- disallow objects/frames/forms/base rewriting;
+- do not add broad `http:`/`https:` network permissions to production just for convenience.
 
-- target: ES2022;
-- libraries: ES2022 + DOM + DOM iterable APIs;
-- JSX transform: `react-jsx`;
-- module mode: ESNext;
-- module resolution: Bundler;
-- `strict: true`;
-- `noEmit: true` because Vite emits production code;
-- no unused locals/parameters;
-- no fallthrough switch cases;
-- `noUncheckedIndexedAccess: true`;
-- `exactOptionalPropertyTypes: true`;
-- consistent file-name casing;
-- Vite, Vitest, and Testing Library types available.
+## Development CSP
 
-Why strict settings matter in this project:
+`devCsp` is broader only where needed for local Vite/HMR HTTP/WebSocket development. Production and development policies are deliberately separate.
 
-- persistence schema changes should break incompatible typed fixtures during development;
-- translated message catalogs should expose structural mistakes;
-- browser API adapters should not silently treat absent values as present;
-- profile/session data access should acknowledge possibly missing indexed entries.
+Do not solve a native CSP problem by reverting to `csp: null`. Add the narrow required source/protocol and document/security-review the change.
 
-Do not disable strict options to make a feature compile. Fix the actual type relationship or update all affected fixtures/contracts.
+## Bundle icons
 
-### `tsconfig.node.json`
+Declared desktop icon paths:
 
-Purpose: Node/tooling and Playwright TypeScript.
+```text
+icons/32x32.png
+icons/128x128.png
+icons/128x128@2x.png
+icons/icon.icns
+icons/icon.ico
+```
 
-Included files:
+These files are reproducibly generated from `public/logo.svg` before native package builds and are ignored as generated output.
+
+## Bundle metadata
+
+Includes Education category, TableSpark descriptions, publisher/copyright metadata, all host-supported targets, and no native updater artifacts.
+
+`createUpdaterArtifacts: false` matches the current decision not to enable a native automatic updater until signing/update infrastructure is explicitly designed.
+
+# `src-tauri/tauri.android.conf.json`
+
+Android-specific override:
+
+```text
+minSdkVersion: 24
+debugApplicationIdSuffix: .debug
+```
+
+The debug suffix keeps development/debug identity separate from normal release identity.
+
+Changing the minimum SDK must update native config tests, CI/toolchain assumptions, setup/release docs, and platform support claims.
+
+# `src-tauri/tauri.ios.conf.json`
+
+iOS/iPadOS-specific override:
+
+```text
+minimumSystemVersion: 14.0
+```
+
+Changing it requires synchronized config tests/docs/device support claims.
+
+# `src-tauri/capabilities/default.json`
+
+Defines `main-capability` for the `main` window.
+
+Permissions:
+
+- `core:default`;
+- scoped `opener:allow-open-url` entries for maintained TableSpark support/email/GitHub/source/funding destinations.
+
+No general shell, filesystem, arbitrary URL, or device permission is granted.
+
+Treat capability broadening as a security/privacy-sensitive change.
+
+The `$schema` path references generated Tauri schema metadata for editor validation; generated schema/project output remains ignored.
+
+# Generated native directories
+
+Ignored/reproducible:
+
+```text
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
+```
+
+Do not hand-edit these as repository source of truth.
+
+# `vitest.config.ts`
+
+Configures jsdom-based application/unit/integration tests and V8 coverage behavior.
+
+Platform runtime tests deliberately verify safe fallback when Vite-injected native globals are absent in the test environment.
+
+# `playwright.config.ts`
+
+Configures Chromium E2E against a production preview server.
+
+It remains a web-level product integration gate. Native compilation and real installed-device behavior are verified separately.
+
+# `eslint.config.js`
+
+Maintains JavaScript/TypeScript/React Hooks/React Refresh/JSX accessibility rules with zero-warning CI policy.
+
+Rust source is checked through Cargo tooling rather than ESLint.
+
+# Prettier/editor config
+
+Files:
+
+```text
+.prettierrc.json
+.prettierignore
+.editorconfig
+.vscode/extensions.json
+.vscode/settings.json
+```
+
+Package formatting includes Tauri JSON but not Rust; Rust formatting uses `cargo fmt`.
+
+# `.gitignore`
+
+Excludes ordinary generated output plus native generated/build/signing artifacts.
+
+Important native entries:
+
+```text
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+keystore.properties
+```
+
+Ignore rules are defense in depth. Never intentionally place real signing secrets in ignored repository paths and assume that alone is secure handling.
+
+# Environment placeholders
+
+`.env.example` documents safe environment placeholders. Real `.env*` local secrets are ignored according to repository rules.
+
+The current core product does not require backend credentials.
+
+Native signing credentials are a separate protected release-operations concern and should not be modeled as ordinary committed application configuration.
+
+# GitHub Actions configuration
+
+Important workflow files:
+
+```text
+.github/workflows/ci.yml
+.github/workflows/native.yml
+.github/workflows/codeql.yml
+.github/workflows/release.yml
+.github/workflows/visual-evidence.yml
+```
+
+`native.yml` adds cross-platform compile verification while retaining read-only repository permissions and avoiding production signing secrets.
+
+See `docs/ci-cd.md`.
+
+# Native configuration validator
+
+Files:
+
+```text
+scripts/native-config.mjs
+scripts/native-config-check.mjs
+scripts/native-config.test.mjs
+```
+
+The validator is deliberately Node-based so critical native config drift can fail the shared quality gate without requiring every contributor/web CI job to install Rust/mobile SDKs.
+
+If you add a new cross-platform invariant that can be checked statically, extend this gate and its regression fixture.
+
+# Synchronization checklist
+
+## Change product version
+
+Update/review:
+
+- `package.json`;
+- `src-tauri/Cargo.toml` package version;
+- English/Hindi visible version copy;
+- changelog/release docs;
+- native config fixture/assertions.
+
+`src-tauri/tauri.conf.json` should continue sourcing version from `../package.json`.
+
+## Change app identifier
+
+Update/review:
+
+- `src-tauri/tauri.conf.json`;
+- native config validator/tests;
+- Android/iOS signing/store identity records;
+- security/release documentation.
+
+Changing an already-published platform package identifier can create a new app identity rather than an upgrade; do not change casually.
+
+## Change Vite dev port
+
+Update together:
 
 - `vite.config.ts`;
-- `vitest.config.ts`;
-- `playwright.config.ts`;
-- `e2e/**/*.ts`.
+- `src-tauri/tauri.conf.json` `devUrl`;
+- native config validator/tests;
+- Playwright if relevant;
+- setup/command docs.
 
-Important choices:
+## Add native permission
 
-- ES2023 target/library;
-- Node types;
-- strict checking;
-- bundler-style module resolution;
-- no emit;
-- no unchecked indexed access;
-- unused-code/fallthrough checks.
+Update/review:
 
-This separation prevents browser globals from being assumed in Node-only config code and keeps Node/E2E typing explicit.
+- capability file;
+- explicit capability selection if adding another capability intentionally;
+- security/privacy model;
+- native config tests when static invariants apply;
+- real platform release evidence;
+- threat/least-privilege review.
 
-## `vite.config.ts`
+## Change CSP
 
-Vite is the development and production bundler.
+Update/review:
 
-### Plugins
+- `src-tauri/tauri.conf.json`;
+- native config tests;
+- `SECURITY.md` / `docs/security-model.md`;
+- native build/runtime tests.
 
-#### React plugin
+## Change Android/iOS minimum
 
-`@vitejs/plugin-react` enables the React/Vite transform pipeline.
+Update:
 
-#### `vite-plugin-pwa`
+- platform-specific Tauri config;
+- native config tests;
+- setup/native packaging docs;
+- CI if required SDK/toolchain changes;
+- README/platform support matrix.
 
-The PWA plugin configures:
+## Add/remove tracked files
 
-- generated service-worker support;
-- automatic service-worker update registration behavior;
-- inclusion of `logo.svg`;
-- the web app manifest;
-- Workbox precaching/navigation fallback.
+Update:
 
-### Manifest settings
-
-The manifest currently defines:
-
-- name/short name: TableSpark;
-- description for offline-first multiplication learning;
-- theme/background colors;
-- standalone display mode;
-- root start URL;
-- SVG logo as an `any`-sized, maskable-capable icon.
-
-If a production deployment uses a non-root path such as a GitHub Pages project URL, review **all** root-relative paths, `start_url`, Vite `base`, service-worker scope, manifest icon URL, and Workbox fallback before enabling deployment.
-
-### Workbox
-
-Current navigation fallback:
-
-```text
-/index.html
-```
-
-Current precache glob types:
-
-```text
-js, css, html, svg, woff2
-```
-
-Core product behavior remains client-side. No runtime remote API cache is configured because the current application has no core remote API.
-
-### Ports
-
-Development:
-
-```text
-5173
-```
-
-Production preview:
-
-```text
-4173
-```
-
-Both use `strictPort: true` so tooling fails clearly on a port collision rather than silently changing URLs and confusing browser tests/documentation.
-
-### Production build
-
-- source maps enabled;
-- ES2022 build target.
-
-Source maps help debugging but can expose original source structure in a deployed artifact. That is acceptable for this open-source repository; if the threat/distribution model changes, revisit the tradeoff explicitly.
-
-## `vitest.config.ts`
-
-Vitest runs application tests.
-
-Key settings:
-
-- React plugin enabled;
-- jsdom environment;
-- `src/test/setup.ts` runs before tests;
-- mocks are cleared automatically between tests;
-- coverage outputs text and HTML reports;
-- coverage includes application TypeScript/TSX;
-- bootstrap/type declaration/test setup paths are excluded from coverage.
-
-The jsdom environment provides browser-like DOM APIs but is not a real browser engine. Behaviors involving actual service workers, print media, PWA installation, layout engines, or browser navigation must be covered by Playwright/manual testing where meaningful.
-
-## `playwright.config.ts`
-
-Playwright is the production-browser test layer.
-
-### Test location
-
-```text
-./e2e
-```
-
-### Browser project
-
-Current automated browser project:
-
-```text
-chromium
-```
-
-It uses Playwright's Desktop Chrome device profile.
-
-### CI behavior
-
-When `CI` is truthy:
-
-- `test.only` is forbidden;
-- two retries are permitted;
-- one worker is used for determinism/resource control;
-- GitHub reporter is used.
-
-Locally:
-
-- no retries by default;
-- up to 50% of available workers;
-- list reporter.
-
-### Trace behavior
-
-```text
-on-first-retry
-```
-
-This preserves diagnostic traces when an initially failing test is retried.
-
-### Production preview server
-
-Before E2E, Playwright runs:
-
-```bash
-npm run build && npm run preview -- --host 127.0.0.1
-```
-
-and waits for:
-
-```text
-http://127.0.0.1:4173
-```
-
-Locally it may reuse an existing compatible server. CI does not rely on an existing server.
-
-## `eslint.config.js`
-
-The repository uses ESLint flat configuration.
-
-### Ignored generated output
-
-- `dist`;
-- `coverage`;
-- `playwright-report`;
-- `test-results`.
-
-### JavaScript scripts
-
-`scripts/**/*.mjs` uses Node + ES2023 globals.
-
-### TypeScript/TSX
-
-Type-aware strict/stylistic TypeScript configurations are enabled, plus:
-
-- JSX accessibility recommended rules;
-- React Hooks recommended rules;
-- React Refresh Vite rules;
-- consistent type-only imports.
-
-Project-specific adjustments include:
-
-- browser TypeScript uses browser/ES2023 globals;
-- `no-undef` is disabled in the typed section because TypeScript provides stronger symbol analysis;
-- confusing-void-expression is disabled for project ergonomics;
-- misused-promises allows void-returning JSX attributes;
-- test files may use non-null assertions.
-
-Changing lint rules should include a repository-wide impact check. Avoid disabling an accessibility rule because one component is difficult to implement correctly.
-
-## Prettier
-
-### `.prettierrc.json`
-
-Current style:
-
-- single quotes;
-- trailing commas where supported;
-- 100-character print width;
-- semicolons.
-
-### `.prettierignore`
-
-Ignored paths currently include:
-
-- generated build/coverage/dependency/test output;
-- SVG assets;
-- `src/styles.css`;
-- `src/status.css`.
-
-Those CSS files are intentionally outside package-script Prettier enforcement. Keep manual edits consistent with the existing style and review them carefully.
-
-### Package formatting scope
-
-`package.json` chooses the exact file globs run by `npm run format` and `npm run format:check`. If a new source/config file type is introduced, decide whether it must be added to those globs.
-
-## `.editorconfig`
-
-EditorConfig provides editor-independent basics:
-
-- UTF-8;
-- LF line endings;
-- final newline;
-- spaces;
-- two-space indentation;
-- trailing-whitespace removal for ordinary files.
-
-Markdown is the exception:
-
-```ini
-[*.md]
-trim_trailing_whitespace = false
-```
-
-This avoids editors automatically breaking intentional Markdown hard-line-break spacing.
-
-`root = true` prevents a parent-directory EditorConfig from overriding the project unexpectedly.
-
-## `.vscode/extensions.json`
-
-Recommended VS Code extensions:
-
-- `dbaeumer.vscode-eslint`;
-- `esbenp.prettier-vscode`.
-
-These are recommendations, not application runtime dependencies. Contributors may use another editor if it can satisfy the repository checks.
-
-## `.vscode/settings.json`
-
-Workspace defaults:
-
-- format on save;
-- Prettier as default formatter;
-- ESLint flat config enabled;
-- ESLint fix-all available explicitly on save;
-- VS Code TypeScript uses the workspace `node_modules/typescript/lib` version.
-
-Using the workspace TypeScript version avoids editor diagnostics drifting from CI because of a globally bundled editor TypeScript version.
-
-## `.env.example`
-
-Current content documents that TableSpark requires no secrets or remote services.
-
-The only placeholder is:
-
-```text
-VITE_APP_ENV=production
-```
-
-Important rules:
-
-- `.env.example` must never contain a real secret;
-- `.env` and local variants are ignored by Git;
-- any variable starting with `VITE_` can become visible in the browser bundle when referenced by client code;
-- therefore **never place credentials, private API keys, passwords, or server-only tokens in a Vite client variable**.
-
-If a future backend is introduced, server secrets need a server-side secret store/environment boundary, not this browser project.
-
-## `.gitignore`
-
-Ignored categories include:
-
-- `node_modules/`;
-- production build output (`dist/`);
-- coverage/tool caches;
-- TypeScript build metadata;
-- local environment files;
-- OS/editor junk;
-- Playwright report/test-result output;
-- logs.
-
-The `.vscode/` directory is ignored by default **except** the two intentionally tracked workspace files:
-
-- `.vscode/extensions.json`;
-- `.vscode/settings.json`.
-
-Do not force-add ignored generated output without a documented reason.
-
-## `.gitattributes`
-
-Current Git attribute policy:
-
-```text
-* text=auto eol=lf
-```
-
-This normalizes text files to LF in the repository.
-
-Common raster image types are explicitly marked binary so Git does not attempt text line-ending/diff behavior on them.
-
-If a new binary format is added and Git starts treating it as text, add the format intentionally.
-
-## `index.html`
-
-`index.html` is the Vite HTML entry point. It supplies the application root element and baseline page metadata loaded before React starts.
-
-Changes here affect every page load and should be tested with:
-
-```bash
-npm run build
-npm run test:e2e
-```
-
-Avoid adding remote scripts, analytics, trackers, or third-party runtime dependencies without explicit privacy/security review.
-
-## `src/vite-env.d.ts`
-
-Provides Vite client type declarations to the application TypeScript project.
-
-This is a type-only declaration boundary; it does not execute at runtime.
-
-## GitHub configuration
-
-### `.github/dependabot.yml`
-
-Controls automated dependency-update proposals. Changes affect maintenance traffic and should be reviewed for cadence, ecosystem, target branch, and grouping behavior.
-
-### `.github/release.yml`
-
-Controls GitHub's generated release-note categorization/label mapping. This is different from `.github/workflows/release.yml`, which performs the actual tagged build/package/release automation.
-
-### `.github/FUNDING.yml`
-
-Controls GitHub's repository funding link UI. Funding must remain optional and separate from core learning functionality.
-
-### `.github/ISSUE_TEMPLATE/*`
-
-Controls issue forms/templates and blank-issue/contact-link policy. Templates should never ask users to paste private learner backups or recovery files.
-
-### `.github/pull_request_template.md`
-
-Defines review reminders for contributors. Keep it synchronized with actual quality/security/documentation expectations.
-
-### `.github/workflows/*`
-
-Controls CI, CodeQL, tagged release packaging, and browser release-evidence capture. See `docs/ci-cd.md`.
-
-## Configuration-change checklist
-
-Before committing a configuration change:
-
-1. identify every tool that reads the file;
-2. identify duplicated values elsewhere (Node version, ports, paths, release names, etc.);
-3. update documentation in the same change series;
-4. run the smallest direct check for that config;
-5. run `npm run check`;
-6. run `npm run test:e2e` for Vite/Playwright/browser-impacting changes;
-7. review generated `dist/` behavior without committing `dist/`;
-8. update `what_changed.md` if the change affects maintenance/release behavior.
-
-## Values that should stay synchronized
-
-| Concept | Primary locations |
-| --- | --- |
-| Node version | `.nvmrc`, `package.json`, Actions workflows, setup docs |
-| Dev port 5173 | `vite.config.ts`, setup/development docs |
-| Preview/E2E port 4173 | `vite.config.ts`, `playwright.config.ts`, testing docs |
-| App version | `package.json`, visible About/version copy, changelog/release docs |
-| PWA name/description | `vite.config.ts`, README/product copy where appropriate |
-| Persistence schema version | `src/domain/types.ts`, migrations, storage validator, schema/privacy docs |
-| Session retention options | `src/domain/sessions.ts`, storage validator, Settings UI/copy, docs |
-| Supported locales | locale preference/catalog provider, localization docs, tests |
-| Release ZIP/checksum names | release workflow, release docs/evidence docs |
-| Required checks | CI workflows, repository-settings docs, quality-gates docs |
-
-Treat a mismatch in these synchronized values as a maintenance defect even if the application still compiles.
+- `docs/repository-file-reference.md` exhaustive inventory/count;
+- documentation index/source-of-truth mapping where relevant.
