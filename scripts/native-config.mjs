@@ -32,6 +32,11 @@ export function validateNativeConfiguration({
     errors.push('Native development Content Security Policy must be configured.');
   }
 
+  const capabilities = tauriConfig.app?.security?.capabilities;
+  if (!Array.isArray(capabilities) || capabilities.length !== 1 || capabilities[0] !== 'main-capability') {
+    errors.push('Native security must explicitly select only main-capability.');
+  }
+
   const requiredIcons = [
     'icons/32x32.png',
     'icons/128x128.png',
