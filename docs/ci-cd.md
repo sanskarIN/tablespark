@@ -1,35 +1,35 @@
 # TableSpark CI/CD and Repository Automation
 
-This document explains every automated GitHub workflow and maintenance automation currently tracked in TableSpark. It describes triggers, permissions, jobs, artifacts, intended branch-protection use, documentation integrity, and failure triage.
+This document describes the automation currently tracked for TableSpark 2.0.12 across web/PWA and native Windows, macOS, Linux, Android, and iOS/iPadOS builds.
 
 ## Automation map
 
-TableSpark currently has four GitHub Actions workflows:
+TableSpark currently has five GitHub Actions workflows:
 
-1. **CI** — formatting, lint, types, application tests, repository security checks, documentation-link integrity, production build/audit, and Chromium E2E.
-2. **CodeQL** — JavaScript/TypeScript static security analysis.
-3. **Release** — verifies a version tag, builds/packages the web artifact, creates SHA-256 metadata, and publishes a GitHub Release.
-4. **Release Visual Evidence** — captures real Chromium screenshots of the built UI for release-candidate review.
+1. **CI** — shared web/application quality, security, documentation, native-configuration checks, production web build/audit, and Chromium E2E.
+2. **Native Cross-Platform** — Tauri/Rust desktop compilation on Windows/macOS/Linux plus Android debug APK and iOS simulator compilation.
+3. **CodeQL** — JavaScript/TypeScript static security analysis.
+4. **Release** — verifies a version tag, packages the canonical web artifact, creates SHA-256 metadata, and publishes a GitHub Release.
+5. **Release Visual Evidence** — captures real Chromium screenshots for release-candidate review.
 
-Other repository automation/configuration:
+Other automation/configuration includes Dependabot, generated-release-note categories, issue/PR templates, and funding configuration.
 
-- Dependabot for npm and GitHub Actions updates;
-- GitHub generated-release-note categories;
-- issue and pull-request templates;
-- repository funding configuration.
+## Automation security principles
 
-## Security principle for automation
+- Keep GitHub token permissions minimal.
+- Never make production native signing credentials available to pull-request jobs.
+- Treat workflow YAML as executable code.
+- Pin/track supported Node and toolchain baselines deliberately.
+- Never use a green job from an older SHA as final candidate evidence.
+- Debug/unsigned/simulator artifacts prove build viability, not production signing/store readiness.
 
-Workflows use the smallest GitHub token permissions appropriate to their job.
+Current workflow permission intent:
 
-- CI: `contents: read`
-- CodeQL: `contents: read`, `security-events: write`
-- Visual evidence: `contents: read`
-- Release: `contents: write` because creating a release and attaching assets requires repository-content/release write capability.
-
-Do not add broad `write-all`, issue, pull-request, package, deployment, or identity-token permissions unless a reviewed feature actually requires them.
-
-A workflow file is executable repository configuration. Treat workflow changes like application code: review action versions, shell commands, secret exposure, artifact contents, and permissions.
+- CI — `contents: read`;
+- Native Cross-Platform — `contents: read`;
+- Visual Evidence — `contents: read`;
+- CodeQL — `contents: read`, `security-events: write`;
+- Release — `contents: write` for release creation/assets.
 
 # 1. CI workflow
 
@@ -39,252 +39,188 @@ File:
 .github/workflows/ci.yml
 ```
 
-Workflow name:
+Workflow name: `CI`.
 
-```text
-CI
-```
+## Triggers and concurrency
 
-## Triggers
-
-CI runs on:
-
-- pushes to `main`;
-- pull requests whose base is `main`.
-
-It does not run on every arbitrary branch push unless that branch is represented by a pull request to `main`.
-
-## Concurrency
-
-The workflow groups executions by workflow + ref and enables:
-
-```text
-cancel-in-progress: true
-```
-
-If a newer run supersedes an older run for the same ref, GitHub can cancel the obsolete run. A cancelled older run is not a failure in the candidate code, but it is also not evidence for the newest candidate. Release evidence must refer to checks for the final head SHA.
+CI runs on pushes to `main` and pull requests targeting `main`. Obsolete in-progress runs for the same workflow/ref may be cancelled when newer commits arrive. A cancelled older run is neither a current failure nor final evidence.
 
 ## `quality` job
 
-Runner:
+Runner: `ubuntu-latest`.
 
-```text
-ubuntu-latest
-```
+Baseline setup:
 
-Timeout:
+- `actions/checkout@v7`;
+- `actions/setup-node@v7`;
+- Node `22.12.0`;
+- `npm install --no-fund --no-audit`.
 
-```text
-15 minutes
-```
+The maintained shared quality path verifies formatting, linting, strict TypeScript, application tests, repository security tests/scanning, documentation links, native configuration consistency, production web build, and production dependency audit.
 
-### Checkout
-
-```yaml
-uses: actions/checkout@v7
-```
-
-Makes the candidate repository contents available to later steps.
-
-### Node setup
-
-```yaml
-uses: actions/setup-node@v7
-node-version: 22.12.0
-package-manager-cache: false
-```
-
-The workflow pins the expected Node version. Package-manager caching is disabled for simpler/fresher installs.
-
-If the supported Node version changes, update this value together with `.nvmrc`, `package.json`, every other workflow, and setup/configuration documentation.
-
-### Dependency installation
-
-```bash
-npm install --no-fund --no-audit
-```
-
-`--no-audit` avoids duplicating the explicit production-audit step later. It does **not** disable dependency security review overall.
-
-### Check formatting
+Important commands:
 
 ```bash
 npm run format:check
-```
-
-A failure means a covered source/config file differs from Prettier policy.
-
-Typical fix:
-
-```bash
-npm run format
-npm run format:check
-```
-
-Review the formatting diff before committing.
-
-### Lint
-
-```bash
 npm run lint
-```
-
-Includes strict type-aware TypeScript, React Hooks/refresh, JSX accessibility, and Node-script lint rules.
-
-A lint failure should normally be fixed in source rather than suppressed globally.
-
-### Type-check
-
-```bash
 npm run typecheck
-```
-
-Validates strict browser and Node/E2E TypeScript project references.
-
-Especially important after:
-
-- persisted schema changes;
-- locale catalog changes;
-- React state/context changes;
-- configuration/E2E TypeScript changes.
-
-### Application tests
-
-```bash
 npm run test
-```
-
-Runs Vitest domain, infrastructure, localization, PWA adapter, component, and integration tests.
-
-### Secret-scanner implementation tests
-
-```bash
 npm run test:security
-```
-
-Tests the dependency-free repository scanner implementation. This is different from scanning the current repository.
-
-### Repository secret scan
-
-```bash
 npm run secret:scan
-```
-
-Scans the intended repository text for supported credential signatures while avoiding echoing the matched credential value.
-
-If this reports a real credential:
-
-1. stop treating the branch as releasable;
-2. revoke/rotate the credential;
-3. remove it from current source;
-4. assess repository history/artifact exposure;
-5. follow `SECURITY.md`.
-
-Never add a real exposed secret to an ignore list merely to restore green CI.
-
-### Documentation-link quality gate
-
-```bash
 npm run test:docs
-```
-
-This formal gate performs two stages:
-
-1. tests `scripts/link-checker.mjs` through `scripts/link-checker.test.mjs`;
-2. runs `scripts/link-check.mjs` over the checked-out repository.
-
-It validates supported repository-local Markdown targets and therefore protects deep documentation from silently accumulating broken file/image links.
-
-Important boundary:
-
-- it validates **local** repository links;
-- it does not crawl every external website;
-- it does not automatically know whether every new tracked source file has been described in `docs/repository-file-reference.md`.
-
-The exhaustive file inventory still requires tracked-file review when files are added/removed/renamed.
-
-### Production build
-
-```bash
+npm run test:native-config
+npm run native:config:check
 npm run build
-```
-
-Runs strict TypeScript build mode and Vite's production PWA build. A passing unit suite with a failing production build is still a release blocker.
-
-### Production dependency audit
-
-```bash
 npm audit --omit=dev --audit-level=high
 ```
 
-CI fails for covered high/critical production dependency advisories reported by npm.
+`npm run check` includes the first maintained aggregate sequence through the production build, including the Node-based native configuration tests/check.
 
-This is advisory-database based; a clean audit does not prove dependencies are vulnerability-free.
+### Native configuration coverage inside ordinary CI
 
-### Upload production build
+The native configuration gate does not require Rust/Android/Xcode and verifies:
 
-```yaml
-uses: actions/upload-artifact@v7
-name: tablespark-web
-path: dist
-if-no-files-found: error
-```
+- package/Cargo version consistency;
+- Tauri version source;
+- `in.sanskar.tablespark` identifier;
+- Vite build/development paths;
+- production/development CSP presence;
+- explicit selection of only `main-capability`;
+- native bundle icon declarations;
+- required desktop/mobile scripts;
+- Tauri CLI/opener dependencies;
+- Android/iOS minimum versions.
 
-The artifact is the exact `dist/` produced by this quality job.
+This lets ordinary CI catch cross-platform configuration drift before the heavier native workflow starts compiling SDK-specific targets.
 
-Uses include:
+### Production web artifact
 
-- inspect candidate build output without rebuilding locally;
-- compare packaged/static contents;
-- diagnose release/deployment differences.
-
-It is a CI artifact, not automatically a published production deployment.
+The job uploads the built `dist/` tree as the `tablespark-web` CI artifact. It is candidate evidence, not an automatically approved deployment.
 
 ## `e2e` job
 
-Runner:
+Runner: `ubuntu-latest`.
+
+The job installs Chromium/system dependencies and runs `npm run test:e2e` against the production preview.
+
+Normal E2E covers product smoke flows, stable accessibility semantics, English/Hindi localization and error paths, print-media behavior, and visible 2.0.12 version presentation. Release screenshot capture remains opt-in to the dedicated visual-evidence workflow.
+
+# 2. Native Cross-Platform workflow
+
+File:
+
+```text
+.github/workflows/native.yml
+```
+
+Workflow name: `Native Cross-Platform`.
+
+## Triggers/permission
+
+- push to `main`;
+- pull request targeting `main`;
+- `contents: read` only.
+
+No production signing credential is required or intended.
+
+## Desktop matrix
+
+Runners:
 
 ```text
 ubuntu-latest
+windows-latest
+macos-latest
 ```
 
-Timeout:
+Each job:
+
+1. checks out source;
+2. sets up Node 22.12.0;
+3. installs Linux Tauri system libraries on Ubuntu;
+4. updates/selects stable Rust;
+5. installs JavaScript dependencies;
+6. runs `npm run check:native`;
+7. runs `npm run native:build:ci`.
+
+`native:build:ci` generates TableSpark native icons from `public/logo.svg`, invokes the configured frontend build, and compiles the host native application using `--no-bundle --no-sign`.
+
+Linux CI installs:
 
 ```text
-20 minutes
+libwebkit2gtk-4.1-dev
+build-essential
+curl
+wget
+file
+libxdo-dev
+libssl-dev
+libayatana-appindicator3-dev
+librsvg2-dev
 ```
 
-This job is independent of `quality`; both can run in parallel.
+Equivalent packages vary by distribution; this job establishes the maintained Ubuntu runner path rather than claiming every Linux distribution is identical.
 
-Steps:
+## Android job
 
-1. checkout;
-2. set up Node 22.12.0;
-3. install dependencies;
-4. install Chromium plus Linux dependencies;
-5. run `npm run test:e2e`.
+Display name: `Android debug APK`.
 
-The Playwright configuration builds and starts the production preview automatically.
+Runner: `ubuntu-latest`.
 
-Current ordinary E2E areas include:
+Setup includes:
 
-- smoke/product flows;
-- accessibility invariants;
-- English/Hindi switching;
-- Hindi localized error paths;
-- print media behavior.
+- Node 22.12.0;
+- Java Temurin 17;
+- stable Rust;
+- `aarch64-linux-android`;
+- `armv7-linux-androideabi`;
+- `i686-linux-android`;
+- `x86_64-linux-android`;
+- the newest installed runner Android NDK exported as `NDK_HOME`.
 
-`e2e/release-evidence.spec.ts` is normally skipped during ordinary E2E because its screenshot capture is enabled by a dedicated environment flag/workflow.
+Build flow:
 
-## Branch protection recommendation
+```bash
+npm install --no-fund --no-audit
+npm run android:init -- --skip-targets-install
+npm run android:build:debug
+```
 
-For `main`, the CI checks corresponding to both `quality` and `e2e` should be required before merge when GitHub repository settings permit it.
+Generated Android project files live under ignored `src-tauri/gen/`.
 
-The exact check names shown by GitHub should be selected from successful recent runs, not guessed from documentation.
+A passing debug APK build proves candidate source/toolchain viability. It does not prove release-keystore ownership, production APK/AAB signing, Google Play acceptance, or real-device accessibility/print/storage behavior.
 
-See `docs/repository-settings.md`.
+## iOS job
 
-# 2. CodeQL workflow
+Display name: `iOS simulator build`.
+
+Runner: `macos-latest`.
+
+Setup includes:
+
+- Node 22.12.0;
+- stable Rust;
+- `aarch64-apple-ios-sim` target;
+- Xcode tooling;
+- CocoaPods.
+
+Build flow:
+
+```bash
+npm install --no-fund --no-audit
+npm run ios:init -- --skip-targets-install
+npm run ios:build:simulator
+```
+
+Generated iOS project files live under ignored `src-tauri/gen/`.
+
+A simulator build proves candidate compilation. It does not prove physical-device provisioning/signing, Apple Developer team ownership, App Store acceptance, or real iPhone/iPad behavior.
+
+## Native branch-protection guidance
+
+After stable successful runs establish the exact GitHub check names, the intended native checks can be made required for `main` where repository policy permits. Use actual recent check names rather than guessing them from documentation.
+
+# 3. CodeQL workflow
 
 File:
 
@@ -292,94 +228,18 @@ File:
 .github/workflows/codeql.yml
 ```
 
-Workflow name:
+Runs on `main` pushes, PRs targeting `main`, and a weekly schedule with permissions:
 
 ```text
-CodeQL
-```
-
-## Triggers
-
-CodeQL runs on:
-
-- pushes to `main`;
-- pull requests targeting `main`;
-- a weekly schedule.
-
-Scheduled cron:
-
-```text
-17 3 * * 1
-```
-
-This means 03:17 UTC every Monday. GitHub scheduled workflow execution can be delayed by platform load and should not be treated as a real-time scheduler.
-
-## Permissions
-
-```yaml
 contents: read
 security-events: write
 ```
 
-`security-events: write` allows analysis results to be uploaded to GitHub code scanning.
+CodeQL complements strict TypeScript, linting, dependency audit, native capability/CSP review, Rust/native compilation, and repository secret scanning.
 
-## Concurrency
+For a real alert, investigate data flow/reachability, fix the smallest responsible boundary, add a regression test when practical, and rerun analysis rather than dismissing solely to satisfy branch protection.
 
-CodeQL cancels obsolete in-progress runs for the same workflow/ref.
-
-## Analysis job
-
-Job display name:
-
-```text
-Analyze TypeScript
-```
-
-Runner:
-
-```text
-ubuntu-latest
-```
-
-Timeout:
-
-```text
-20 minutes
-```
-
-Steps:
-
-1. `actions/checkout@v7`
-2. `github/codeql-action/init@v4` for `javascript-typescript`
-3. `github/codeql-action/autobuild@v4`
-4. `github/codeql-action/analyze@v4`
-
-CodeQL complements, but does not replace:
-
-- strict TypeScript correctness checks;
-- ESLint;
-- dependency audits;
-- repository secret scanning;
-- privacy/security design review;
-- manual review of browser trust boundaries.
-
-## CodeQL failure triage
-
-Distinguish:
-
-- **workflow/tool failure** — setup/autobuild/action infrastructure failed;
-- **analysis alert** — CodeQL completed and found a potentially unsafe pattern.
-
-For a real alert:
-
-1. inspect data flow/reachability;
-2. reproduce/understand the pattern;
-3. fix the smallest responsible boundary;
-4. add a regression test when practical;
-5. rerun CodeQL;
-6. do not dismiss solely to satisfy branch protection.
-
-# 3. Tagged Release workflow
+# 4. Tagged Release workflow
 
 File:
 
@@ -387,153 +247,40 @@ File:
 .github/workflows/release.yml
 ```
 
-Workflow name:
+Trigger: `v*.*.*`.
 
-```text
-Release
-```
+Permission: `contents: write`.
 
-## Trigger
+The current tagged-release automation publishes the canonical **web/PWA package**. It:
 
-Runs when a pushed tag matches:
+1. checks out the tagged commit;
+2. sets up Node 22.12.0;
+3. installs dependencies;
+4. runs `npm run check`;
+5. builds `dist/`;
+6. creates `tablespark-web.zip`;
+7. creates `tablespark-web.zip.sha256`;
+8. creates the GitHub Release with generated notes/assets.
 
-```text
-v*.*.*
-```
+Native signed artifacts are deliberately not published by this workflow yet because public Windows/macOS/Android/iOS distribution requires owner-controlled signing identities/release-channel credentials. Do not add those secrets to ordinary or fork PR workflow contexts.
 
-Examples:
+## Safe `v2.0.12` tag sequence
 
-```text
-v0.1.0
-v0.2.1
-v1.0.0
-```
+Before tagging:
 
-The glob is syntactic; maintainers still need to apply release/version policy intentionally.
+1. freeze exact candidate SHA;
+2. verify exact-head CI quality/e2e;
+3. verify exact-head CodeQL;
+4. verify exact-head visual evidence;
+5. verify exact-head Native Cross-Platform desktop/Android/iOS jobs;
+6. inspect screenshot evidence;
+7. complete intended manual accessibility/Hindi/installed-device/native-signing/web-origin gates;
+8. create/push annotated tag;
+9. inspect release workflow;
+10. verify downloaded web ZIP/checksum;
+11. verify every signed native package separately before public distribution.
 
-## Permission
-
-```yaml
-contents: write
-```
-
-Required because the workflow creates a GitHub Release and uploads assets.
-
-Do not expose `github.token` to arbitrary untrusted shell input.
-
-## Release job
-
-Runner:
-
-```text
-ubuntu-latest
-```
-
-Timeout:
-
-```text
-20 minutes
-```
-
-### Checkout and Node setup
-
-Uses the same checkout and Node 22.12.0 baseline as CI.
-
-### Dependency install
-
-```bash
-npm install --no-fund --no-audit
-```
-
-### Verify release candidate
-
-```bash
-npm run check
-```
-
-The standard local gate now includes:
-
-- formatting;
-- lint;
-- type checks;
-- application tests;
-- secret-scanner tests;
-- repository secret scan;
-- documentation-link tests/local-link integrity;
-- production build.
-
-Important limitation: `npm run check` does not include Playwright E2E or the npm advisory audit. A release tag should be created only from a commit whose PR/CI browser/audit/security/manual gates were already reviewed.
-
-### Build release
-
-```bash
-npm run build
-```
-
-The workflow intentionally rebuilds from the tagged commit rather than publishing an arbitrary local artifact.
-
-### Package
-
-```bash
-cd dist && zip -r ../tablespark-web.zip .
-```
-
-The ZIP contains the contents of `dist/` at archive root.
-
-Output:
-
-```text
-tablespark-web.zip
-```
-
-### Generate integrity metadata
-
-```bash
-sha256sum tablespark-web.zip > tablespark-web.zip.sha256
-```
-
-Output:
-
-```text
-tablespark-web.zip.sha256
-```
-
-The checksum lets a downloader detect byte-level modification relative to the workflow-produced digest.
-
-It is **not** a digital signature or independent proof of publisher identity.
-
-### Create release
-
-The GitHub CLI receives `GH_TOKEN` from `github.token` and runs `gh release create` with:
-
-- current tag from `GITHUB_REF_NAME`;
-- ZIP artifact;
-- checksum file;
-- repository from `GITHUB_REPOSITORY`;
-- generated release notes;
-- `--verify-tag`.
-
-If tag verification fails, do not remove the check just to publish. Diagnose the tag/repository state.
-
-## Safe release sequence
-
-Before pushing a tag:
-
-1. freeze candidate SHA;
-2. verify final-head PR `quality`, `e2e`, CodeQL, and visual evidence;
-3. inspect screenshot artifact;
-4. complete/manual-record required accessibility/Hindi/production-origin gates where applicable;
-5. update changelog/version/release notes;
-6. create annotated tag;
-7. push intended tag;
-8. inspect release workflow result;
-9. download ZIP + checksum;
-10. verify checksum independently;
-11. deploy only after production host/origin approval.
-
-See `docs/release.md` and `docs/release-evidence.md`.
-
-# 4. Release Visual Evidence workflow
+# 5. Release Visual Evidence workflow
 
 File:
 
@@ -541,101 +288,13 @@ File:
 .github/workflows/visual-evidence.yml
 ```
 
-Workflow name:
+Triggers on PRs targeting `main` and manual dispatch, with `contents: read`.
 
-```text
-Release Visual Evidence
-```
+It installs Chromium, sets `CAPTURE_RELEASE_EVIDENCE=1`, runs the dedicated screenshot spec, and uploads `tablespark-release-visual-evidence` containing light/dark compact/wide PNGs.
 
-## Triggers
+A green screenshot workflow proves only that browser captures were generated. Human review is still required and it does not prove native app rendering or signed distribution.
 
-Runs on:
-
-- pull requests targeting `main`;
-- manual `workflow_dispatch`.
-
-The manual trigger can regenerate evidence without a source edit.
-
-## Permission
-
-```yaml
-contents: read
-```
-
-The workflow does not modify/deploy the repository.
-
-## Screenshot job
-
-Runner:
-
-```text
-ubuntu-latest
-```
-
-Timeout:
-
-```text
-20 minutes
-```
-
-Steps:
-
-1. checkout;
-2. set up Node 22.12.0;
-3. install dependencies;
-4. install Chromium/system dependencies;
-5. set `CAPTURE_RELEASE_EVIDENCE=1`;
-6. run only `e2e/release-evidence.spec.ts`;
-7. upload generated PNG evidence.
-
-## Artifact
-
-Name:
-
-```text
-tablespark-release-visual-evidence
-```
-
-Expected path:
-
-```text
-test-results/release-evidence/*.png
-```
-
-`if-no-files-found: error` prevents a misleading green upload step without screenshots.
-
-Retention:
-
-```text
-30 days
-```
-
-Expected captures:
-
-- light/wide;
-- dark/wide;
-- light/compact;
-- dark/compact.
-
-These are **real Chromium renderings of the built application**.
-
-They still need human inspection for:
-
-- clipping/overlap;
-- awkward localization wrapping;
-- typography;
-- theme correctness;
-- unexpected banners/state.
-
-A green screenshot workflow is not proof of:
-
-- Safari/Firefox rendering;
-- screen-reader behavior;
-- production hosting correctness;
-- PWA installability/scope on final origin;
-- Hindi linguistic quality.
-
-# 5. Dependabot
+# 6. Dependabot
 
 File:
 
@@ -643,249 +302,94 @@ File:
 .github/dependabot.yml
 ```
 
-Configuration version:
+Maintains npm and GitHub Actions dependencies weekly.
 
-```text
-2
-```
+The current configuration does not imply Rust Cargo dependency automation. If Cargo updates are added later, document/review that ecosystem separately.
 
-## npm updates
+For Tauri/native/toolchain updates, review:
 
-Directory:
+- breaking/migration notes;
+- new permissions/capabilities;
+- changed system prerequisites;
+- platform minimum-version changes;
+- signing/distribution implications;
+- supply-chain provenance/ownership.
 
-```text
-/
-```
+# 7. Generated release notes
 
-Schedule:
+`.github/release.yml` configures GitHub generated release-note categories; it is not the Actions release workflow.
 
-- weekly;
-- Monday;
-- 04:00.
+Labels improve generated notes but do not replace maintained `CHANGELOG.md`.
 
-Open PR limit:
+# 8. Contributor templates and funding
 
-```text
-10
-```
+Issue/PR/funding configuration guides contributors and support. These surfaces must never encourage posting private learner backups/recovery data, authentication credentials, Android/Apple/desktop signing private keys, or store/developer API credentials.
 
-Development dependency updates are grouped under:
+# 9. Exact-head evidence rule
 
-```text
-development-dependencies
-```
+Final evidence must be associated with the immutable final candidate SHA.
 
-Grouping reduces noisy one-PR-per-dev-package maintenance while runtime/security-sensitive updates can still receive focused scrutiny.
+Do not count:
 
-## GitHub Actions updates
+- older successful runs;
+- queued/pending jobs;
+- cancelled/superseded jobs;
+- artifacts built from another SHA;
+- debug/simulator artifacts when claiming production-signed native distribution.
 
-Ecosystem:
+If any tracked source/doc commit changes the head, affected verification must be repeated for the new SHA.
 
-```text
-github-actions
-```
+Avoid hard-coding a purported “final SHA” into a tracked file when that edit would itself create a newer commit. Put immutable candidate/run identifiers in PR/check/release metadata after the final tracked-file commit.
 
-Schedule:
+# 10. Failure triage
 
-- weekly;
-- Monday;
-- 04:30.
+## Shared CI
 
-Open PR limit:
+Find the first responsible command and reproduce it locally when practical. Do not suppress a global gate to hide an isolated failure.
 
-```text
-5
-```
+## Native desktop
 
-Action updates are supply-chain-sensitive. Review:
+Check platform libraries/toolchain, Rust/Tauri compatibility, generated icons, frontend build, CSP/capability parsing, and host linker/compiler output.
 
-- publisher/action identity;
-- major-version migration notes;
-- requested permissions;
-- changed behavior;
-- compatibility with repository policies.
+## Android
 
-Do not auto-merge a major workflow action update solely because Dependabot opened it.
+Check Java, SDK/NDK, Rust Android targets, regenerated `src-tauri/gen/`, Gradle/toolchain errors, identifier/minSdk/config.
 
-# 6. Generated release-note configuration
+Do not commit generated mobile output merely to hide a reproducibility issue unless generated-source policy is deliberately changed.
 
-File:
+## iOS
 
-```text
-.github/release.yml
-```
+Check Xcode/CocoaPods, Rust simulator/device target, generated Xcode project, bundle/version config, and whether the failure is compile-time versus signing/provisioning.
 
-This is **not** the Actions release workflow. It configures GitHub's generated changelog/release-note grouping.
+Simulator/source failures belong in repository code/tooling. Production signing failures require owner credentials rather than weakened security.
 
-## Exclusion
+## Native configuration gate
 
-PRs/issues labeled:
+Correct the maintained source-of-truth invariant named by the failure (version, identifier, CSP, capability, icon, script, dependency, mobile minimum) rather than relaxing the checker to accept unintended divergence.
 
-```text
-skip-changelog
-```
+# 11. Automation synchronization matrix
 
-are excluded from generated notes.
+When changing Node support, synchronize:
 
-Do not hide security-significant or user-visible changes merely for cleaner notes.
+- `.nvmrc`;
+- `package.json` engines;
+- workflow Node setup values;
+- setup/configuration documentation.
 
-## Categories
+When changing product/native identity/version, synchronize:
 
-Generated notes classify labels into:
+- `package.json`;
+- `src-tauri/Cargo.toml` when required;
+- visible English/Hindi version copy;
+- changelog/release documentation;
+- native config tests.
 
-- Features → `enhancement`
-- Fixes → `bug`
-- Accessibility → `accessibility`
-- Documentation → `documentation`
-- Dependencies → `dependencies`
-- Other changes → wildcard fallback
+When changing native permissions/CSP/platform minimums, synchronize:
 
-Good labeling improves generated notes but does not replace maintained `CHANGELOG.md`.
+- tracked `src-tauri` configuration;
+- native config tests;
+- security/privacy docs;
+- release evidence;
+- native CI/toolchain setup if needed.
 
-# 7. Issue and pull-request automation surfaces
-
-Files:
-
-```text
-.github/ISSUE_TEMPLATE/bug_report.md
-.github/ISSUE_TEMPLATE/feature_request.md
-.github/ISSUE_TEMPLATE/config.yml
-.github/pull_request_template.md
-```
-
-Their role is contributor guidance rather than executable product code.
-
-Privacy rule: templates should never request public upload of raw learner backups or unreadable recovery artifacts. Reproduction guidance should use synthetic/redacted examples.
-
-# 8. Funding configuration
-
-File:
-
-```text
-.github/FUNDING.yml
-```
-
-Exposes optional repository funding through GitHub UI.
-
-Funding remains:
-
-- optional;
-- separate from core learning features;
-- unrelated to access to privacy/security support;
-- described without pressure/misleading urgency.
-
-# 9. What is not automated
-
-The repository intentionally does **not** currently automate these decisions as if they were already approved:
-
-- production static-host selection;
-- production deployment;
-- custom domain/DNS ownership;
-- TWA/native packaging;
-- app-store publishing;
-- manual NVDA/Narrator/VoiceOver/TalkBack passes;
-- fluent/native Hindi linguistic approval;
-- final visual screenshot human review;
-- production-origin installability/offline reload verification;
-- release tag creation itself.
-
-See deployment/native-packaging/evidence docs for the explicit gates.
-
-# 10. Workflow failure triage
-
-## Formatting/lint/type/application-test failure
-
-Reproduce locally with the exact named npm command before changing unrelated code.
-
-## Documentation-link failure
-
-Run:
-
-```bash
-npm run test:docs
-```
-
-For a reported broken target:
-
-1. inspect source Markdown and intended target;
-2. fix stale/misspelled local path;
-3. if the link is valid and checker parsing is wrong, add a focused checker test before changing `link-checker.mjs`;
-4. rerun the full documentation gate.
-
-Do not disable link checking merely because a large documentation commit created many failures.
-
-## Build failure
-
-Run:
-
-```bash
-npm run build
-```
-
-Check TypeScript first, then Vite/PWA diagnostics.
-
-## E2E failure
-
-Run failing spec locally:
-
-```bash
-npx playwright test e2e/<file>.spec.ts
-```
-
-If CI retried, inspect trace/test artifacts where available. Do not increase retries to hide deterministic failures.
-
-## Audit failure
-
-Identify whether advisory affects a production dependency/reachable use case. Upgrade/replace where possible. Document a deliberate risk decision if immediate remediation is impossible.
-
-## CodeQL failure/alert
-
-Separate infrastructure failure from an actual code-scanning result. Real alerts require investigation and remediation/reasoned disposition.
-
-## Visual evidence failure
-
-Determine whether:
-
-- screenshot test failed to render;
-- expected files were not created;
-- artifact upload failed;
-- workflow lacks browser/system dependency.
-
-Even after green automation, manually inspect images.
-
-## Release failure before GitHub Release creation
-
-Do not manually create a release from an unverified partial artifact merely to bypass workflow failure. Fix the cause/rerun according to release policy.
-
-## Faulty published release
-
-Do not move the public tag silently. Follow rollback/patch guidance in `docs/release.md`.
-
-# 11. Required-check maintenance
-
-Whenever a workflow/job is renamed:
-
-1. establish a successful run under new name;
-2. inspect exact status/check names GitHub exposes;
-3. update branch protection/rulesets;
-4. update `docs/repository-settings.md` and `docs/quality-gates.md`;
-5. remove obsolete impossible-to-satisfy required checks.
-
-Branch protection follows actual check names, not guesses.
-
-# 12. Automation-change checklist
-
-For any `.github/workflows/*.yml` change:
-
-- [ ] Review trigger scope.
-- [ ] Review token permissions.
-- [ ] Review third-party action publisher/version.
-- [ ] Check untrusted PR data does not enter unsafe shell commands.
-- [ ] Check secrets/tokens cannot reach untrusted code.
-- [ ] Check artifact contents for private/sensitive data.
-- [ ] Keep Node/tool versions synchronized.
-- [ ] Re-run relevant workflow on a PR before relying on it.
-- [ ] Update CI/CD, testing, release, quality-gate and repository-settings docs.
-- [ ] Record release/verification behavior changes in `what_changed.md`.
-
-For Dependabot/release-note configuration changes, also verify maintenance cadence/labels against current repository practice.
+When adding/removing/renaming a tracked file, update `docs/repository-file-reference.md` exhaustive inventory/count.
