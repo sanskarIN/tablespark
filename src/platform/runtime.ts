@@ -7,8 +7,13 @@ export type TableSparkRuntimePlatform =
   | 'ios'
   | string;
 
-export const runtimePlatform = __TABLESPARK_PLATFORM__ as TableSparkRuntimePlatform;
-export const isNativeShell = __TABLESPARK_NATIVE__;
+const detectedPlatform =
+  typeof __TABLESPARK_PLATFORM__ === 'string' ? __TABLESPARK_PLATFORM__ : 'web';
+const detectedNative =
+  typeof __TABLESPARK_NATIVE__ === 'boolean' ? __TABLESPARK_NATIVE__ : false;
+
+export const runtimePlatform = detectedPlatform as TableSparkRuntimePlatform;
+export const isNativeShell = detectedNative;
 export const isMobileNativeShell =
   isNativeShell && (runtimePlatform === 'android' || runtimePlatform === 'ios');
 
