@@ -1,64 +1,91 @@
 # TableSpark Documentation Index
 
-TableSpark has multiple documentation layers because a short README cannot safely contain setup, architecture, persistence, security, accessibility, localization, CI, and release procedures in full detail.
+TableSpark 2.0.12 has multiple documentation layers because a short README cannot safely contain setup, shared web/native architecture, persistence, security, accessibility, localization, CI, platform build, signing, and release procedures in full detail.
 
-This index explains **which document to read for which task**, which document is authoritative for a subject, and how the docs relate to executable source/tests.
+This index explains which document is authoritative for each task and how documentation relates to executable source/tests.
 
-## Start here by audience
+## Start here by task
 
 ### I want to use TableSpark
 
 Read:
 
-1. [`README.md`](../README.md) — product overview, features, quick start, platform/support summary.
-2. [`docs/user-guide.md`](user-guide.md) — detailed Tables, worksheet, Practice, Progress, Settings, backup/recovery, offline/PWA, keyboard use.
-3. [`PRIVACY.md`](../PRIVACY.md) — what local data exists and what is/is not sent remotely.
+1. [`README.md`](../README.md) — product overview, features, supported platforms, quick starts.
+2. [`docs/user-guide.md`](user-guide.md) — detailed feature usage.
+3. [`PRIVACY.md`](../PRIVACY.md) — local data/privacy behavior across browser/native installations.
 4. [`SUPPORT.md`](../SUPPORT.md) — support/contact paths.
-5. [`docs/troubleshooting.md`](troubleshooting.md) — common installation/runtime/storage/PWA problems.
+5. [`docs/troubleshooting.md`](troubleshooting.md) — common setup/runtime/storage problems.
 
-### I want to set up a development machine
+### I want to build the web/PWA
 
 Read:
 
-1. [`docs/setup.md`](setup.md) — installation/tool setup and upgrade guidance.
-2. [`docs/commands-reference.md`](commands-reference.md) — exact meaning of every common repository command.
-3. [`docs/configuration-reference.md`](configuration-reference.md) — what each config file controls.
-4. [`docs/development.md`](development.md) — development workflow/conventions.
-5. [`docs/git-workflow.md`](git-workflow.md) — branch/commit/PR workflow.
+1. [`docs/setup.md`](setup.md)
+2. [`docs/commands-reference.md`](commands-reference.md)
+3. [`docs/configuration-reference.md`](configuration-reference.md)
+4. [`docs/development.md`](development.md)
+5. [`docs/testing.md`](testing.md)
+
+### I want to build Windows/macOS/Linux/Android/iOS
+
+Read in this order:
+
+1. [`docs/native-packaging-evaluation.md`](native-packaging-evaluation.md) — implemented Tauri 2 architecture and platform model.
+2. [`docs/setup.md`](setup.md) — Rust/platform SDK prerequisites.
+3. [`docs/commands-reference.md`](commands-reference.md) — exact native/mobile commands.
+4. [`docs/configuration-reference.md`](configuration-reference.md) — `src-tauri`, Vite target defines, CSP/capabilities, mobile minimums.
+5. [`docs/testing.md`](testing.md) — native config tests, desktop/mobile compile CI, real-device boundary.
+6. [`docs/ci-cd.md`](ci-cd.md) — Native Cross-Platform workflow.
+7. [`docs/release.md`](release.md) — signing/distribution procedure.
+8. [`docs/release-evidence.md`](release-evidence.md) — per-platform evidence matrix.
+
+Cross-platform source/build support is implemented. Signed public installers/store packages remain release-operation evidence, not something inferred from source alone.
 
 ### I want to understand the codebase
 
 Read:
 
-1. [`docs/architecture.md`](architecture.md) — high-level architecture and dependency direction.
-2. [`docs/domain-model.md`](domain-model.md) — mathematical/learning rules and domain types.
-3. [`docs/state-and-persistence.md`](state-and-persistence.md) — React state, localStorage, migration, backup/recovery lifecycle.
+1. [`docs/architecture.md`](architecture.md) — shared React/web/PWA/Tauri architecture and dependency direction.
+2. [`docs/domain-model.md`](domain-model.md) — mathematical/learning rules.
+3. [`docs/state-and-persistence.md`](state-and-persistence.md) — React state, four storage startup states, migration/backup/recovery.
 4. [`docs/data-schema-v2.md`](data-schema-v2.md) — persisted schema fields/invariants.
-5. [`docs/localization.md`](localization.md) — locale provider/catalog design.
-6. [`docs/repository-file-reference.md`](repository-file-reference.md) — every tracked file and its purpose.
+5. [`docs/security-model.md`](security-model.md) — browser/native trust boundaries.
+6. [`docs/localization.md`](localization.md) — locale provider/catalog design.
+7. [`docs/repository-file-reference.md`](repository-file-reference.md) — exhaustive tracked-file map.
 
-### I want to add/fix a feature
+### I want to add/fix a shared feature
 
 Read:
 
 1. [`CONTRIBUTING.md`](../CONTRIBUTING.md)
 2. [`docs/development.md`](development.md)
-3. Relevant domain/state/architecture document.
+3. relevant domain/state/architecture document
 4. [`docs/testing.md`](testing.md)
 5. [`docs/accessibility.md`](accessibility.md)
 6. [`docs/localization.md`](localization.md)
 7. [`docs/maintenance.md`](maintenance.md)
 
-Then update:
+Prefer shared TypeScript/domain implementation. Add a platform/native branch only when a real native API is required.
 
-- direct tests;
-- relevant user/engineering docs;
-- `CHANGELOG.md` when release-visible;
-- `what_changed.md` for continuation/handoff state.
+Then update direct tests, relevant docs, `CHANGELOG.md` when release-visible, and `what_changed.md` for handoff state.
+
+### I want to add/change a native permission
+
+Read/review:
+
+1. [`docs/architecture.md`](architecture.md) — platform/native boundary.
+2. [`docs/security-model.md`](security-model.md) — least-privilege threat model.
+3. [`SECURITY.md`](../SECURITY.md) — public security policy.
+4. [`PRIVACY.md`](../PRIVACY.md) — privacy consequences.
+5. [`docs/configuration-reference.md`](configuration-reference.md) — Tauri capability/CSP configuration.
+6. [`docs/testing.md`](testing.md) — config and real-platform verification.
+7. [`docs/release-evidence.md`](release-evidence.md) — native evidence.
+
+Never broaden Tauri permissions merely for convenience. The current shell grants core defaults plus exact allowlisted external destinations only.
 
 ### I want to work on persistence/backups
 
-Read in this order:
+Read:
 
 1. [`docs/state-and-persistence.md`](state-and-persistence.md)
 2. [`docs/data-schema-v2.md`](data-schema-v2.md)
@@ -68,7 +95,7 @@ Read in this order:
 6. [`docs/security-model.md`](security-model.md)
 7. [`docs/testing.md`](testing.md)
 
-Do not change persisted fields without migration/compatibility review.
+Browser/PWA and native installations use separate platform-managed storage. Validated backup export/import is the supported cross-platform transfer path.
 
 ### I want to work on localization/Hindi
 
@@ -77,30 +104,35 @@ Read:
 1. [`docs/localization.md`](localization.md)
 2. [`docs/hindi-review-checklist.md`](hindi-review-checklist.md)
 3. [`docs/accessibility.md`](accessibility.md)
-4. [`docs/user-guide.md`](user-guide.md)
-5. [`docs/testing.md`](testing.md)
+4. [`docs/testing.md`](testing.md)
+5. [`docs/release-evidence.md`](release-evidence.md)
 
-Automated catalog parity does not replace fluent/native language review.
+Automated catalog/browser coverage does not replace fluent/native review, especially on narrow native mobile layouts and assistive technology.
 
 ### I want to review accessibility
 
 Read:
 
 1. [`docs/accessibility.md`](accessibility.md)
-2. [`docs/hindi-review-checklist.md`](hindi-review-checklist.md) for localized accessibility review.
-3. [`docs/release-evidence.md`](release-evidence.md) for recording manual passes.
-4. [`docs/testing.md`](testing.md) for automated accessibility invariant coverage.
+2. [`docs/hindi-review-checklist.md`](hindi-review-checklist.md)
+3. [`docs/testing.md`](testing.md)
+4. [`docs/release-evidence.md`](release-evidence.md)
+
+The shared React UI reduces divergence but real NVDA/Narrator/VoiceOver/TalkBack behavior must still be tested on intended browser/native hosts.
 
 ### I want to review security/privacy
 
 Read:
 
-1. [`SECURITY.md`](../SECURITY.md) — vulnerability-reporting and public security policy.
-2. [`PRIVACY.md`](../PRIVACY.md) — data/privacy statements.
-3. [`docs/security-model.md`](security-model.md) — detailed engineering trust boundaries.
-4. [`docs/state-and-persistence.md`](state-and-persistence.md) — local/import/recovery boundary.
-5. [`docs/data-schema-v2.md`](data-schema-v2.md) — validation contract.
-6. [`docs/ci-cd.md`](ci-cd.md) — Actions/dependency/code-scanning controls.
+1. [`SECURITY.md`](../SECURITY.md)
+2. [`PRIVACY.md`](../PRIVACY.md)
+3. [`docs/security-model.md`](security-model.md)
+4. [`docs/state-and-persistence.md`](state-and-persistence.md)
+5. [`docs/data-schema-v2.md`](data-schema-v2.md)
+6. [`docs/native-packaging-evaluation.md`](native-packaging-evaluation.md)
+7. [`docs/ci-cd.md`](ci-cd.md)
+
+Native-specific topics include capability allowlists, CSP, per-install storage isolation, generated-project boundaries, and signing-secret handling.
 
 ### I want to maintain dependencies/tooling
 
@@ -113,7 +145,9 @@ Read:
 5. [`docs/testing.md`](testing.md)
 6. [`docs/quality-gates.md`](quality-gates.md)
 
-### I want to prepare a release
+Tauri JavaScript/Rust/plugin upgrades should be reviewed as one native toolchain change, including permission/platform implications.
+
+### I want to prepare/release 2.0.12
 
 Read in this order:
 
@@ -121,246 +155,183 @@ Read in this order:
 2. [`ROADMAP.md`](../ROADMAP.md)
 3. [`docs/verification-plan.md`](verification-plan.md)
 4. [`docs/quality-gates.md`](quality-gates.md)
-5. [`docs/release.md`](release.md)
-6. [`docs/release-evidence.md`](release-evidence.md)
-7. [`docs/release-notes-template.md`](release-notes-template.md)
-8. [`docs/ci-cd.md`](ci-cd.md)
-9. [`docs/deployment-evaluation.md`](deployment-evaluation.md)
-10. [`what_changed.md`](../what_changed.md)
+5. [`docs/testing.md`](testing.md)
+6. [`docs/ci-cd.md`](ci-cd.md)
+7. [`docs/release.md`](release.md)
+8. [`docs/release-evidence.md`](release-evidence.md)
+9. [`docs/release-notes-template.md`](release-notes-template.md)
+10. [`docs/deployment-evaluation.md`](deployment-evaluation.md)
+11. [`docs/native-packaging-evaluation.md`](native-packaging-evaluation.md)
+12. [`what_changed.md`](../what_changed.md)
 
-A release tag should not be created merely because source work is “done.” Evidence must correspond to the frozen candidate SHA.
+A release tag must correspond to a frozen exact SHA. Successful debug/simulator native builds are not the same as signed public native packages.
 
-### I want to deploy/package the app
-
-Read:
-
-1. [`docs/deployment-evaluation.md`](deployment-evaluation.md)
-2. [`docs/native-packaging-evaluation.md`](native-packaging-evaluation.md)
-3. [`docs/release.md`](release.md)
-4. [`docs/release-evidence.md`](release-evidence.md)
-5. [`docs/configuration-reference.md`](configuration-reference.md) — Vite/PWA base/scope concerns.
-
-Production deployment/native packaging still require explicit owner-approved decisions where documented.
-
-## Document-by-document catalog
+## Document catalog
 
 ### Root public/project documents
 
 | File | Main purpose |
 | --- | --- |
-| `README.md` | Public project landing page, features, quick start, high-level architecture/testing/privacy/docs links. |
-| `CHANGELOG.md` | Release-facing notable changes by version/Unreleased category. |
-| `ROADMAP.md` | Planned/completed product direction and explicit external/manual gates. |
-| `PRIVACY.md` | User-facing local data, backup, locale, PWA, logging and deletion privacy behavior. |
-| `SECURITY.md` | Vulnerability reporting, supported-version policy and public security model summary. |
-| `SUPPORT.md` | User/contributor support channels and safe information-sharing guidance. |
-| `CONTRIBUTING.md` | Contribution expectations and review workflow. |
-| `CODE_OF_CONDUCT.md` | Community participation standards. |
-| `LICENSE` | MIT license terms. |
-| `what_changed.md` | Current implementation/verification handoff ledger, especially useful across continuation sessions. |
+| `README.md` | Cross-platform public landing page, features, platform matrix, web/native quick starts. |
+| `CHANGELOG.md` | Versioned release-visible changes, including the 2.0.12 cross-platform candidate. |
+| `ROADMAP.md` | Completed/planned source/build work and external/manual/signing gates. |
+| `PRIVACY.md` | Local data behavior across browser/native installations and backup portability. |
+| `SECURITY.md` | Vulnerability reporting plus public browser/native security/signing policy. |
+| `SUPPORT.md` | Support/contact guidance. |
+| `CONTRIBUTING.md` | Contribution/review expectations. |
+| `CODE_OF_CONDUCT.md` | Community standards. |
+| `LICENSE` | MIT license. |
+| `what_changed.md` | Current implementation/checkpoint/handoff ledger. |
 
 ### Core engineering guides
 
 | File | Main purpose |
 | --- | --- |
-| `docs/architecture.md` | Layer/module architecture, dependency direction, major decisions. |
-| `docs/domain-model.md` | Pure multiplication/practice/mastery/session/worksheet rules and invariants. |
-| `docs/state-and-persistence.md` | State actions, localStorage lifecycle, migration/import/export/recovery. |
-| `docs/data-schema-v2.md` | Field-level persisted schema-2 reference. |
-| `docs/security-model.md` | Engineering trust boundaries and threat model. |
-| `docs/localization.md` | Locale architecture, adding languages, storage/testing guidance. |
-| `docs/accessibility.md` | Accessibility implementation, automation/manual matrix/checklists. |
-| `docs/performance.md` | Performance budgets, measurement and optimization rules. |
+| `docs/architecture.md` | Shared web/PWA/Tauri architecture, platform boundary, dependency direction. |
+| `docs/domain-model.md` | Pure learning/domain rules. |
+| `docs/state-and-persistence.md` | State/storage/migration/transactional backup/recovery lifecycle. |
+| `docs/data-schema-v2.md` | Persisted schema-2 reference. |
+| `docs/security-model.md` | Detailed browser/native threat and trust boundaries. |
+| `docs/native-packaging-evaluation.md` | Implemented Tauri 2 targets, native commands, generated-output/signing model. |
+| `docs/localization.md` | Locale architecture/adding translations. |
+| `docs/accessibility.md` | Accessibility implementation and manual matrix. |
+| `docs/performance.md` | Performance budgets/measurement. |
 
 ### Setup/development/maintenance
 
 | File | Main purpose |
 | --- | --- |
-| `docs/setup.md` | Tool installation/upgrade across supported development environments. |
-| `docs/commands-reference.md` | Exact command meanings, outputs and failure resolution. |
-| `docs/configuration-reference.md` | Every major configuration surface and synchronization rules. |
-| `docs/development.md` | Daily development workflow and coding practices. |
-| `docs/git-workflow.md` | Git branch/commit/push/PR expectations. |
-| `docs/testing.md` | Test layers, commands, boundaries and release test strategy. |
-| `docs/quality-gates.md` | Quality/security checks required before merge/release. |
-| `docs/ci-cd.md` | GitHub Actions, Dependabot, artifacts, permissions and triage. |
-| `docs/maintenance.md` | Recurring dependency/schema/docs/PWA/release maintenance handbook. |
-| `docs/troubleshooting.md` | Common setup/runtime/storage/build/PWA/test problems. |
-| `docs/glossary.md` | Precise project terminology. |
+| `docs/setup.md` | Web/Rust/Tauri/Windows/macOS/Linux/Android/iOS prerequisites and setup. |
+| `docs/commands-reference.md` | Web/native/mobile command behavior and failure guidance. |
+| `docs/configuration-reference.md` | Package/Vite/Tauri/CSP/capability/mobile config synchronization. |
+| `docs/development.md` | Daily development conventions. |
+| `docs/git-workflow.md` | Git branch/commit/PR expectations. |
+| `docs/testing.md` | Shared/browser/native compile/manual/signing verification layers. |
+| `docs/quality-gates.md` | Merge/release quality/security gate expectations. |
+| `docs/ci-cd.md` | Five workflows, including Native Cross-Platform build matrix. |
+| `docs/maintenance.md` | Recurring toolchain/schema/docs/release maintenance. |
+| `docs/troubleshooting.md` | Common development/runtime problems. |
+| `docs/glossary.md` | Project terminology. |
 
-### User/product/review guides
+### User/review/release guides
 
 | File | Main purpose |
 | --- | --- |
-| `docs/user-guide.md` | Full end-user feature guide. |
-| `docs/hindi-review-checklist.md` | Fluent/native Hindi terminology/layout/print/accessibility review. |
-| `docs/release-evidence.md` | Evidence recording template; intentionally marks unexecuted checks as pending. |
-| `docs/release-notes-template.md` | Consistent release-note drafting structure. |
+| `docs/user-guide.md` | End-user feature guide. |
+| `docs/hindi-review-checklist.md` | Hindi terminology/layout/print/accessibility review. |
+| `docs/release-evidence.md` | Exact-head web/native/manual/signing evidence matrix. |
+| `docs/release-notes-template.md` | Release-note structure. |
 | `docs/verification-plan.md` | Candidate verification sequence. |
-
-### Distribution/repository administration
-
-| File | Main purpose |
-| --- | --- |
-| `docs/release.md` | Tag/package/checksum/release/rollback process. |
-| `docs/deployment-evaluation.md` | Static-host candidates and approval/validation gate. |
-| `docs/native-packaging-evaluation.md` | TWA/wrapper/native evaluation and current PWA decision. |
-| `docs/repository-settings.md` | Recommended branch protection/rules/check configuration. |
+| `docs/release.md` | Web/native release, signing, tag, checksum, rollback procedure. |
+| `docs/deployment-evaluation.md` | Web static-host evaluation and approval gate. |
+| `docs/repository-settings.md` | Recommended branch protection/check settings. |
 
 ### Architecture Decision Records
 
-| ADR | Decision |
+| ADR | Scope |
 | --- | --- |
-| `0001-typescript-react-pwa.md` | Use TypeScript + React + PWA architecture. |
-| `0002-local-first-persistence.md` | Keep core learner data local-first. |
-| `0003-deterministic-practice.md` | Use reproducible seeded generated practice. |
-| `0004-preserve-unreadable-local-state.md` | Preserve unreadable existing local state until explicit recovery action. |
+| `0001-typescript-react-pwa.md` | TypeScript/React/PWA foundation. |
+| `0002-local-first-persistence.md` | Local-first learner persistence. |
+| `0003-deterministic-practice.md` | Reproducible seeded practice. |
+| `0004-preserve-unreadable-local-state.md` | Preserve invalid returned data until explicit recovery. |
 
-ADRs explain why a foundational choice was made at a point in time. The current source/architecture docs describe the current implementation if later work has refined details.
+ADRs describe decisions at a point in time. Current architecture/reference docs are authoritative when later explicit requirements supersede an earlier evaluation detail. In particular, the cross-platform requirement supersedes the old native-packaging deferral; `docs/native-packaging-evaluation.md` now documents the implemented Tauri approach.
 
-## Documentation source-of-truth hierarchy
+## Source-of-truth hierarchy
 
-Documentation cannot replace executable behavior.
-
-Use this priority when facts conflict:
-
-### Runtime/domain/persistence behavior
+### Runtime/domain behavior
 
 1. executable source + direct tests;
-2. schema/domain/state engineering docs;
+2. domain/state/schema/architecture references;
 3. user guide/README;
-4. historical ADR/changelog notes.
+4. historical ADR/changelog text.
 
-### Security reporting policy
+### Native platform configuration
 
-1. `SECURITY.md`;
-2. current repository security settings/workflows;
-3. `docs/security-model.md` engineering explanation.
+1. tracked `src-tauri/`, `vite.config.ts`, `package.json`, `src/platform/`;
+2. native config tests/check;
+3. `docs/configuration-reference.md` / `docs/native-packaging-evaluation.md`;
+4. README/other summaries.
 
-### Privacy statement
+### Security/privacy
 
-1. actual source/network/storage behavior;
-2. `PRIVACY.md` public policy;
-3. engineering docs.
+1. actual source/permissions/storage/network behavior;
+2. `SECURITY.md` / `PRIVACY.md` public contracts;
+3. `docs/security-model.md` explanation.
 
-A mismatch between code and privacy policy is a release blocker, not an excuse to pick whichever text is convenient.
+Code/policy mismatch is a release blocker.
 
 ### Release process
 
-1. actual workflow/configuration;
+1. actual workflows/configuration;
 2. `docs/release.md`;
 3. `docs/ci-cd.md`;
-4. evidence/verification templates.
+4. verification/evidence templates.
 
-### Current continuation status
+### Current candidate status
 
-1. current branch/PR/check state in GitHub;
-2. `what_changed.md` as the maintained handoff snapshot.
+1. current GitHub branch/PR/check state;
+2. `what_changed.md` handoff snapshot.
 
-## Documentation categories: normative vs explanatory
-
-### Normative/operational
-
-These tell maintainers what must be done:
-
-- security/privacy policies;
-- contributing/community policies;
-- release/verification procedures;
-- quality gates;
-- schema constraints;
-- branch/repository settings guidance.
-
-### Explanatory
-
-These explain structure/reasoning:
-
-- architecture;
-- domain model;
-- glossary;
-- configuration reference;
-- performance;
-- ADRs.
-
-Both need to remain accurate, but normative docs especially must not claim actions/tests were completed when they were not.
+Do not use a tracked “final SHA” field that becomes stale when the file is committed.
 
 ## Documentation update matrix
 
-### New user-facing feature
+### New shared user feature
 
-Review/update:
+Review/update README, user guide, locale catalogs/Hindi review, accessibility, testing, changelog/roadmap, and handoff.
 
-- README;
-- user guide;
-- locale catalogs/Hindi review;
-- accessibility;
-- testing;
-- changelog;
-- roadmap if planned item;
-- `what_changed.md`.
+### New persisted field/schema change
 
-### New persisted field
+Review/update domain types, validator, migrations/schema version, state/persistence/schema docs, privacy/security, backup/user docs, tests, changelog/handoff.
 
-Review/update:
+### New native permission/plugin
 
-- domain types;
-- storage validator;
-- migrations/version;
-- schema doc;
-- state/persistence doc;
-- privacy/security;
-- backup/user guide;
-- tests;
-- changelog/handoff.
+Review/update package/Cargo deps, Tauri capability/config, platform adapter, native config tests, architecture/security/privacy/native packaging docs, native CI if necessary, release evidence, repository-file inventory, changelog/handoff.
 
-### New dependency/tool
+### Native minimum/identifier/version change
 
-Review/update:
-
-- package manifest;
-- setup/commands/configuration;
-- maintenance/security;
-- CI if needed;
-- repository file reference;
-- changelog/handoff if significant.
+Synchronize package/Cargo/Tauri config, visible UI version when relevant, native config tests, README/platform claims, setup/release/security docs, signing/store identity records.
 
 ### Workflow change
 
-Review/update:
+Review/update CI/CD, testing/quality gates, repository settings, release docs, handoff.
 
-- CI/CD guide;
-- quality gates;
-- repository settings required checks;
-- release/testing docs where affected;
-- maintenance;
-- handoff.
+### New/remove/rename tracked file
 
-### New file
+Update `docs/repository-file-reference.md` exhaustive inventory/count in the same change series. Update this index if the file changes documentation/navigation or a major workflow/tool surface.
 
-At minimum update:
+## Generated assets are not tracked-source completeness items
 
-- `docs/repository-file-reference.md`;
-- this documentation index if it is a documentation/public workflow file;
-- relevant specialized guide.
+Generated/untracked outputs such as:
 
-## Generated/illustrative documentation assets
+```text
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
+```
 
-`docs/assets/interface-preview.svg` is an interface preview illustration, not a real release screenshot.
+are not counted as tracked repository source files.
 
-Real release screenshots are generated through Playwright/Actions and stored as workflow artifacts rather than committed as fabricated proof.
+`docs/assets/interface-preview.svg` is a repository illustration, not release screenshot evidence. Real browser evidence is produced by the visual workflow and manually reviewed.
 
 ## Documentation validation
 
-Local repository link utilities:
+Formal local link gate:
 
 ```bash
-node --test scripts/link-checker.test.mjs
-node scripts/link-check.mjs
+npm run test:docs
 ```
 
-Markdown is not currently included in the package-level Prettier script. Review Markdown formatting manually and use the local link checker for path integrity.
+Markdown is review-formatted manually rather than included in the package-level Prettier script.
 
 ## Completeness rule
 
-`docs/repository-file-reference.md` is the canonical “no tracked file skipped” inventory for documentation purposes.
+`docs/repository-file-reference.md` is the canonical “no tracked file skipped” documentation inventory.
 
-Whenever the repository adds/removes/renames a tracked file, update that reference in the same change series so the file map does not silently become stale.
+Whenever tracked files are added/removed/renamed, update its current count and entries before freezing a release candidate.
