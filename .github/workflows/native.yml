@@ -55,10 +55,10 @@ jobs:
       - name: Compile native application without installers
         run: npm run native:build:ci
 
-  android-scaffold:
-    name: Android project generation
+  android:
+    name: Android debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -72,10 +72,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Select stable Rust
+      - name: Select stable Rust and Android targets
         run: |
           rustup update stable
           rustup default stable
+          rustup target add \
+            aarch64-linux-android \
+            armv7-linux-androideabi \
+            i686-linux-android \
+            x86_64-linux-android
       - name: Resolve installed Android NDK
         shell: bash
         run: |
@@ -86,11 +91,13 @@ jobs:
         run: npm install --no-fund --no-audit
       - name: Generate Android project
         run: npm run android:init -- --skip-targets-install
+      - name: Compile Android debug APK
+        run: npm run android:build:debug
 
-  ios-scaffold:
-    name: iOS project generation
+  ios:
+    name: iOS simulator build
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -99,10 +106,11 @@ jobs:
         with:
           node-version: 22.12.0
           package-manager-cache: false
-      - name: Select stable Rust
+      - name: Select stable Rust and iOS simulator target
         run: |
           rustup update stable
           rustup default stable
+          rustup target add aarch64-apple-ios-sim
       - name: Verify Apple native tooling
         run: |
           xcodebuild -version
@@ -111,3 +119,5 @@ jobs:
         run: npm install --no-fund --no-audit
       - name: Generate iOS project
         run: npm run ios:init -- --skip-targets-install
+      - name: Compile iOS simulator application
+        run: npm run ios:build:simulator
