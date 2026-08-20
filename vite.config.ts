@@ -2,7 +2,14 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const nativePlatform = process.env.TAURI_ENV_PLATFORM ?? 'web';
+const nativeBuild = nativePlatform !== 'web';
+
 export default defineConfig({
+  define: {
+    __TABLESPARK_NATIVE__: JSON.stringify(nativeBuild),
+    __TABLESPARK_PLATFORM__: JSON.stringify(nativePlatform),
+  },
   plugins: [
     react(),
     VitePWA({
@@ -31,7 +38,11 @@ export default defineConfig({
       },
     }),
   ],
-  server: { port: 5173, strictPort: true },
+  server: {
+    host: nativeBuild ? '0.0.0.0' : 'localhost',
+    port: 5173,
+    strictPort: true,
+  },
   preview: { port: 4173, strictPort: true },
   build: { sourcemap: true, target: 'es2022' },
 });
