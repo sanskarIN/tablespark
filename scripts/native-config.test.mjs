@@ -29,6 +29,12 @@ function validFixture() {
       version: '../package.json',
       identifier: 'in.sanskar.tablespark',
       build: { frontendDist: '../dist', devUrl: 'http://localhost:5173' },
+      app: {
+        security: {
+          csp: { 'default-src': "'self'" },
+          devCsp: { 'default-src': "'self' http:" },
+        },
+      },
       bundle: {
         icon: [
           'icons/32x32.png',
@@ -48,15 +54,17 @@ test('accepts synchronized native configuration', () => {
   assert.deepEqual(validateNativeConfiguration(validFixture()), []);
 });
 
-test('reports version and target drift', () => {
+test('reports version, security, icon, and target drift', () => {
   const fixture = validFixture();
   fixture.packageJson.version = '2.0.13';
   fixture.androidConfig.bundle.android.minSdkVersion = 23;
   fixture.iosConfig.bundle.iOS.minimumSystemVersion = '13.0';
   fixture.tauriConfig.bundle.icon = ['icons/icon.ico'];
+  fixture.tauriConfig.app.security.csp = null;
 
   const errors = validateNativeConfiguration(fixture);
   assert.ok(errors.some((error) => error.includes('Cargo version')));
+  assert.ok(errors.some((error) => error.includes('Content Security Policy')));
   assert.ok(errors.some((error) => error.includes('Android minSdkVersion')));
   assert.ok(errors.some((error) => error.includes('iOS minimumSystemVersion')));
   assert.ok(errors.some((error) => error.includes('native bundle icon declaration')));
