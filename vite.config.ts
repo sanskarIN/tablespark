@@ -4,8 +4,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const nativePlatform = process.env.TAURI_ENV_PLATFORM ?? 'web';
 const nativeBuild = nativePlatform !== 'web';
+const mobileDevHost = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
+  clearScreen: false,
   define: {
     __TABLESPARK_NATIVE__: JSON.stringify(nativeBuild),
     __TABLESPARK_PLATFORM__: JSON.stringify(nativePlatform),
@@ -39,9 +41,16 @@ export default defineConfig({
     }),
   ],
   server: {
-    host: nativeBuild ? '0.0.0.0' : 'localhost',
+    host: mobileDevHost || false,
     port: 5173,
     strictPort: true,
+    hmr: mobileDevHost
+      ? {
+          protocol: 'ws',
+          host: mobileDevHost,
+          port: 5174,
+        }
+      : undefined,
   },
   preview: { port: 4173, strictPort: true },
   build: { sourcemap: true, target: 'es2022' },
