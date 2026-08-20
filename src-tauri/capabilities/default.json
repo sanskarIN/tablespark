@@ -1,0 +1,20 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-capability",
+  "description": "Minimal cross-platform capability set for the TableSpark main window.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "mailto:sanskarin@outlook.in" },
+        { "url": "mailto:sanskarin.business@gmail.com" },
+        { "url": "mailto:supportramsandesh@gmail.com" },
+        { "url": "https://github.com/sanskarIN" },
+        { "url": "https://github.com/sanskarIN/tablespark" },
+        { "url": "https://buymeacoffee.com/sanskarIN" }
+      ]
+    }
+  ]
+}
