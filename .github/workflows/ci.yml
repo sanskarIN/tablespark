@@ -53,6 +53,16 @@ jobs:
         run: |
           git config user.name "Sanskar"
           git config user.email "sanskarin@outlook.in"
+      - name: Commit generated dependency lockfile
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          if [[ -f package-lock.json ]] && ! git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+            git add package-lock.json
+            git commit -m "build: lock JavaScript dependency graph"
+          else
+            echo "Dependency lockfile is already tracked or was not generated."
+          fi
       - name: Apply and commit pinned Prettier formatting
         if: steps.guard.outputs.run == 'true'
         shell: bash
@@ -101,7 +111,7 @@ The repair was intentionally split into small, reviewable commits:
 2. `2d4564d271740cdcc48ef154983a1bb135b7f047` — remove E2E browser files from the Node-only TypeScript project.
 3. `909e71cd617699ea161009c31fa4defa30c1bc33` — add the E2E project to the root TypeScript build references so strict type checking remains enforced.
 4. `10e5983926218af31d440039dadf183dcbd6f1e3` — make `native:check` generate the required Tauri icons before `cargo check`, so native verification is self-contained on a clean checkout.
-5. The immediately preceding formatter commit, when formatting changes are present, applies the repository-pinned Prettier version instead of weakening or bypassing `format:check`.
+5. The one-shot repair also records the npm dependency graph in `package-lock.json`, then applies the repository-pinned Prettier version instead of weakening or bypassing `format:check`.
 
 ### Verification policy after repair
 
