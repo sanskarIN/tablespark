@@ -1,4 +1,5 @@
 import { useLocale } from '../../i18n/LocaleContext';
+import { handleExternalLinkClick } from '../../platform/openExternalUrl';
 
 export function AboutPage() {
   const { messages } = useLocale();
@@ -41,26 +42,47 @@ export function AboutPage() {
         <h3>{copy.about.contactSupport}</h3>
         <ul className="link-list">
           <li>
-            <a href="mailto:sanskarin@outlook.in">{copy.about.businessOutlook}</a>
+            <a href="mailto:sanskarin@outlook.in" onClick={handleExternalLinkClick}>
+              {copy.about.businessOutlook}
+            </a>
           </li>
           <li>
-            <a href="mailto:sanskarin.business@gmail.com">{copy.about.businessGmail}</a>
+            <a href="mailto:sanskarin.business@gmail.com" onClick={handleExternalLinkClick}>
+              {copy.about.businessGmail}
+            </a>
           </li>
           <li>
-            <a href="mailto:supportramsandesh@gmail.com">{copy.about.supportEmail}</a>
+            <a href="mailto:supportramsandesh@gmail.com" onClick={handleExternalLinkClick}>
+              {copy.about.supportEmail}
+            </a>
           </li>
           <li>
-            <a href="https://github.com/sanskarIN" target="_blank" rel="noreferrer">
+            <a
+              href="https://github.com/sanskarIN"
+              target="_blank"
+              rel="noreferrer"
+              onClick={handleExternalLinkClick}
+            >
               {copy.about.githubProfile}
             </a>
           </li>
           <li>
-            <a href="https://github.com/sanskarIN/tablespark" target="_blank" rel="noreferrer">
+            <a
+              href="https://github.com/sanskarIN/tablespark"
+              target="_blank"
+              rel="noreferrer"
+              onClick={handleExternalLinkClick}
+            >
               {copy.about.source}
             </a>
           </li>
           <li>
-            <a href="https://buymeacoffee.com/sanskarIN" target="_blank" rel="noreferrer">
+            <a
+              href="https://buymeacoffee.com/sanskarIN"
+              target="_blank"
+              rel="noreferrer"
+              onClick={handleExternalLinkClick}
+            >
               {copy.about.funding}
             </a>
           </li>
