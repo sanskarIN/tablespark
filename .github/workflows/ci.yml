@@ -82,47 +82,8 @@ jobs:
           if grep -Fq "$marker" what_changed.md; then
             echo "Verification handoff already recorded."
           else
-            cat >> what_changed.md <<'EOF'
-
-## 2026-08-20 verification repair checkpoint
-
-Fresh GitHub Actions evidence for the cross-platform 2.0.12 candidate exposed real release-gate failures that were not visible from source inspection alone. This checkpoint records the failures and the corrective work without deleting any earlier handoff history.
-
-### Exact failing baseline inspected
-
-Candidate head before this repair series: `aa0fa7068cb0a50921383a2c97768fe4c168c25f`.
-
-Observed workflow outcomes on that exact candidate:
-
-- CI run `32320815521` failed.
-  - `quality` failed at `npm run format:check` because Prettier reported 26 tracked files requiring canonical formatting.
-  - `e2e` failed because Playwright's configured web server could not start; the nested `npm run build` exited with code 2.
-- Release Visual Evidence run `32320815527` failed for the same web-server/build failure, so no screenshot artifact could be produced.
-- Native Cross-Platform run `32320815531` failed.
-  - Desktop Rust checks attempted `tauri::generate_context!()` before generated native icons existed on a clean checkout.
-  - Android project generation succeeded, then its native build exposed the production TypeScript failure directly: Playwright browser-context code was being compiled under the Node-only TypeScript project, so DOM globals/types such as `document`, `HTMLInputElement`, `HTMLSelectElement`, and `HTMLTextAreaElement` were unavailable.
-- CodeQL run `32320815530` succeeded on the same baseline.
-
-### Corrective commits created
-
-The repair was intentionally split into small, reviewable commits:
-
-1. `0f3cced6e15ceeb48d343627abaf968299987bd6` — add a dedicated DOM-aware Playwright TypeScript project.
-2. `2d4564d271740cdcc48ef154983a1bb135b7f047` — remove E2E browser files from the Node-only TypeScript project.
-3. `909e71cd617699ea161009c31fa4defa30c1bc33` — add the E2E project to the root TypeScript build references so strict type checking remains enforced.
-4. `10e5983926218af31d440039dadf183dcbd6f1e3` — make `native:check` generate the required Tauri icons before `cargo check`, so native verification is self-contained on a clean checkout.
-5. The one-shot repair also records the npm dependency graph in `package-lock.json`, then applies the repository-pinned Prettier version instead of weakening or bypassing `format:check`.
-
-### Verification policy after repair
-
-- Do not treat the earlier failed runs as evidence for the repaired head.
-- Do not merge or tag until CI, Release Visual Evidence, Native Cross-Platform, and CodeQL have been inspected for the new exact head.
-- Keep the PR in draft while exact-head automated verification is incomplete or any required release/manual evidence remains outstanding.
-- Signed store/installer publication, physical-device validation, screen-reader validation, fluent Hindi review, production HTTPS/PWA validation, and release signing/notarization remain external/manual gates as documented elsewhere in this repository.
-
-EOF
+            printf '%s' 'CiMjIDIwMjYtMDgtMjAgdmVyaWZpY2F0aW9uIHJlcGFpciBjaGVja3BvaW50CgpGcmVzaCBHaXRIdWIgQWN0aW9ucyBldmlkZW5jZSBmb3IgdGhlIGNyb3NzLXBsYXRmb3JtIDIuMC4xMiBjYW5kaWRhdGUgZXhwb3NlZCByZWFsIHJlbGVhc2UtZ2F0ZSBmYWlsdXJlcyB0aGF0IHdlcmUgbm90IHZpc2libGUgZnJvbSBzb3VyY2UgaW5zcGVjdGlvbiBhbG9uZS4gVGhpcyBjaGVja3BvaW50IHJlY29yZHMgdGhlIGZhaWx1cmVzIGFuZCB0aGUgY29ycmVjdGl2ZSB3b3JrIHdpdGhvdXQgZGVsZXRpbmcgYW55IGVhcmxpZXIgaGFuZG9mZiBoaXN0b3J5LgoKIyMjIEV4YWN0IGZhaWxpbmcgYmFzZWxpbmUgaW5zcGVjdGVkCgpDYW5kaWRhdGUgaGVhZCBiZWZvcmUgdGhpcyByZXBhaXIgc2VyaWVzOiBgYWEwZmE3MDY4Y2IwYTUwOTIxMzgzYTJjOTc3NjhmZTRjMTY4YzI1ZmAuCgpPYnNlcnZlZCB3b3JrZmxvdyBvdXRjb21lcyBvbiB0aGF0IGV4YWN0IGNhbmRpZGF0ZToKCi0gQ0kgcnVuIGAzMjMyMDgxNTUyMWAgZmFpbGVkLgogIC0gYHF1YWxpdHlgIGZhaWxlZCBhdCBgbnBtIHJ1biBmb3JtYXQ6Y2hlY2tgIGJlY2F1c2UgUHJldHRpZXIgcmVwb3J0ZWQgMjYgdHJhY2tlZCBmaWxlcyByZXF1aXJpbmcgY2Fub25pY2FsIGZvcm1hdHRpbmcuCiAgLSBgZTJlYCBmYWlsZWQgYmVjYXVzZSBQbGF5d3JpZ2h0J3MgY29uZmlndXJlZCB3ZWIgc2VydmVyIGNvdWxkIG5vdCBzdGFydDsgdGhlIG5lc3RlZCBgbnBtIHJ1biBidWlsZGAgZXhpdGVkIHdpdGggY29kZSAyLgotIFJlbGVhc2UgVmlzdWFsIEV2aWRlbmNlIHJ1biBgMzIzMjA4MTU1MjdgIGZhaWxlZCBmb3IgdGhlIHNhbWUgd2ViLXNlcnZlci9idWlsZCBmYWlsdXJlLCBzbyBubyBzY3JlZW5zaG90IGFydGlmYWN0IGNvdWxkIGJlIHByb2R1Y2VkLgotIE5hdGl2ZSBDcm9zcy1QbGF0Zm9ybSBydW4gYDMyMzIwODE1NTMxYCBmYWlsZWQuCiAgLSBEZXNrdG9wIFJ1c3QgY2hlY2tzIGF0dGVtcHRlZCBgdGF1cmk6OmdlbmVyYXRlX2NvbnRleHQhKClgIGJlZm9yZSBnZW5lcmF0ZWQgbmF0aXZlIGljb25zIGV4aXN0ZWQgb24gYSBjbGVhbiBjaGVja291dC4KICAtIEFuZHJvaWQgcHJvamVjdCBnZW5lcmF0aW9uIHN1Y2NlZWRlZCwgdGhlbiBpdHMgbmF0aXZlIGJ1aWxkIGV4cG9zZWQgdGhlIHByb2R1Y3Rpb24gVHlwZVNjcmlwdCBmYWlsdXJlIGRpcmVjdGx5OiBQbGF5d3JpZ2h0IGJyb3dzZXItY29udGV4dCBjb2RlIHdhcyBiZWluZyBjb21waWxlZCB1bmRlciB0aGUgTm9kZS1vbmx5IFR5cGVTY3JpcHQgcHJvamVjdCwgc28gRE9NIGdsb2JhbHMvdHlwZXMgc3VjaCBhcyBgZG9jdW1lbnRgLCBgSFRNTElucHV0RWxlbWVudGAsIGBIVE1MU2VsZWN0RWxlbWVudGAsIGFuZCBgSFRNTFRleHRBcmVhRWxlbWVudGAgd2VyZSB1bmF2YWlsYWJsZS4KLSBDb2RlUUwgcnVuIGAzMjMyMDgxNTUzMGAgc3VjY2VlZGVkIG9uIHRoZSBzYW1lIGJhc2VsaW5lLgoKIyMjIENvcnJlY3RpdmUgY29tbWl0cyBjcmVhdGVkCgpUaGUgcmVwYWlyIHdhcyBpbnRlbnRpb25hbGx5IHNwbGl0IGludG8gc21hbGwsIHJldmlld2FibGUgY29tbWl0czoKCjEuIGAwZjNjY2VkNmUxNWNlZWI0OGQzNDM2MjdhYmFmOTY4Mjk5OTg3YmQ2YCDigJQgYWRkIGEgZGVkaWNhdGVkIERPTS1hd2FyZSBQbGF5d3JpZ2h0IFR5cGVTY3JpcHQgcHJvamVjdC4KMi4gYDJkNDU2NGQyNzE3NDBjZGNjNDhlZjE1NDk4M2ExYmIxMzViN2YwNDdgIOKAlCByZW1vdmUgRTJFIGJyb3dzZXIgZmlsZXMgZnJvbSB0aGUgTm9kZS1vbmx5IFR5cGVTY3JpcHQgcHJvamVjdC4KMy4gYDkwOWU3MWNkNjE3Njk5ZWExNjEwMDljMzFmYTRkZWZhMzBjMWJjMzNgIOKAlCBhZGQgdGhlIEUyRSBwcm9qZWN0IHRvIHRoZSByb290IFR5cGVTY3JpcHQgYnVpbGQgcmVmZXJlbmNlcyBzbyBzdHJpY3QgdHlwZSBjaGVja2luZyByZW1haW5zIGVuZm9yY2VkLgo0LiBgMTBlNTk4MzkyNjIxOGFmMzFkNDQwMDM5ZGFkZjE4M2RjYmQ2ZjFlM2Ag4oCUIG1ha2UgYG5hdGl2ZTpjaGVja2AgZ2VuZXJhdGUgdGhlIHJlcXVpcmVkIFRhdXJpIGljb25zIGJlZm9yZSBgY2FyZ28gY2hlY2tgLCBzbyBuYXRpdmUgdmVyaWZpY2F0aW9uIGlzIHNlbGYtY29udGFpbmVkIG9uIGEgY2xlYW4gY2hlY2tvdXQuCjUuIFRoZSBvbmUtc2hvdCByZXBhaXIgYWxzbyByZWNvcmRzIHRoZSBucG0gZGVwZW5kZW5jeSBncmFwaCBpbiBgcGFja2FnZS1sb2NrLmpzb25gLCB0aGVuIGFwcGxpZXMgdGhlIHJlcG9zaXRvcnktcGlubmVkIFByZXR0aWVyIHZlcnNpb24gaW5zdGVhZCBvZiB3ZWFrZW5pbmcgb3IgYnlwYXNzaW5nIGBmb3JtYXQ6Y2hlY2tgLgoKIyMjIFZlcmlmaWNhdGlvbiBwb2xpY3kgYWZ0ZXIgcmVwYWlyCgotIERvIG5vdCB0cmVhdCB0aGUgZWFybGllciBmYWlsZWQgcnVucyBhcyBldmlkZW5jZSBmb3IgdGhlIHJlcGFpcmVkIGhlYWQuCi0gRG8gbm90IG1lcmdlIG9yIHRhZyB1bnRpbCBDSSwgUmVsZWFzZSBWaXN1YWwgRXZpZGVuY2UsIE5hdGl2ZSBDcm9zcy1QbGF0Zm9ybSwgYW5kIENvZVFMIGhhdmUgYmVlbiBpbnNwZWN0ZWQgZm9yIHRoZSBuZXcgZXhhY3QgaGVhZC4KLSBLZWVwIHRoZSBQUiBpbiBkcmFmdCB3aGlsZSBleGFjdC1oZWFkIGF1dG9tYXRlZCB2ZXJpZmljYXRpb24gaXMgaW5jb21wbGV0ZSBvciBhbnkgcmVxdWlyZWQgcmVsZWFzZS9tYW51YWwgZXZpZGVuY2UgcmVtYWlucyBvdXRzdGFuZGluZy4KLSBTaWduZWQgc3RvcmUvaW5zdGFsbGVyIHB1YmxpY2F0aW9uLCBwaHlzaWNhbC1kZXZpY2UgdmFsaWRhdGlvbiwgc2NyZWVuLXJlYWRlciB2YWxpZGF0aW9uLCBmbHVlbnQgSGluZGkgcmV2aWV3LCBwcm9kdWN0aW9uIEhUVFBTL1BXQSB2YWxpZGF0aW9uLCBhbmQgcmVsZWFzZSBzaWduaW5nL25vdGFyaXphdGlvbiByZW1haW4gZXh0ZXJuYWwvbWFudWFsIGdhdGVzIGFzIGRvY3VtZW50ZWQgZWxzZXdoZXJlIGluIHRoaXMgcmVwb3NpdG9yeS4K' | base64 --decode >> what_changed.md
           fi
-
           if git diff --quiet -- what_changed.md; then
             echo "No handoff changes were required."
           else
