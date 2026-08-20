@@ -834,3 +834,136 @@ The next action should be **exact-head executable verification**, not speculativ
 5. do not create `v2.0.12` or merge PR #4 merely because source work appears complete.
 
 No claim is made here that Windows/macOS/Linux installers, Android Play packages, or iOS/iPadOS App Store packages are already signed/published. The repository is now cross-platform **source/build supportable**; production native distribution remains an evidence/signing/release operation.
+
+# 2026-08-20 exact-head verification repair continuation
+
+## 38. Failing executable baseline inspected
+
+The earlier freeze candidate `aa0fa7068cb0a50921383a2c97768fe4c168c25f` was not green when its workflows completed.
+
+Observed evidence:
+
+- CI run `32320815521` failed.
+  - `quality` stopped at `npm run format:check`; Prettier 3.6.2 reported 26 tracked files requiring canonical formatting.
+  - `e2e` could not start Playwright's preview web server because the nested production build exited with TypeScript code 2.
+- Release Visual Evidence run `32320815527` failed for the same production-build failure, so no current browser screenshot artifact was produced.
+- Native Cross-Platform run `32320815531` failed.
+  - desktop Rust checks reached `tauri::generate_context!()` before generated native icons existed on a clean checkout;
+  - Android project generation succeeded, then the shared production TypeScript build failed because browser-context E2E code was being compiled by the Node-only TypeScript project without DOM types such as `document`, `HTMLInputElement`, `HTMLSelectElement`, and `HTMLTextAreaElement`;
+  - the shared TypeScript cause also invalidated treating the other platform build paths as a clean final candidate.
+- CodeQL run `32320815530` succeeded on that same baseline, but an older/partial success does not override failures in the other required gates.
+
+## 39. Production/E2E TypeScript separation repaired
+
+The browser E2E project now has its own strict DOM-aware TypeScript configuration instead of being mixed into the Node-only tooling project.
+
+Granular commits:
+
+- `0f3cced6e15ceeb48d343627abaf968299987bd6` — `build: add dedicated Playwright TypeScript config`;
+- `2d4564d271740cdcc48ef154983a1bb135b7f047` — `build: isolate browser E2E types from Node config`;
+- `909e71cd617699ea161009c31fa4defa30c1bc33` — `build: typecheck E2E with its browser-aware project`.
+
+The resulting structure is:
+
+```text
+tsconfig.app.json  → application/browser source
+tsconfig.node.json → Vite/Vitest/Playwright configuration running in Node
+tsconfig.e2e.json  → Playwright browser-context E2E source with DOM libraries
+```
+
+The root `tsconfig.json` references all three projects, so E2E remains part of strict build-time type checking rather than being excluded to make the build pass.
+
+## 40. Clean-checkout native icon dependency repaired
+
+Commit:
+
+- `10e5983926218af31d440039dadf183dcbd6f1e3` — `build: prepare generated icons before native checks`.
+
+`npm run native:check` now runs the existing deterministic native preparation step before `cargo check`.
+
+This removes the previous hidden dependency on somebody having run icon generation earlier in the same checkout while keeping generated `src-tauri/icons/` untracked.
+
+## 41. Dependency-update coverage expanded
+
+Commit:
+
+- `5a4599e60822b899eb6d3571d0fe7b07a713dad3` — `chore: add Dependabot coverage for Rust dependencies`.
+
+Dependabot now covers:
+
+- npm at repository root;
+- Cargo under `/src-tauri`;
+- GitHub Actions.
+
+Rust dependency updates remain review-gated; this does not auto-merge native dependency changes.
+
+## 42. Release tag/version integrity hardened
+
+Commit:
+
+- `cd32a157aec2680d8640fa64ec5431a71e343cc1` — `release: require tag to match package version`.
+
+The tag-triggered release workflow now verifies that `GITHUB_REF_NAME` exactly equals `v${package.json.version}` before installation, verification, packaging, checksum generation, or GitHub Release creation.
+
+This prevents a mistyped semantic tag from publishing artifacts under a version that disagrees with the product metadata.
+
+## 43. Temporary self-mutating CI approach removed
+
+Several small intermediate commits explored a one-shot formatter/lockfile repair job because the managed runner could execute the repository-pinned Prettier version even though the local shell could not resolve GitHub/npm dependencies.
+
+That approach was **not** left as permanent CI design. The latest cleanup commit before this handoff was:
+
+- `3a183bcb805c69dcd553d77513ce582390937854` — `ci: restore read-only verification workflow`.
+
+Normal PR CI is again read-only (`contents: read`) and contains only the maintained `quality` and `e2e` verification jobs. No permanent PR job retains `contents: write` merely to rewrite its own branch.
+
+## 44. Formatting remains an explicit unresolved gate
+
+The 26-file Prettier failure from run `32320815521` has **not** been falsely marked fixed.
+
+A repository-hosted one-shot formatter was prepared during this continuation, but GitHub-hosted jobs remained queued without runner execution during the active work session. Because no formatter execution result was obtained, the temporary write-enabled job was removed instead of being left behind as hidden future work.
+
+Therefore the next continuation must still run the repository-pinned formatter and commit the deterministic formatting diff before expecting `format:check` to pass.
+
+Do not weaken `format:check`, exclude the reported files, or claim a pass based on source inspection.
+
+## 45. Dependency lockfiles remain pending, not fabricated
+
+The audit found that neither root `package-lock.json` nor `src-tauri/Cargo.lock` is currently tracked.
+
+Tracking both would improve reproducibility and would then allow CI/release workflows to use deterministic `npm ci` and native Cargo `--locked` verification. However, lockfiles must be generated by the real package managers against the declared dependency graphs; they were **not** hand-written or guessed.
+
+The attempted managed-runner generation did not execute before the temporary repair path was removed, so no lockfile is claimed here.
+
+Safe follow-up after real generation:
+
+1. generate/commit `package-lock.json` using the repository's npm version policy;
+2. generate/commit `src-tauri/Cargo.lock` using Cargo;
+3. switch maintained CI/native/visual-evidence/release npm installs to `npm ci`;
+4. use Cargo locked verification/build behavior where appropriate;
+5. keep npm, Cargo, and Actions Dependabot coverage;
+6. update dependency/reproducibility documentation and the exhaustive tracked-file inventory in the same change series.
+
+## 46. Exhaustive inventory has known drift after the E2E split
+
+`docs/repository-file-reference.md` still describes the earlier 171-file native-support checkpoint and still describes `tsconfig.node.json` as covering E2E.
+
+The newly tracked `tsconfig.e2e.json` means that reference is no longer exact. Do not silently leave the stale count in a final release candidate.
+
+Update the exhaustive inventory after the lockfile decision so the count is changed once, accurately, with every permanent new file represented.
+
+## 47. Verification state after this repair series
+
+The latest exact-head workflows observed during this continuation remained queued/pending rather than completed. Queued is not a pass.
+
+The executable fixes above therefore have source-level review plus earlier failure evidence, but they still require fresh exact-head execution of:
+
+- CI `quality`;
+- CI `e2e`;
+- Release Visual Evidence;
+- Native Cross-Platform Windows/macOS/Linux/Android/iOS jobs;
+- CodeQL.
+
+If any of those fail on the new head, inspect that exact job/log and fix the actual failure. Every tracked fix changes the candidate SHA and invalidates older-SHA final evidence.
+
+The PR should remain draft/unmerged and `v2.0.12` should remain uncreated until the automated exact-head gates and the already-documented manual/device/signing/production gates are actually satisfied.
