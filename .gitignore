@@ -16,9 +16,10 @@ playwright-report/
 test-results/
 *.log
 
-# Tauri / Rust build output and regenerated mobile projects
+# Tauri / Rust build output and regenerated native assets/projects
 src-tauri/target/
 src-tauri/gen/
+src-tauri/icons/
 
 # Native signing and store credentials must never be committed
 *.jks
