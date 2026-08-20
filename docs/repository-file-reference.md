@@ -1,499 +1,371 @@
 # TableSpark Repository File Reference
 
-This is the exhaustive tracked-file map for the TableSpark branch at the documentation-completeness checkpoint on 2026-08-19.
+This is the exhaustive tracked-file map for the TableSpark 2.0.12 cross-platform release-candidate branch after the native-support implementation on 2026-08-20.
 
-The inventory below contains **156 explicitly listed tracked files**. Directories are explained through their files rather than counted as separate tracked-file entries.
+The inventory below contains **171 explicitly listed tracked files**. Directories are not counted separately. The previous documentation checkpoint contained 156 tracked files; this cross-platform phase added exactly 15 tracked files and removed none.
 
-Purpose of this document:
-
-- make it possible to audit that no tracked file was skipped in repository documentation;
-- help new contributors understand where a change belongs;
-- expose cross-file maintenance relationships;
-- distinguish source, tests, configuration, automation, assets, policies, and generated output;
-- provide a checklist when files are added, removed, renamed, or repurposed.
+Generated/untracked directories such as `node_modules/`, `dist/`, `coverage/`, `playwright-report/`, `test-results/`, `src-tauri/target/`, `src-tauri/gen/`, and `src-tauri/icons/` are intentionally excluded from the tracked-file count.
 
 ## Maintenance rule
 
-Whenever a tracked file is added, removed, or renamed, update this reference in the same change series.
-
-This reference explains **what each file is for**. Specialized documents such as `architecture.md`, `domain-model.md`, `state-and-persistence.md`, `security-model.md`, and `ci-cd.md` explain deeper behavior.
-
-Generated/untracked directories such as `node_modules/`, `dist/`, `coverage/`, `playwright-report/`, and `test-results/` are intentionally not part of the tracked-file count.
-
-# 1. Root configuration and repository metadata
-
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `.editorconfig` | Editor-independent UTF-8/LF/two-space/basic whitespace policy. | Keep consistent with formatting expectations; Markdown intentionally keeps trailing whitespace. |
-| `.env.example` | Documents that no secrets/remote services are required and provides a non-secret Vite environment placeholder. | Never place real secrets here; `VITE_` variables are client-visible if used. |
-| `.gitattributes` | Git text normalization and binary raster-image classification. | Add new binary formats if Git starts treating them as text. |
-| `.gitignore` | Excludes dependencies, builds, coverage, local env files, editor/OS junk, Playwright output, logs. | Do not force-add generated/private files without a documented reason. |
-| `.nvmrc` | Pins the preferred Node.js version for Node version managers. | Synchronize with `package.json` engines and GitHub Actions Node versions. |
-| `.prettierignore` | Excludes generated assets and selected SVG/CSS files from Prettier. | Review when adding new file types or changing formatting scope. |
-| `.prettierrc.json` | Prettier style: single quotes, trailing commas, 100-column width, semicolons. | Keep package formatting scripts aligned with this policy. |
-| `eslint.config.js` | Flat ESLint config for Node scripts and strict type-aware TS/React/JSX accessibility rules. | Tool/rule upgrades can change CI; do not broadly suppress accessibility/type issues. |
-| `index.html` | Vite HTML entry document and React mount host. | Any external script/meta/network additions need privacy/security review and production testing. |
-| `package.json` | Node project manifest: metadata, engine minimums, scripts, runtime/dev dependencies, including the formal `test:docs` gate. | Central synchronized source for commands, version, dependencies, Node requirements and aggregate `check`. |
-| `playwright.config.ts` | Playwright Chromium E2E config, production-preview web server, CI retry/worker behavior. | Keep preview port/build command and E2E docs synchronized. |
-| `tsconfig.app.json` | Strict browser/application TypeScript project for `src/`. | Schema/i18n/state changes intentionally surface typed fixture/catalog errors here. |
-| `tsconfig.json` | Root TypeScript project-reference coordinator. | References app and Node projects used by `tsc -b`. |
-| `tsconfig.node.json` | Strict Node/tooling/E2E TypeScript project. | Includes Vite/Vitest/Playwright configs and E2E specs. |
-| `vite.config.ts` | Vite React build/dev/preview configuration and PWA manifest/Workbox setup. | Production path/origin/service-worker changes must be reviewed together. |
-| `vitest.config.ts` | Vitest jsdom/setup/coverage configuration. | Distinguish jsdom coverage from real-browser E2E behavior. |
-
-# 2. Root public project/policy documents
-
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `README.md` | Public project landing page, features, quick start, architecture/privacy/testing/documentation links. | Keep concise but accurate; link deep procedures instead of duplicating them. |
-| `CHANGELOG.md` | Release-facing record of notable Added/Changed/Security/Accessibility/Fixed work. | Move Unreleased entries into version sections during release preparation. |
-| `ROADMAP.md` | Product/refinement direction with completed items and explicit external/manual gates. | Do not mark production/manual evidence complete from source code alone. |
-| `PRIVACY.md` | Public local-data, backup, locale, PWA, logging, deletion and no-account/ads statements. | Must match actual storage/network behavior; mismatch is a release blocker. |
-| `SECURITY.md` | Vulnerability-reporting policy and public security-control summary. | Keep private reporting contacts/current supported-version policy accurate. |
-| `SUPPORT.md` | Support routes and guidance for safe information sharing. | Must not encourage posting raw learner backups/recovery data publicly. |
-| `CONTRIBUTING.md` | Contributor workflow/quality/security/documentation expectations. | Update when branch, test, tooling, or commit expectations change. |
-| `CODE_OF_CONDUCT.md` | Community participation/conduct policy. | Governance document; review if project community processes change. |
-| `LICENSE` | MIT license text governing repository use/distribution. | Do not modify casually; license changes are project-owner/legal decisions. |
-| `what_changed.md` | Detailed current implementation/verification handoff ledger. | Update after meaningful work; keep unexecuted external/manual gates explicitly pending. |
-
-# 3. GitHub repository configuration
-
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `.github/FUNDING.yml` | Configures GitHub repository funding UI. | Funding remains optional and separate from core learning/support. |
-| `.github/dependabot.yml` | Weekly npm and GitHub Actions dependency update policy/grouping. | Review cadence/open-PR limits and major/supply-chain changes intentionally. |
-| `.github/pull_request_template.md` | Pull-request author/reviewer checklist. | Keep aligned with actual quality, tests, privacy/security and docs expectations. |
-| `.github/release.yml` | GitHub generated release-note categories based on labels. | Distinct from the Actions release workflow; update labels/categories together with repo practice. |
-| `.github/ISSUE_TEMPLATE/bug_report.md` | Structured bug-report guidance. | Ask for synthetic/redacted reproduction details, never private learner artifacts. |
-| `.github/ISSUE_TEMPLATE/config.yml` | Issue-template chooser/blank-issue/contact-link behavior. | Keep security/support routing consistent with `SECURITY.md`/`SUPPORT.md`. |
-| `.github/ISSUE_TEMPLATE/feature_request.md` | Feature-request guidance. | Encourage problem/use-case description without collecting sensitive learner data. |
-
-# 4. GitHub Actions workflows
-
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `.github/workflows/ci.yml` | Main PR/main CI: formatting, lint, types, Vitest, scanner tests/scan, documentation-link gate, build, production audit, build artifact, plus Chromium E2E. | `quality` and `e2e` are recommended required checks; keep Node/actions/scripts/docs synchronized. |
-| `.github/workflows/codeql.yml` | Push/PR/weekly JavaScript-TypeScript CodeQL security analysis. | Needs `security-events: write`; real alerts require investigation rather than dismissal for a green check. |
-| `.github/workflows/release.yml` | Tag-triggered verification, production build, ZIP packaging, SHA-256 generation and GitHub Release creation. | Tag only verified candidate; checksum is integrity metadata, not a signature. |
-| `.github/workflows/visual-evidence.yml` | PR/manual Chromium real-browser screenshot capture and artifact upload. | Human review is still required; screenshots are candidate evidence, not production-origin evidence. |
-
-# 5. VS Code workspace files
-
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `.vscode/extensions.json` | Recommends ESLint and Prettier extensions. | Editor convenience only; repo checks remain authoritative. |
-| `.vscode/settings.json` | Enables format-on-save, workspace Prettier/ESLint flat config and local TypeScript SDK. | Keeps editor diagnostics closer to CI's installed TypeScript/tooling. |
-
-# 6. Architecture Decision Records
-
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `docs/adr/0001-typescript-react-pwa.md` | Records decision to use a TypeScript/React PWA client architecture. | Historical rationale; current architecture doc describes refinements. |
-| `docs/adr/0002-local-first-persistence.md` | Records local-first learner-state persistence decision. | New cloud/backend features require explicit reconsideration rather than silently bypassing it. |
-| `docs/adr/0003-deterministic-practice.md` | Records deterministic seeded-practice decision. | Generator changes can affect replay compatibility and need documentation/tests. |
-| `docs/adr/0004-preserve-unreadable-local-state.md` | Records preservation of invalid existing local data until explicit recovery. | Critical anti-data-loss invariant; do not regress to automatic overwrite. |
-
-# 7. Main engineering/product documentation
-
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `docs/accessibility.md` | Accessibility implementation, automated invariants and manual NVDA/Narrator/VoiceOver/TalkBack/print/zoom review matrix. | Never convert unexecuted matrix rows into claimed passes. |
-| `docs/architecture.md` | High-level modules, dependency direction, persistence/PWA/i18n/print architecture and decisions. | Update after major module/boundary changes. |
-| `docs/data-schema-v2.md` | Field/invariant reference for current persisted schema version 2 and v1 migration. | Executable validator remains source of truth; update when schema changes. |
-| `docs/deployment-evaluation.md` | Static-host candidates and owner-approval/production verification gate. | Evaluation does not equal deployment; update once real origin/host is approved. |
-| `docs/development.md` | Daily development setup/workflow/coding practices. | Keep commands/toolchain and source-organization guidance current. |
-| `docs/git-workflow.md` | Git branch/status/diff/commit/push/PR workflow guidance. | Keep branch/commit conventions aligned with repository policy. |
-| `docs/hindi-review-checklist.md` | Fluent/native Hindi terminology, layout, print and assistive-technology manual review checklist. | Automated locale tests do not replace this human-language quality gate. |
-| `docs/localization.md` | Locale provider/catalog architecture, language preference storage, adding a locale, testing guidance. | Update supported-locale list/provider/catalog/test procedure together. |
-| `docs/native-packaging-evaluation.md` | TWA/Capacitor/native options and current decision to keep PWA canonical. | Re-evaluate only when a real distribution/native capability need exists. |
-| `docs/performance.md` | Performance goals, table/session/storage budgets, measurement and optimization rules. | Update when limits/bundle/caching architecture changes. |
-| `docs/quality-gates.md` | Merge/release verification expectations, including documentation-link integrity. | Keep synchronized with actual package scripts, CI job/check names and release process. |
-| `docs/release-evidence.md` | Candidate evidence recording template for CI, screenshots, accessibility, Hindi, production PWA and artifact checks. | Evidence must be tied to final candidate SHA; pending means not run. |
-| `docs/release-notes-template.md` | Structured template for consistent release notes. | Keep aligned with product/change categories and security/privacy communication. |
-| `docs/release.md` | Version/tag/quality/build/package/checksum/GitHub Release/post-release/rollback procedure. | Keep artifact names and workflow behavior synchronized. |
-| `docs/repository-settings.md` | Recommended main-branch protection/ruleset/check settings. | Required check names must come from real GitHub runs, not guesses. |
-| `docs/setup.md` | Development tool installation and upgrade guidance. | Keep supported Node/npm/browser/Playwright instructions current. |
-| `docs/testing.md` | Unit/property/integration/security/docs/E2E/accessibility/localization testing strategy and boundaries. | Update when tests/scripts/workflows are added/renamed. |
-| `docs/troubleshooting.md` | Setup/build/test/storage/PWA/common failure diagnosis. | Add real recurring failures; remove obsolete tooling instructions. |
-| `docs/user-guide.md` | End-user guide to Tables, worksheet composer, Practice, Progress, Settings, backup/recovery, PWA and keyboard behavior. | Must match visible localized product behavior and destructive semantics. |
-| `docs/verification-plan.md` | Candidate verification sequence/plan. | Use alongside evidence document; source implementation alone cannot satisfy manual gates. |
-
-# 8. Comprehensive documentation references added by the deep documentation pass
-
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `docs/commands-reference.md` | Deep explanation of npm, Playwright, security, documentation-link, Git, release/checksum commands and failures. | Update whenever package scripts/commands/toolchain procedures change. |
-| `docs/configuration-reference.md` | Explains package/TypeScript/Vite/PWA/Vitest/Playwright/ESLint/Prettier/editor/env/Git/GitHub configuration. | Maintains synchronized-values checklist to prevent config drift. |
-| `docs/ci-cd.md` | Complete CI/CodeQL/release/visual-evidence/Dependabot/release-note automation guide. | Update workflow triggers/jobs/permissions/artifacts and branch protection guidance together. |
-| `docs/domain-model.md` | Detailed pure domain types, multiplication/practice/mastery/review/session/worksheet invariants and flows. | Update with any mathematical/learning rule or bound change. |
-| `docs/state-and-persistence.md` | React state actions, startup classifications, localStorage, migration/import/export/recovery and save-failure lifecycle. | Critical for schema/recovery changes; keep aligned with storage/provider tests. |
-| `docs/security-model.md` | Engineering trust boundaries for local input/storage/import, browser APIs, dependencies, Actions, releases and no-backend model. | New network/auth/HTML-rendering/deployment boundaries require explicit update. |
-| `docs/maintenance.md` | Recurring dependency/toolchain/schema/i18n/accessibility/PWA/docs/release/incident maintenance handbook. | Use as maintainer operational checklist; `test:docs` is a formal quality gate. |
-| `docs/glossary.md` | Defines project/product/engineering/security/release terminology. | Update when introducing terms that have project-specific meaning. |
-| `docs/documentation-index.md` | Audience/task navigation and documentation source-of-truth hierarchy. | Add newly created public/deep docs so they remain discoverable. |
-| `docs/repository-file-reference.md` | This exhaustive tracked-file inventory. | Must change when any tracked file is added/removed/renamed. |
-
-# 9. Documentation asset
+Whenever a tracked file is added, removed, or renamed, update this reference in the same change series. Every entry below names the file and its primary purpose so the repository can be audited without silently skipping configuration, policy, documentation, tests, application source, or native source.
+
+# 1. Root configuration and repository metadata — 16 files
+
+1. `.editorconfig` — editor-independent UTF-8/LF/basic whitespace policy.
+2. `.env.example` — non-secret environment placeholder/documentation; real local secrets stay untracked.
+3. `.gitattributes` — Git text normalization and binary-asset classification.
+4. `.gitignore` — excludes dependency/build/test output plus Tauri generated projects/icons/targets and common native signing artifacts.
+5. `.nvmrc` — preferred Node version for version managers; synchronize with package/workflows/docs.
+6. `.prettierignore` — paths excluded from Prettier.
+7. `.prettierrc.json` — Prettier formatting policy.
+8. `eslint.config.js` — JavaScript/TypeScript/React/JSX-accessibility lint configuration.
+9. `index.html` — Vite HTML entry and React mount host.
+10. `package.json` — product version 2.0.12, Node metadata/dependencies, shared quality scripts, Tauri/native/mobile commands.
+11. `playwright.config.ts` — Chromium E2E and production-preview configuration.
+12. `tsconfig.app.json` — strict application TypeScript project.
+13. `tsconfig.json` — root TypeScript project-reference coordinator.
+14. `tsconfig.node.json` — strict Node/tooling/E2E TypeScript project.
+15. `vite.config.ts` — shared Vite/PWA build plus Tauri platform defines and `TAURI_DEV_HOST` mobile-development handling.
+16. `vitest.config.ts` — jsdom/Vitest/coverage configuration.
+
+# 2. Root public/project/policy documents — 10 files
+
+17. `README.md` — public cross-platform product overview, supported-platform matrix, web/native/mobile quick starts, security/privacy/testing links.
+18. `CHANGELOG.md` — notable changes including the 2.0.12 cross-platform release candidate.
+19. `ROADMAP.md` — completed source/build scope and intentionally pending exact-head/device/signing/release gates.
+20. `PRIVACY.md` — local-data behavior across browser/PWA/native installations, backup portability, native permissions, no-account/ads/analytics claims.
+21. `SECURITY.md` — vulnerability reporting plus browser/native trust, capability, CSP, signing-secret, CI and artifact security policy.
+22. `SUPPORT.md` — support routes and safe-information-sharing guidance.
+23. `CONTRIBUTING.md` — contribution/review/quality/security expectations.
+24. `CODE_OF_CONDUCT.md` — community participation policy.
+25. `LICENSE` — MIT license.
+26. `what_changed.md` — detailed continuation/release-candidate handoff ledger; must keep pending verification explicit.
+
+# 3. GitHub repository configuration — 7 files
+
+27. `.github/FUNDING.yml` — optional repository funding UI.
+28. `.github/dependabot.yml` — npm/GitHub Actions dependency update policy.
+29. `.github/pull_request_template.md` — PR author/reviewer checklist.
+30. `.github/release.yml` — generated release-note category configuration; distinct from Actions release workflow.
+31. `.github/ISSUE_TEMPLATE/bug_report.md` — structured redacted/synthetic bug-report guidance.
+32. `.github/ISSUE_TEMPLATE/config.yml` — issue chooser/contact routing configuration.
+33. `.github/ISSUE_TEMPLATE/feature_request.md` — feature-request guidance without collecting private learner data.
+
+# 4. GitHub Actions workflows — 5 files
+
+34. `.github/workflows/ci.yml` — shared quality/E2E/build/audit web CI; package `check` now includes native-config consistency gates.
+35. `.github/workflows/codeql.yml` — JavaScript/TypeScript CodeQL analysis.
+36. `.github/workflows/native.yml` — **new** Windows/macOS/Linux Tauri compile matrix plus Android debug APK and iOS simulator compilation.
+37. `.github/workflows/release.yml` — tag-triggered web build/ZIP/SHA-256/GitHub Release automation.
+38. `.github/workflows/visual-evidence.yml` — real Chromium light/dark compact/wide screenshot artifact capture.
+
+# 5. VS Code workspace files — 2 files
+
+39. `.vscode/extensions.json` — recommended editor extensions.
+40. `.vscode/settings.json` — workspace formatting/lint/local-TypeScript settings.
+
+# 6. Architecture Decision Records — 4 files
+
+41. `docs/adr/0001-typescript-react-pwa.md` — historical foundation decision for TypeScript/React/PWA; current architecture adds Tauri native packaging without replacing the shared product.
+42. `docs/adr/0002-local-first-persistence.md` — local-first learner-state decision.
+43. `docs/adr/0003-deterministic-practice.md` — deterministic seeded-practice decision.
+44. `docs/adr/0004-preserve-unreadable-local-state.md` — anti-data-loss decision preserving invalid returned local data until explicit recovery.
+
+# 7. Main engineering/product documentation — 20 files
+
+45. `docs/accessibility.md` — accessibility implementation and manual NVDA/Narrator/VoiceOver/TalkBack/print/zoom matrix.
+46. `docs/architecture.md` — shared React web/PWA/Tauri architecture, four storage startup states, native permission/CSP/build boundaries.
+47. `docs/data-schema-v2.md` — persisted schema-2 field/invariant reference and schema-1 migration context.
+48. `docs/deployment-evaluation.md` — web static-host evaluation and owner-approval/production-origin gate.
+49. `docs/development.md` — daily development workflow/conventions.
+50. `docs/git-workflow.md` — Git branch/status/diff/commit/push/PR guidance.
+51. `docs/hindi-review-checklist.md` — fluent/native Hindi terminology/layout/print/assistive-technology review.
+52. `docs/localization.md` — locale provider/catalog/preference/testing architecture.
+53. `docs/native-packaging-evaluation.md` — implemented Tauri 2 Windows/macOS/Linux/Android/iOS architecture, commands, storage isolation, generated output, signing boundary.
+54. `docs/performance.md` — performance budgets/measurement/optimization guidance.
+55. `docs/quality-gates.md` — merge/release verification expectations.
+56. `docs/release-evidence.md` — exact-head web/native/manual/signing evidence matrix for 2.0.12.
+57. `docs/release-notes-template.md` — release-note drafting template.
+58. `docs/release.md` — cross-platform candidate verification, web tag/package/checksum, native signing/device/store release process and rollback.
+59. `docs/repository-settings.md` — recommended branch/ruleset/check configuration.
+60. `docs/setup.md` — web plus Rust/Tauri/Windows/macOS/Linux/Android/iOS setup and troubleshooting.
+61. `docs/testing.md` — domain/integration/E2E/native-config/native compile/manual-device verification strategy.
+62. `docs/troubleshooting.md` — common setup/runtime/storage/PWA/build diagnosis.
+63. `docs/user-guide.md` — end-user Tables/worksheet/Practice/Progress/Settings/backup/offline/keyboard guide.
+64. `docs/verification-plan.md` — candidate verification sequence.
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `docs/assets/interface-preview.svg` | Repository interface preview illustration used by README/documentation. | It is not real release evidence; real captures come from Playwright workflow artifacts. |
-
-# 10. Browser end-to-end tests
-
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `e2e/accessibility.spec.ts` | Real-browser semantic invariants: landmarks, skip target, form labels, image alts, keyboard shortcut reachability. | Stable automation only; does not replace human screen-reader/WCAG review. |
-| `e2e/localization.spec.ts` | Switches to Hindi and verifies navigation/document language/persistence across reload. | Update when locale selector/messages/navigation behavior changes. |
-| `e2e/localized-errors.spec.ts` | Verifies important Hindi table/practice/backup error paths do not leak raw English feature messages. | Add critical localized error paths as they are introduced. |
-| `e2e/print.spec.ts` | Verifies worksheet/answer-key print media semantics, paper/column state and learner metadata rules. | Complement with manual real print-preview review. |
-| `e2e/release-evidence.spec.ts` | Opt-in real-browser light/dark + wide/compact screenshot capture. | Normally skipped unless `CAPTURE_RELEASE_EVIDENCE=1`; artifact must be manually reviewed. |
-| `e2e/smoke.spec.ts` | Core browser journey covering table/worksheet, deterministic practice, profiles/accessibility and unreadable-state recovery. | Keep the primary user flow representative without making one test cover every feature. |
+# 8. Deep documentation references — 10 files
 
-# 11. Public static asset
-
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `public/logo.svg` | TableSpark runtime/manifest/app logo served as static asset. | Used by UI/PWA manifest; path/purpose changes affect install/build/docs. |
+65. `docs/commands-reference.md` — exhaustive web/native/mobile/security/docs/Git/release command reference.
+66. `docs/configuration-reference.md` — package/TypeScript/Vite/Tauri/CSP/capability/mobile/CI configuration and synchronization rules.
+67. `docs/ci-cd.md` — five workflow descriptions including Native Cross-Platform compilation, permissions and failure triage.
+68. `docs/domain-model.md` — multiplication/practice/mastery/review/session/worksheet types and invariants.
+69. `docs/state-and-persistence.md` — AppState actions, four startup storage classifications, migrations, transactional import, recovery and save-failure lifecycle.
+70. `docs/security-model.md` — detailed browser/native threat boundaries, CSP/capability/signing/generated-output/update/CI rules.
+71. `docs/maintenance.md` — recurring dependency/toolchain/schema/i18n/accessibility/PWA/docs/release/incident maintenance handbook.
+72. `docs/glossary.md` — project-specific product/engineering/security/release terminology.
+73. `docs/documentation-index.md` — audience/task navigation and source-of-truth hierarchy including native development/release paths.
+74. `docs/repository-file-reference.md` — this exhaustive 171-file map.
 
-# 12. Repository utility scripts
+# 9. Documentation asset — 1 file
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `scripts/link-check.mjs` | CLI entry that runs local repository Markdown link checking. | Invoked by formal `npm run test:docs`, which is part of `npm run check` and CI/release verification. |
-| `scripts/link-checker.mjs` | Dependency-free implementation for extracting/validating repository-local Markdown links. | Keep behavior deterministic/offline for local paths; parser changes need tests. |
-| `scripts/link-checker.test.mjs` | Node tests for link-checker implementation. | Also run by `npm run test:docs`; update before expanding Markdown/path syntax handling. |
-| `scripts/secret-scan.mjs` | CLI entry that scans repository files using the secret-scanner implementation. | Scanner is defense in depth; never use it to justify committing real secrets. |
-| `scripts/secret-scanner.mjs` | Dependency-free supported credential-pattern detection/redacted finding logic. | Add specific patterns carefully and never echo matched secret values. |
-| `scripts/secret-scanner.test.mjs` | Node tests for scanner detections/redaction behavior. | Use synthetic fake credential samples only. |
+75. `docs/assets/interface-preview.svg` — repository UI preview illustration; not real release screenshot evidence.
 
-# 13. Application shell and top-level integration tests
+# 10. Browser end-to-end tests — 6 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/App.tsx` | Main application shell: header/profile chip, primary view navigation, theme application, keyboard shortcuts/dialog and feature rendering. | Cross-cutting UI changes affect accessibility/localization/navigation tests. |
-| `src/App.test.tsx` | Integration coverage for default render/navigation/table composer/progress/review/speech/storage recovery/failure behavior. | Keep broad application regressions here without duplicating all domain tests. |
-| `src/main.tsx` | Browser bootstrap: PWA service-worker registration/events, CSS imports, Locale/ErrorBoundary/AppState provider mounting. | Runtime initialization order matters; production PWA changes require E2E/build verification. |
+76. `e2e/accessibility.spec.ts` — stable browser semantic/keyboard accessibility invariants.
+77. `e2e/localization.spec.ts` — Hindi switching/persistence/document-language plus visible 2.0.12 About-version assertions.
+78. `e2e/localized-errors.spec.ts` — Hindi table/practice/backup failure localization checks.
+79. `e2e/print.spec.ts` — worksheet/answer-key print-media semantics.
+80. `e2e/release-evidence.spec.ts` — opt-in real browser screenshot capture.
+81. `e2e/smoke.spec.ts` — primary table/practice/profile/accessibility/recovery browser journey.
 
-# 14. Shared cross-cutting React components
+# 11. Public static asset — 1 file
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/components/ErrorBoundary.tsx` | Catches unexpected React UI errors, logs redacted technical metadata and presents localized reload fallback. | Must not intentionally clear learner storage as part of UI recovery. |
-| `src/components/StatusBanners.tsx` | Displays storage/recovery/offline/offline-ready/update/install/onboarding notices and browser/PWA event handling. | Status roles/copy/user-controlled update/install behavior require accessibility/localization tests. |
-| `src/components/StatusBanners.test.tsx` | Regression coverage for PWA update deferral/apply, offline-ready and browser install prompt behaviors. | Update when banner actions/lifecycle events change. |
+82. `public/logo.svg` — TableSpark runtime/PWA identity asset and **source image for generated native platform icons**.
 
-# 15. Domain: answers
+# 12. Repository utility/configuration scripts — 9 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/domain/answers.ts` | Defines/validates supported bounded integer practice responses. | Keep response bounds compatible with question/product/storage constraints. |
-| `src/domain/answers.test.ts` | Tests accepted/rejected practice response bounds. | Change together with product numeric-range changes. |
+83. `scripts/link-check.mjs` — CLI for repository-local Markdown link verification.
+84. `scripts/link-checker.mjs` — dependency-free Markdown local-link extraction/validation implementation.
+85. `scripts/link-checker.test.mjs` — Node tests for link-checker behavior.
+86. `scripts/secret-scan.mjs` — CLI for repository credential-pattern scanning.
+87. `scripts/secret-scanner.mjs` — dependency-free secret-pattern/redacted-finding implementation.
+88. `scripts/secret-scanner.test.mjs` — synthetic Node tests for scanner detections/redaction.
+89. `scripts/native-config.mjs` — **new** static cross-platform invariant validator for versions, identifier, paths, CSP, capability, icons, scripts/dependencies and mobile minimums.
+90. `scripts/native-config-check.mjs` — **new** executable repository-config checker loading package/Cargo/Tauri/Android/iOS files.
+91. `scripts/native-config.test.mjs` — **new** Node regression tests for valid config and version/CSP/capability/icon/mobile-target drift.
 
-# 16. Domain: difficulty
+# 13. Application shell/top-level integration — 3 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/domain/difficulty.ts` | Defines Starter/Foundation/Builder/Fluency/Challenge min/max/count preset metadata. | Visible localized labels live in catalogs; avoid leaking English domain descriptions into Hindi UI. |
-| `src/domain/difficulty.test.ts` | Validates difficulty preset bounds/progression/shape. | Update when presets/ranges/counts change. |
+92. `src/App.tsx` — shared app shell/navigation/theme/shortcuts/features/footer; native support link uses platform-safe external handoff.
+93. `src/App.test.tsx` — broad React integration coverage.
+94. `src/main.tsx` — shared bootstrap/providers/CSS plus runtime-aware PWA registration disabled in native shells.
 
-# 17. Domain: mastery
+# 14. Shared cross-cutting React components — 3 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/domain/mastery.ts` | Applies attempts to canonical fact stats, streaks, bounded mistakes and computes fact/profile accuracy. | Must preserve profile session/goal metadata and canonicalization. |
-| `src/domain/mastery.test.ts` | Tests counters, streak reset, mistakes, accuracy and schema-2 profile metadata preservation. | Add regressions at this layer for mastery math/state bugs. |
+95. `src/components/ErrorBoundary.tsx` — localized fatal UI boundary with redacted technical logging.
+96. `src/components/StatusBanners.tsx` — storage/recovery/offline/PWA/install/onboarding status UI.
+97. `src/components/StatusBanners.test.tsx` — PWA update/offline/install banner lifecycle regression coverage.
 
-# 18. Domain: progress
+# 15. Domain: answers — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/domain/progress.ts` | Defines transparent mastery rule, search normalization, All/Needs practice/Mastered filtering and ordering. | UI/user docs must match the same 3-attempt/90% rule. |
-| `src/domain/progress.test.ts` | Tests mastery classification, query normalization/filtering/order. | Update with any rule/search semantics change. |
+98. `src/domain/answers.ts` — bounded integer practice response validation.
+99. `src/domain/answers.test.ts` — response-bound tests.
 
-# 19. Domain: questions
+# 16. Domain: difficulty — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/domain/questions.ts` | Validates generated-practice settings, deterministic `mulberry32` sequence, question construction and canonical mastery keys. | Seed algorithm changes affect historical replay expectations; PRNG is not cryptographic. |
-| `src/domain/questions.test.ts` | Deterministic/bound/property-based tests for generation/seed/ranges/mathematics. | Preserve reproducibility tests if generator implementation changes intentionally. |
+100. `src/domain/difficulty.ts` — Starter/Foundation/Builder/Fluency/Challenge preset metadata.
+101. `src/domain/difficulty.test.ts` — preset bounds/progression tests.
 
-# 20. Domain: mistake review
+# 17. Domain: mastery — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/domain/review.ts` | Builds newest-first deduplicated mistake-review questions using canonical commutative keys. | Review sessions are not seeded generated sessions; summary seed remains null. |
-| `src/domain/review.test.ts` | Tests count bounds and unique commutative fact selection. | Keep if recent-mistake ordering/dedup policy changes. |
+102. `src/domain/mastery.ts` — canonical fact attempt/correct/streak/mistake/accuracy updates.
+103. `src/domain/mastery.test.ts` — mastery counter/streak/mistake/schema-metadata tests.
 
-# 21. Domain: session history/goals
+# 18. Domain: progress — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/domain/sessions.ts` | Defines retention options/default/hard max, goal max and newest-first session trim/prepend helpers. | Synchronized with Settings, storage validation, privacy/schema docs and tests. |
-| `src/domain/sessions.test.ts` | Tests supported retention values, prepend bounding and trimming. | Update when retention policy changes. |
+104. `src/domain/progress.ts` — transparent mastered rule plus search/filter/order logic.
+105. `src/domain/progress.test.ts` — mastery classification/search/filter/order tests.
 
-# 22. Domain: multiplication tables
+# 19. Domain: questions — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/domain/tables.ts` | Validates table ranges/positive step/5,000-row budget, generates solved rows and formats equations. | Row-budget/numeric changes affect UI, print performance and tests/docs. |
-| `src/domain/tables.test.ts` | Tests range/order/step/invalid configurations and render budget. | Add regression here for generation math/termination issues. |
+106. `src/domain/questions.ts` — deterministic seeded question generation/settings validation/canonical keys.
+107. `src/domain/questions.test.ts` — deterministic/bounds/property/mathematics tests.
 
-# 23. Domain: types
+# 20. Domain: mistake review — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/domain/types.ts` | Immutable shared types for tables, questions, attempts, mastery, sessions, profiles, settings and persisted schema 2. | Persisted type changes require migration + validator + docs/test review, not just compilation. |
+108. `src/domain/review.ts` — newest-first deduplicated commutative mistake-review question selection.
+109. `src/domain/review.test.ts` — review count/deduplication tests.
 
-# 24. Domain: worksheet model
+# 21. Domain: session history/goals — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/domain/worksheet.ts` | Converts table rows into prompt/answer/solved worksheet items with line/box/space blank styles. | Presentation must not alter mathematical answer; add new blank modes to UI/i18n/tests. |
-| `src/domain/worksheet.test.ts` | Tests worksheet prompt/answer/blank formatting. | Keep aligned with printable composer behavior. |
+110. `src/domain/sessions.ts` — retention options/default/max, goal max, trim/prepend helpers.
+111. `src/domain/sessions.test.ts` — retention/prepend/trim tests.
 
-# 25. Feature: About
+# 22. Domain: multiplication tables — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/features/about/AboutPage.tsx` | Localized project/version/license/privacy/contact/source/funding information. | Contact/version/privacy/funding claims must stay synchronized with repository metadata/policies. |
+112. `src/domain/tables.ts` — range/step/5,000-row budget validation, row generation, equation formatting.
+113. `src/domain/tables.test.ts` — range/order/step/invalid/budget tests.
 
-# 26. Feature: Practice
+# 23. Domain types — 1 file
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/features/practice/PracticeDrill.tsx` | Practice setup/presets/seeds/timed mode/questions/answers/speech/mistake review/completion and session recording. | Coordinates many domain/state/i18n rules; use localized generic failures instead of raw English domain messages. |
+114. `src/domain/types.ts` — immutable shared table/question/attempt/mastery/session/profile/settings/persisted schema-2 types.
 
-# 27. Feature: Progress
+# 24. Domain worksheet model — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/features/progress/ProgressDashboard.tsx` | Shows profile metrics, optional goal, searchable/filterable mastery, recent sessions and mistakes. | Mastery/goal labels must match domain rule and current locale; session dates use active locale. |
+115. `src/domain/worksheet.ts` — worksheet prompt/answer/solved model and line/box/space blanks.
+116. `src/domain/worksheet.test.ts` — worksheet presentation-model tests.
 
-# 28. Feature: Settings
+# 25. Feature: About — 1 file
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/features/settings/SettingsPage.tsx` | Language/theme/accessibility/practice defaults, session retention, goals, profiles, backup/recovery/reset/update-about controls. | Primary destructive/privacy UI; confirmations, file input labels, validation and locale behavior require regression coverage. |
+117. `src/features/about/AboutPage.tsx` — localized version/license/privacy/contact/source/funding information; native links use OS handoff.
 
-# 29. Feature: Tables/print
+# 26. Feature: Practice — 1 file
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/features/tables/TableGenerator.tsx` | Table range controls, worksheet composer, study/practice/answer-key rendering, print metadata, speech controls. | Must respect domain row budget, localized validation, profile-name print privacy and print E2E. |
+118. `src/features/practice/PracticeDrill.tsx` — setup/presets/seeds/timing/questions/answers/speech/review/session completion.
 
-# 30. Internationalization core
+# 27. Feature: Progress — 1 file
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/i18n/LocaleContext.tsx` | Central React locale provider selecting catalog, persisting locale and updating document `lang`. | New locales must be wired here and tested across reload/accessibility. |
-| `src/i18n/messages.ts` | Composes English source catalog and exports structural `MessageCatalog` type. | All translated catalogs must satisfy this structure. |
-| `src/i18n/types.ts` | Type utility widening literal English messages/functions into reusable catalog shape. | Type-level localization infrastructure; changes can affect all catalogs. |
-| `src/i18n/en.ts` | Primary English product copy for shell/status/errors/tables/practice/progress/settings/about. | New user-facing feature copy belongs in typed catalogs. |
-| `src/i18n/hi.ts` | Complete Hindi catalog matching message structure. | Needs automated parity plus fluent/native review for release-quality terminology. |
-| `src/i18n/learning.ts` | English copy specifically for session-history/goal learning-record UI. | Composed into English catalog; Hindi equivalents are in Hindi catalog. |
-| `src/i18n/pwa.ts` | English optional PWA install-prompt copy. | Keep installation optional/non-account/coercion-free in every locale. |
-| `src/i18n/shortcuts.ts` | English keyboard-shortcut reference copy/functions. | Keep shortcut descriptions synchronized with actual App keyboard behavior. |
-| `src/i18n/localePreference.ts` | Supported locale list plus resilient localStorage read/write and browser-language fallback. | Locale preference intentionally remains outside learner backups. |
+119. `src/features/progress/ProgressDashboard.tsx` — mastery metrics/search/filter/goals/recent sessions/mistakes.
 
-# 31. Internationalization tests
+# 28. Feature: Settings — 1 file
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/i18n/catalogParity.test.ts` | Runtime structural parity + nonblank static Hindi message checks. | Complements TypeScript; does not judge translation quality. |
-| `src/i18n/localePreference.test.ts` | Tests supported locale recognition, stored/browser fallback and blocked-storage behavior. | Keep deterministic by controlling navigator/storage in tests. |
-| `src/localization.test.tsx` | Integration tests for English→Hindi switch, document language, persistence and backup-key separation. | Update when selector/provider/storage behavior changes. |
+120. `src/features/settings/SettingsPage.tsx` — locale/theme/accessibility/defaults/history/goals/profiles/backup/recovery/reset/about controls.
 
-# 32. Browser-preference infrastructure
+# 29. Feature: Tables/print — 1 file
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/infrastructure/browserPreferences.ts` | Safe read/write helpers for non-critical boolean browser preferences such as onboarding dismissal. | Storage failures must remain non-fatal. |
-| `src/infrastructure/browserPreferences.test.ts` | Tests preference read/write and blocked-storage resilience. | Preserve failure-containment behavior. |
+121. `src/features/tables/TableGenerator.tsx` — table controls/worksheet composer/study/practice/answer-key/print/speech rendering.
 
-# 33. Install-prompt infrastructure
+# 30. Internationalization core — 9 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/infrastructure/installPrompt.ts` | Runtime type guard/interface for browser install-prompt event capability. | Never assume every browser supports install prompt; keep feature optional. |
-| `src/infrastructure/installPrompt.test.ts` | Tests ordinary/non-callable/callable prompt event recognition. | Update if browser API adapter shape intentionally changes. |
+122. `src/i18n/LocaleContext.tsx` — runtime locale provider, persistence and document language updates.
+123. `src/i18n/messages.ts` — English catalog composition and structural `MessageCatalog` type.
+124. `src/i18n/types.ts` — type utilities that widen English literal catalog shapes.
+125. `src/i18n/en.ts` — platform-neutral English shell/status/feature/settings/about copy for 2.0.12.
+126. `src/i18n/hi.ts` — platform-neutral complete Hindi catalog for 2.0.12.
+127. `src/i18n/learning.ts` — English session-history/goal copy.
+128. `src/i18n/pwa.ts` — English optional browser PWA install copy.
+129. `src/i18n/shortcuts.ts` — English keyboard-shortcut copy/functions.
+130. `src/i18n/localePreference.ts` — supported locale list and resilient local preference/browser-language fallback.
 
-# 34. Logging infrastructure
+# 31. Internationalization tests — 3 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/infrastructure/logger.ts` | Structured technical logger with sensitive key/value redaction. | Do not log learner data first and rely on redaction; recovery raw text stays out of logs. |
-| `src/infrastructure/logger.test.ts` | Tests logger redaction/technical event behavior. | Add regressions for newly recognized sensitive value classes without real secrets. |
+131. `src/i18n/catalogParity.test.ts` — Hindi/English structural parity, nonblank messages and package/UI version consistency.
+132. `src/i18n/localePreference.test.ts` — supported/stored/browser fallback and storage-failure tests.
+133. `src/localization.test.tsx` — runtime English/Hindi integration, document language, persistence, backup separation.
 
-# 35. Persistence migration infrastructure
+# 32. Browser-preference infrastructure — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/infrastructure/migrations.ts` | Current schema version and explicit schema-1→2 candidate transformation. | New persisted schema requires a new explicit migration path, not heuristic repair. |
-| `src/infrastructure/migrations.test.ts` | Tests current passthrough, v1→v2 migration and unknown/malformed version rejection. | Include realistic old-state fixtures for future versions. |
+134. `src/infrastructure/browserPreferences.ts` — safe non-critical local preference helpers.
+135. `src/infrastructure/browserPreferences.test.ts` — preference/storage-failure tests.
 
-# 36. PWA lifecycle infrastructure
+# 33. Install-prompt infrastructure — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/infrastructure/pwaEvents.ts` | Defines/dispatches decoupled update-ready/offline-ready window events from service-worker callbacks. | UI listeners live in StatusBanners; callback must not force-update automatically. |
-| `src/infrastructure/pwaEvents.test.ts` | Tests lifecycle event dispatch and update callback is passed without automatic invocation. | Protects non-blocking update semantics. |
+136. `src/infrastructure/installPrompt.ts` — optional browser PWA install-event type guard/model.
+137. `src/infrastructure/installPrompt.test.ts` — install-prompt event recognition tests.
 
-# 37. Practice seed infrastructure
+# 34. Logging infrastructure — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/infrastructure/random.ts` | Creates valid practice seeds from random source for new generated sessions. | Security is not its purpose; deterministic generator remains in domain. |
-| `src/infrastructure/random.test.ts` | Tests bounded seed generation with injectable deterministic randomness. | Avoid tests depending on real `Math.random()` output. |
+138. `src/infrastructure/logger.ts` — structured technical logger with sensitive key/value redaction.
+139. `src/infrastructure/logger.test.ts` — logger redaction tests.
 
-# 38. Speech infrastructure
+# 35. Migration infrastructure — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/infrastructure/speech.ts` | Feature-detects browser speech synthesis and safely speaks text when available. | Browser exceptions must be non-fatal; platform voices/privacy vary. |
-| `src/infrastructure/speech.test.ts` | Tests available/unavailable/failure behavior. | Keep learning workflows independent of audio support. |
+140. `src/infrastructure/migrations.ts` — current schema version and schema-1-to-schema-2 transformation.
+141. `src/infrastructure/migrations.test.ts` — passthrough/migration/unsupported-version tests.
 
-# 39. Storage/import infrastructure
+# 36. PWA lifecycle infrastructure — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/infrastructure/storage.ts` | Zod structural/semantic schema validation, byte/profile bounds, local read/write/classification, raw recovery, import/export/clear. | Major trust boundary; persisted/import changes require migration/security/privacy tests/docs. |
-| `src/infrastructure/storage.test.ts` | Comprehensive schema/storage/import/semantic/corruption/write-failure/clear tests. | Add regression first for persistence/data-integrity issues. |
+142. `src/infrastructure/pwaEvents.ts` — decoupled update-ready/offline-ready events for web/PWA service-worker callbacks.
+143. `src/infrastructure/pwaEvents.test.ts` — PWA event/non-forced-update tests.
 
-# 40. App-wide integration tests
+# 37. Practice seed infrastructure — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/keyboardShortcuts.test.tsx` | Tests shortcut dialog open/close and editable-field `?` guard. | Extend with focus management/shortcut behavior regressions as needed. |
-| `src/learningRecords.test.tsx` | Tests completed-session persistence, optional goal UI and retention trimming. | Protects cross-feature schema-2/state behavior. |
+144. `src/infrastructure/random.ts` — valid random seed helper for generated practice.
+145. `src/infrastructure/random.test.ts` — deterministic injected-randomness seed tests.
 
-# 41. Application state layer
+# 38. Speech infrastructure — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/state/AppStateContext.ts` | Defines typed state/context action API exposed to features. | Add state mutations here instead of letting features write persistence directly. |
-| `src/state/AppStateProvider.tsx` | Loads/classifies state, constructs defaults, auto-saves, applies profile/settings/attempt/session/goal/import/recovery/reset transitions. | Cross-layer invariant coordinator; preserve unreadable-state save pause. |
-| `src/state/useAppState.ts` | Safe hook for consuming AppStateContext and rejecting use outside provider. | Keep feature state access centralized/typed. |
+146. `src/infrastructure/speech.ts` — safe speech-synthesis feature detection/invocation.
+147. `src/infrastructure/speech.test.ts` — available/unavailable/failure speech tests.
 
-# 42. Stylesheets
+# 39. Storage/import infrastructure — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/styles.css` | Main design tokens/layout/components/themes/responsive/print styles for application and worksheet output. | Review light/dark/compact/wide/large-text/print/Hindi; currently excluded from Prettier. |
-| `src/status.css` | Status/recovery/PWA/fatal-error banner/panel styles and responsive behavior. | Status content must remain visible/usable on narrow layouts; currently excluded from Prettier. |
-| `src/shortcuts.css` | Keyboard shortcut dialog/backdrop/list/kbd/responsive styling. | Maintain modal readability/focus visibility and mobile layout. |
-| `src/learning.css` | Mastery goal/recent-session/learning-record responsive styling. | Review long localized strings and mobile collapse behavior. |
+148. `src/infrastructure/storage.ts` — structural/semantic state validation, byte/profile bounds, four-state load classification, save/import/export/raw recovery/clear.
+149. `src/infrastructure/storage.test.ts` — comprehensive persistence/migration/semantic/blocking/corruption/write/clear tests.
 
-# 43. Test environment/type declarations
+# 40. App-wide integration tests — 2 files
 
-| File | Purpose | Important maintenance relationship |
-| --- | --- | --- |
-| `src/test/setup.ts` | Shared Vitest/jsdom setup/polyfills/matchers needed before application tests. | Changes affect all jsdom tests; keep browser mocks minimal and explicit. |
-| `src/vite-env.d.ts` | Vite client TypeScript declaration inclusion. | Type-only file; normally changes only with Vite/client env typing needs. |
+150. `src/keyboardShortcuts.test.tsx` — shortcut dialog/open/close/editable-control guard tests.
+151. `src/learningRecords.test.tsx` — session/goal/retention plus atomic profile capacity and transactional backup/storage integration regressions.
 
-# 44. Cross-file relationship checklist
+# 41. Application state layer — 3 files
 
-When changing one of these concepts, review the listed files/categories rather than editing only the first obvious file.
+152. `src/state/AppStateContext.ts` — typed state/action context contract including storage-read state and transactional backup result.
+153. `src/state/AppStateProvider.tsx` — load/classify/default/save/profile/settings/attempt/session/goal/import/recovery/reset coordinator.
+154. `src/state/useAppState.ts` — safe typed context hook.
 
-## App version
+# 42. Stylesheets — 4 files
 
-Review:
+155. `src/styles.css` — main tokens/layout/themes/responsive/print/worksheet styling.
+156. `src/status.css` — status/recovery/PWA/fatal UI styling.
+157. `src/shortcuts.css` — keyboard-shortcut dialog/list styling.
+158. `src/learning.css` — goals/session/learning-record responsive styling.
+
+# 43. Test setup/type declarations — 2 files
+
+159. `src/test/setup.ts` — shared Vitest/jsdom setup/polyfills/matchers.
+160. `src/vite-env.d.ts` — Vite/PWA declarations plus **new** `__TABLESPARK_NATIVE__` and `__TABLESPARK_PLATFORM__` build constants.
+
+# 44. Shared web/native platform layer — 3 new files
+
+161. `src/platform/runtime.ts` — **new** runtime platform/native detection with safe web fallback and PWA-registration decision.
+162. `src/platform/runtime.test.ts` — **new** regression proving non-Vite/test contexts resolve safely to web/PWA behavior.
+163. `src/platform/openExternalUrl.ts` — **new** web/native external-navigation bridge using scoped Tauri opener in packaged apps.
+
+# 45. Tauri native source/configuration — 8 new files
+
+164. `src-tauri/Cargo.toml` — **new** Rust/Tauri package manifest synchronized to product version 2.0.12.
+165. `src-tauri/build.rs` — **new** Tauri Cargo build integration.
+166. `src-tauri/capabilities/default.json` — **new** `main-capability` allowing only core defaults and exact maintained external URLs.
+167. `src-tauri/src/lib.rs` — **new** shared desktop/mobile Tauri application entrypoint with opener plugin.
+168. `src-tauri/src/main.rs` — **new** desktop executable entrypoint and Windows release console suppression.
+169. `src-tauri/tauri.conf.json` — **new** shared native identity/version/frontend/window/CSP/capability/icon/bundle configuration.
+170. `src-tauri/tauri.android.conf.json` — **new** Android minimum API 24 and `.debug` application-ID suffix configuration.
+171. `src-tauri/tauri.ios.conf.json` — **new** iOS/iPadOS minimum system version 14.0 configuration.
+
+# Cross-file synchronization checklist
+
+## Product/app version
+
+Review together:
 
 - `package.json`;
-- visible English/Hindi About/settings version copy;
-- changelog/release notes;
-- README/release docs where version-specific.
+- `src-tauri/Cargo.toml`;
+- `src-tauri/tauri.conf.json` version source;
+- visible English/Hindi Settings/About copy/tests;
+- changelog/release docs/native config fixtures.
 
-## Node version
+## Node/toolchain versions
+
+Review `.nvmrc`, package engines, all Actions Node setup, setup/configuration/command docs, and native/mobile requirements.
+
+## Native permission/CSP changes
 
 Review:
 
-- `.nvmrc`;
-- `package.json` engines;
-- all Actions setup-node steps;
-- setup/configuration/command docs.
+- `src-tauri/tauri.conf.json`;
+- `src-tauri/capabilities/default.json`;
+- `src/platform/` adapter;
+- native-config tests;
+- `SECURITY.md`, `PRIVACY.md`, `docs/security-model.md`;
+- native CI and release evidence.
+
+## Native platform minimums/identifier
+
+Review platform Tauri configs, validator/tests, README/setup/native-packaging/release docs, signing/store identity records and actual platform upgrade behavior.
 
 ## Persistence schema
 
-Review:
+Review domain types, migration/storage/provider, tests, schema/state/privacy/security/user docs and changelog/handoff. Native packaging does not create a second learner schema.
 
-- `src/domain/types.ts`;
-- migrations/storage/provider;
-- related tests/fixtures;
-- schema/state/privacy/security/user docs;
-- changelog/handoff.
+## PWA/native lifecycle
 
-## Mastery rule
-
-Review:
-
-- `src/domain/progress.ts` + tests;
-- Progress UI/copy;
-- user/domain docs;
-- Hindi text;
-- goals if interpretation changes.
-
-## Practice generator
-
-Review:
-
-- questions/random/practice feature;
-- deterministic/property/E2E tests;
-- session replay semantics;
-- user/domain docs.
-
-## Worksheet/print
-
-Review:
-
-- table/worksheet domain;
-- TableGenerator;
-- styles;
-- print E2E;
-- user/accessibility/Hindi review docs.
+Review Vite, `main.tsx`, platform runtime, PWA events/install/status copy/tests, Tauri package/update decision, deployment/release docs.
 
 ## Locale
 
-Review:
+Review preference/provider/catalogs/tests/E2E/document language and platform-neutral copy. Native narrow-layout/assistive-technology review remains manual.
 
-- supported locale preference;
-- provider/catalogs;
-- localization/catalog parity/integration/E2E;
-- document language/accessibility;
-- user docs.
+## Workflows/check names
 
-## PWA lifecycle
+Review workflow YAML, CI/testing/quality/repository-settings docs and branch protection using actual successful GitHub check names.
 
-Review:
+# Files intentionally not tracked
 
-- Vite config;
-- `main.tsx`;
-- PWA event/install adapters;
-- StatusBanners/copy/tests;
-- E2E/release/deployment docs.
-
-## Documentation quality gate
-
-Review:
-
-- `package.json` `test:docs`/`check`;
-- `scripts/link-check*.mjs`;
-- CI `quality` step;
-- commands/testing/quality/CI/maintenance docs.
-
-The link gate verifies local references. The tracked-file map must still be manually/automatically compared with a recursive Git file list for completeness.
-
-## CI/job names
-
-Review:
-
-- workflow YAML;
-- CI/CD/quality/testing docs;
-- branch protection/ruleset settings.
-
-# 45. Files intentionally not tracked
-
-These are normal generated/local paths and should not be added to this tracked-file inventory unless repository policy intentionally changes:
+Normal generated/local paths include:
 
 ```text
 node_modules/
@@ -507,40 +379,45 @@ test-results/
 .env.local
 .env.*.local
 *.log
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
 ```
 
-Their absence is controlled primarily by `.gitignore`.
+Common native signing artifacts are also intentionally excluded from source:
 
-# 46. Completeness verification procedure
+```text
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+keystore.properties
+```
+
+Ignoring signing material is defense in depth; production private keys/passwords belong in protected release systems/local signing environments, never source or pull-request logs.
+
+# Completeness verification procedure
 
 When maintaining this file:
 
-1. obtain a recursive Git tree for the intended branch/commit;
-2. collect every entry with `type: blob` (tracked files);
-3. compare those paths against this reference;
-4. add/remove/rename entries as necessary;
-5. verify documentation index links for new docs;
-6. run `npm run test:docs` against an actual checkout;
-7. record the completeness update in `what_changed.md`.
+1. obtain `git ls-files` or an equivalent recursive Git blob list for the intended branch/commit;
+2. compare every tracked path with this inventory;
+3. update purposes/count for additions/removals/renames;
+4. update documentation navigation for new public/deep docs;
+5. run `npm run test:docs` in an actual checkout;
+6. record the completeness change in `what_changed.md`.
 
-A directory listing alone is not sufficient because nested files can be missed. Use the recursive tree or equivalent `git ls-files` from a real checkout.
-
-Local checkout alternative:
-
-```bash
-git ls-files
-```
-
-Count tracked files:
+Local count examples:
 
 ```bash
 git ls-files | wc -l
 ```
 
-On PowerShell:
+PowerShell:
 
 ```powershell
 (git ls-files).Count
 ```
 
-At this documentation checkpoint, this reference lists **156 tracked files**. Future commits can legitimately change the count; update this document rather than preserving the number artificially.
+At this cross-platform documentation checkpoint this reference lists **171 tracked files: the previous 156 plus exactly 15 new cross-platform files**. Generated Tauri/mobile/icon/build output is deliberately not included.
