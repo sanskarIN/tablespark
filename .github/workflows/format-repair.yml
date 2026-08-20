@@ -1,44 +1,59 @@
 name: One-shot format repair
 
 on:
-  push:
-    branches:
-      - feat/roadmap-refinement-2026-08-19
-    paths:
-      - .github/workflows/format-repair.yml
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
 
 concurrency:
-  group: one-shot-format-repair-${{ github.ref }}
+  group: one-shot-format-repair-pr4
   cancel-in-progress: true
 
 jobs:
   format:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/roadmap-refinement-2026-08-19'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout PR head branch
         uses: actions/checkout@v7
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
+      - name: Check one-shot completion sentinel
+        id: guard
+        shell: bash
+        run: |
+          if [[ -f .format-repair-complete ]]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "One-shot format repair is already complete."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Node.js
+        if: steps.guard.outputs.run == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: 22.12.0
           package-manager-cache: false
 
       - name: Install dependencies
+        if: steps.guard.outputs.run == 'true'
         run: npm install --no-fund --no-audit
 
       - name: Configure commit identity
+        if: steps.guard.outputs.run == 'true'
         shell: bash
         run: |
           git config user.name "Sanskar"
           git config user.email "sanskarin@outlook.in"
 
       - name: Apply and commit pinned Prettier formatting
+        if: steps.guard.outputs.run == 'true'
         shell: bash
         run: |
           npm run format
@@ -50,6 +65,7 @@ jobs:
           fi
 
       - name: Append verification handoff
+        if: steps.guard.outputs.run == 'true'
         shell: bash
         run: |
           marker="## 2026-08-20 verification repair checkpoint"
@@ -104,6 +120,15 @@ EOF
             git commit -m "docs: record 2026-08-20 verification repair checkpoint"
           fi
 
-      - name: Push repair commits
+      - name: Mark one-shot repair complete
+        if: steps.guard.outputs.run == 'true'
         shell: bash
-        run: git push origin "HEAD:${GITHUB_REF_NAME}"
+        run: |
+          printf '%s\n' 'Formatting and handoff repair completed by PR #4 verification workflow.' > .format-repair-complete
+          git add .format-repair-complete
+          git commit -m "ci: mark one-shot format repair complete"
+
+      - name: Push repair commits
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
