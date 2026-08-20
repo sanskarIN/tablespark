@@ -6,16 +6,30 @@ All notable changes to TableSpark are documented here. The project follows seman
 
 No post-2.0.12 changes have been assigned yet.
 
-## 2.0.12 — release candidate — 2026-08-19
+## 2.0.12 — cross-platform release candidate — 2026-08-20
 
-The source/package/UI version is prepared as **2.0.12**. The `v2.0.12` Git tag and public release are intentionally still pending exact-head automated verification plus the documented manual/external release gates.
+The source/package/UI version is prepared as **2.0.12**. The `v2.0.12` Git tag and public release remain pending exact-head automated verification plus documented manual, signing, store, and device release gates.
 
 ### Added
 
-- Strict TypeScript React PWA architecture.
+- Strict TypeScript React application architecture with web/PWA and Tauri 2 native delivery paths.
+- Native source/build support for Windows, macOS, Linux, Android, and iOS/iPadOS from the shared frontend and domain model.
+- Tauri Rust shell under `src-tauri/` with a shared mobile/desktop entrypoint.
+- Platform-specific Android and iOS Tauri configuration.
+- Native application identifier `in.sanskar.tablespark`.
+- Native icon generation from the existing `public/logo.svg` through the Tauri icon command.
+- Narrowly scoped native opener permission for the maintained TableSpark GitHub, funding, and support destinations.
+- Runtime platform abstraction that distinguishes web/PWA from packaged native builds.
+- Native-safe external-link handling that opens supported destinations through the operating system.
+- Native configuration validation and dedicated Node tests that detect version, identifier, icon, path, mobile-minimum, dependency, and script drift.
+- Native Cross-Platform GitHub Actions workflow compiling desktop targets on Windows, macOS, and Linux, an Android debug APK, and an iOS simulator application.
+- Android minimum SDK 24 configuration.
+- iOS minimum system version 14.0 configuration.
+- Tauri mobile development host handling through `TAURI_DEV_HOST` for physical-device development.
+- Native signing/store credential ignore rules for Android keystores, Apple keys/certificates, and provisioning profiles.
 - Responsive light, dark, and system themes.
 - Custom multiplication table ranges, multiplier ranges, and step sizes.
-- A 5,000-row generation budget that protects the browser from oversized worksheet rendering.
+- A 5,000-row generation budget that protects the runtime from oversized worksheet rendering.
 - A dedicated worksheet composer with solved study-sheet, practice-worksheet, and answer-key modes.
 - Configurable practice-sheet answer blanks using writing lines, a single box, or open writing space.
 - A4 and US Letter portrait print selection plus one-, two-, and three-column worksheet layouts.
@@ -33,70 +47,63 @@ The source/package/UI version is prepared as **2.0.12**. The `v2.0.12` Git tag a
 - Multiple offline learner profiles with explicit profile capacity.
 - Validated local persistence with explicit schema version handling and a schema-1-to-schema-2 migration.
 - JSON backup export/import with a shared 2 MB persistence/import budget.
-- User-visible warning when browser storage cannot persist current state.
+- User-visible warning when local runtime storage cannot persist current state.
 - Unreadable stored-state recovery that preserves the original raw value until valid replacement or confirmed discard.
 - Private raw recovery download for unreadable local data.
-- Resilient browser preference storage for onboarding state and interface locale.
+- Resilient interface preference storage for onboarding state and locale.
 - Large-text classroom mode and reduced-motion option.
-- Progressive browser speech-synthesis controls with unavailable/failure fallback.
+- Progressive speech-synthesis controls with unavailable/failure fallback.
 - First-run onboarding and offline status feedback.
-- Non-blocking PWA update-ready and offline-ready notices.
+- Non-blocking PWA update-ready and offline-ready notices for web/PWA builds.
 - Optional browser-provided PWA installation prompt that never creates an account and can be dismissed.
 - User-safe error boundary and structured redacted logging.
 - A central runtime locale provider with typed message catalogs.
 - A complete Hindi (`hi`) interface catalog with persisted language switching and `<html lang>` updates.
 - Keyboard shortcut reference available from the navigation, `?` help, `Escape` dismissal, and Alt+1 through Alt+5 section shortcuts where available.
-- Unit, property-based, integration, and browser end-to-end tests.
+- Unit, property-based, integration, browser end-to-end, native-config, and native compilation verification.
 - Browser-assisted accessibility invariants for landmarks, labels, image alternatives, and shortcut reachability.
 - Dependency-free repository credential-pattern scanner with a dedicated Node test suite.
-- GitHub Actions CI, CodeQL, Dependabot, and tagged release automation.
+- GitHub Actions CI, Native Cross-Platform CI, CodeQL, Dependabot, and tagged web-release automation.
 - SHA-256 integrity metadata alongside packaged web release artifacts.
-- A formal `npm run test:docs` gate that tests the local Markdown-link checker and validates repository-local documentation targets in `npm run check`, CI, and tagged-release verification.
-- A comprehensive documentation system covering commands, configuration, CI/CD, domain rules, state/persistence, schema v2, security/trust boundaries, maintenance, glossary, localization, accessibility, release evidence, deployment/native packaging evaluations, and user/release operations.
-- An audience/task-oriented documentation index with source-of-truth hierarchy and update matrix.
-- An exhaustive tracked-file reference documenting all 156 tracked files at the documentation-completeness checkpoint, including every config, policy, workflow, ADR, asset, E2E spec, script, source file, test, state module, and stylesheet.
-- Project governance, privacy, security, support, localization, accessibility, deployment-evaluation, native-packaging-evaluation, and engineering documentation.
-- ADR 0004 documenting preservation of unreadable local state until explicit recovery.
+- Formal documentation-link and native-configuration gates in `npm run check`.
+- Comprehensive documentation covering commands, configuration, CI/CD, domain rules, state/persistence, schema v2, security/trust boundaries, maintenance, glossary, localization, accessibility, release evidence, deployment, native packaging, and user/release operations.
 - A locale-catalog regression assertion that keeps the visible English/Hindi version synchronized with `package.json`.
 
 ### Changed
 
-- Application/package and visible English/Hindi release metadata now target version `2.0.12`.
+- Application/package and visible English/Hindi release metadata target version `2.0.12`.
+- The previous “PWA-only/native packaging deferred” architecture decision has been superseded by an explicit thin Tauri 2 native shell while the React/TypeScript product logic remains shared.
+- Web/PWA builds continue to register the service worker; packaged native builds deliberately skip PWA service-worker registration and use the native package/store lifecycle.
+- UI copy describing local data, speech availability, updates, and the About screen is platform-neutral rather than assuming a browser-only runtime.
+- Native builds hand maintained external destinations to the operating system instead of navigating the application webview away from TableSpark.
+- Generated native mobile projects, Rust target output, and generated native icons are reproducible build artifacts and are not tracked in Git.
+- Browser/PWA and installed native applications keep separate platform-managed local-storage sandboxes; validated backup export/import is the supported portability boundary.
 - Practice sessions no longer begin from the same fixed seed; the generated seed remains visible so a session can be repeated exactly.
-- Mistake review now selects unique commutative facts instead of repeating equivalent recent mistakes.
-- Mistake-review completion no longer shows generated-seed replay controls.
-- Completed practice drills now append only a compact session summary rather than duplicating every submitted answer into session history.
+- Mistake review selects unique commutative facts instead of repeating equivalent recent mistakes.
+- Completed practice drills append only a compact session summary rather than duplicating every submitted answer into session history.
 - Reducing the configured session-history retention limit trims older local summaries immediately.
-- Resetting active-profile progress now clears mastery, recent mistakes, and session history while leaving the optional goal available to reuse or clear separately.
-- Settings disable text-to-speech controls when the browser cannot provide a usable speech synthesis API.
-- Product UI strings are resolved through the central locale provider instead of being read directly by feature modules.
-- The interface locale preference is stored separately from exported learner-state JSON.
-- Persistence moved to schema version 2 while retaining the existing localStorage key so valid schema-1 data can be migrated in place.
-- Persistence and imported backups now share the same size and profile-count constraints.
-- Startup storage handling now distinguishes empty storage, validated state, an existing returned value that is invalid, and browser storage whose read operation is unavailable.
-- Automatic writes remain paused when startup storage could not be read, preventing temporary defaults from overwriting unknown inaccessible data.
-- Backup replacement is transactional: a validated replacement must be saved successfully before it replaces current in-memory state or reports success.
-- Ordinary backup export is disabled while unreadable stored data is being preserved or while startup storage reads are unavailable because visible state is temporary in those cases.
-- Backup import is disabled when startup storage reads are unavailable because TableSpark will not overwrite unknown inaccessible state.
-- Release packaging now publishes a checksum file for the exact ZIP artifact.
-- Native packaging remains deferred after architecture evaluation; the PWA remains the canonical product for the current requirements.
-- Static-host candidates are documented without activating a production deployment before repository-owner approval.
-- Documentation-link validation moved from an optional direct utility into the maintained package/CI/release quality gate.
+- Product UI strings are resolved through the central locale provider.
+- Persistence uses schema version 2 while retaining the existing storage key so valid schema-1 data can be migrated in place.
+- Startup storage handling distinguishes empty storage, validated state, an existing returned value that is invalid, and storage whose read operation is unavailable.
+- Automatic writes remain paused when startup storage could not be read.
+- Backup replacement is transactional: a validated replacement must be durably saved before it replaces current in-memory state or reports success.
+- Release packaging still publishes the canonical web ZIP/checksum automatically; signed native installers/APK/AAB/Apple distribution remain explicit platform-release operations requiring repository-owner signing credentials.
 
 ### Security
 
+- Native permissions are minimal: the shell enables only core defaults plus scoped external URL opening; no general shell/process/filesystem permission is granted.
+- Android/iOS signing material is explicitly excluded from source control.
+- Pull-request native CI compiles unsigned/debug or simulator-safe targets and does not expose production signing credentials to untrusted code.
 - Backup validation rejects malformed or unsupported state.
-- Imported state validates unique profile IDs, active-profile identity, canonical mastery keys, mastery counter invariants, multiplication answers, attempt correctness, and mistake-history semantics.
-- Schema-2 validation also checks session-summary bounds, generated/review seed semantics, supported retention limits, retained-history length, and optional goal bounds.
-- Both imported and current persisted state are limited to the 2 MB byte budget.
+- Imported state validates unique profile IDs, active-profile identity, canonical mastery keys, mastery counter invariants, multiplication answers, attempt correctness, mistake-history semantics, session summaries, retention, seed semantics, and optional goal bounds.
+- Current persisted state and imports are limited to the shared 2 MB byte budget.
 - Existing unreadable local data is never automatically overwritten by temporary defaults.
-- Unknown storage contents are not overwritten when the browser blocks the initial learner-state read.
+- Unknown storage contents are not overwritten when the runtime blocks the initial learner-state read.
 - Destructive backup replacement leaves current state unchanged if the validated replacement cannot be durably written.
 - Structured logging redacts sensitive field names and recognizable credential/email values.
-- Repository CI tests and runs the built-in credential-pattern scanner without printing matched secret values.
+- Repository CI tests/runs credential-pattern scanning without printing matched values.
 - GitHub Actions use scoped permissions.
-- Production dependency auditing is part of CI.
-- The deep security model documents localStorage/import/browser API/dependency/Actions/release trust boundaries and the architectural consequences of any future backend/authentication feature.
+- Production dependency auditing and CodeQL remain security gates.
 
 ### Accessibility
 
@@ -105,22 +112,23 @@ The source/package/UI version is prepared as **2.0.12**. The `v2.0.12` Git tag a
 - The manual accessibility document includes explicit NVDA, Narrator, VoiceOver, and TalkBack verification rows without claiming unexecuted passes.
 - Printed classroom output keeps local profile identity out of learner metadata by default.
 - Locale switching updates the document language so assistive technology can apply the appropriate language rules.
+- Native wrappers retain the same shared semantic React interface; real platform screen-reader, print, speech, touch, and device checks remain release-evidence gates.
 
 ### Fixed
 
+- Native/platform constants now safely fall back to the web runtime when compile-time Tauri/Vite defines are absent, preventing test/runtime reference errors.
+- Physical iOS development can use Tauri’s provided development host instead of incorrectly binding every native run to a broad host.
+- Packaged native builds no longer register the PWA service worker.
+- Native support/contact/funding links no longer navigate the TableSpark webview away from the application.
 - Browser-storage write failures no longer crash the app or silently imply durable saving.
 - Corrupted or newly invalid local state is preserved for recovery instead of being destroyed by the next automatic save.
-- Browser storage read failures are no longer misclassified as corrupted learner data or routed into a recovery flow for a value that was never read.
-- Batched profile additions cannot exceed the documented 100-profile capacity by observing stale render state.
+- Storage read failures are no longer misclassified as corrupted learner data.
+- Batched profile additions cannot exceed the documented 100-profile capacity.
 - Failed backup writes no longer replace current in-memory state or report a successful destructive import.
-- Table and practice validation failures now use the active locale instead of exposing raw English domain exception text in Hindi UI.
-- Invalid backup feedback now uses localized generic copy instead of embedding raw parser/schema exception messages from another language.
-- Onboarding and locale preference storage failures no longer break application startup or interaction.
-- Speech synthesis exceptions no longer escape into user workflows.
-- Seed validation rejects negative, fractional, and out-of-range values rather than silently coercing them through 32-bit arithmetic.
-- Practice response input can no longer create unbounded integer values outside the supported application range.
-- The browser smoke journey no longer depends on the removed worksheet hide-answers checkbox and now exercises the worksheet composer instead.
-- Quality-gate documentation no longer references an undeclared `docs:check` script; the supported documentation command is now `npm run test:docs`.
+- Table and practice validation failures use the active locale instead of exposing raw English domain exception text in Hindi UI.
+- Invalid backup feedback uses localized generic copy instead of embedding raw parser/schema exception messages.
+- Onboarding/locale preference failures and speech synthesis exceptions remain non-fatal.
+- Seed and practice response validation enforce supported bounds.
 
 ## [0.1.0] - 2026-08-19
 
