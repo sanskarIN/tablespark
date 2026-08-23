@@ -75,10 +75,7 @@ describe('TableSpark application', () => {
       screen.getByRole('heading', { name: 'TableSpark multiplication worksheet' }),
     ).toBeInTheDocument();
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Answer blank style' }),
-      'box',
-    );
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Answer blank style' }), 'box');
     expect(screen.getByText('2 × 1 = □')).toBeInTheDocument();
 
     await user.selectOptions(
@@ -192,7 +189,9 @@ describe('TableSpark application', () => {
     await user.click(screen.getByRole('button', { name: 'Check answer' }));
 
     expect(
-      screen.getByText('This review was built from the unique facts in your saved recent mistakes.'),
+      screen.getByText(
+        'This review was built from the unique facts in your saved recent mistakes.',
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Repeat this seed' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Back to practice setup' })).toBeInTheDocument();
@@ -203,7 +202,9 @@ describe('TableSpark application', () => {
     renderApp();
     await user.click(screen.getByRole('button', { name: 'Settings' }));
     expect(screen.getByRole('checkbox', { name: 'Text-to-speech controls' })).toBeDisabled();
-    expect(screen.getByText('Text-to-speech is not available in this browser.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Text-to-speech is not available in this browser.'),
+    ).toBeInTheDocument();
   });
 
   it('preserves unreadable local data until the user explicitly discards it', async () => {

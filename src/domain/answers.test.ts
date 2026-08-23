@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  isValidPracticeResponse,
-  MAX_PRACTICE_RESPONSE,
-  MIN_PRACTICE_RESPONSE,
-} from './answers';
+import { isValidPracticeResponse, MAX_PRACTICE_RESPONSE, MIN_PRACTICE_RESPONSE } from './answers';
 
 describe('practice answer validation', () => {
   it('accepts safe whole numbers inside the supported response range', () => {

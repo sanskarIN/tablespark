@@ -120,8 +120,10 @@ export const hindiMessages = {
       checkAnswer: 'उत्तर जाँचें',
       complete: 'सत्र पूरा हुआ',
       score: (score: number, total: number) => `स्कोर ${score} / ${total}`,
-      seedReplay: (seed: number) => `इसी बने हुए अभ्यास के लिए सीड ${seed} दोबारा उपयोग किया जा सकता है।`,
-      reviewCompleteNote: 'यह समीक्षा आपकी सहेजी गई हाल की गलतियों में मौजूद अलग-अलग तथ्यों से बनाई गई थी।',
+      seedReplay: (seed: number) =>
+        `इसी बने हुए अभ्यास के लिए सीड ${seed} दोबारा उपयोग किया जा सकता है।`,
+      reviewCompleteNote:
+        'यह समीक्षा आपकी सहेजी गई हाल की गलतियों में मौजूद अलग-अलग तथ्यों से बनाई गई थी।',
       newRandomDrill: 'नया रैंडम अभ्यास',
       repeatSeed: 'इसी सीड को दोहराएँ',
       backToSetup: 'अभ्यास सेटअप पर लौटें',
@@ -208,7 +210,8 @@ export const hindiMessages = {
       unreadableUnavailable: 'स्थानीय ऐप स्टोरेज से डेटा पढ़ा नहीं जा सका।',
       confirmDiscardUnreadable:
         'पढ़े न जा सकने वाले स्थानीय TableSpark डेटा को हटाएँ? इससे सहेजा हुआ मान स्थायी रूप से हट जाएगा। यदि पुनर्प्राप्ति की आवश्यकता हो सकती है तो पहले डाउनलोड करें।',
-      unreadableDiscarded: 'पढ़े न जा सकने वाला स्थानीय डेटा हटा दिया गया। स्थानीय सहेजना फिर शुरू हो गया है।',
+      unreadableDiscarded:
+        'पढ़े न जा सकने वाला स्थानीय डेटा हटा दिया गया। स्थानीय सहेजना फिर शुरू हो गया है।',
       unreadableDiscardFailed: 'स्थानीय ऐप स्टोरेज से डेटा हटाया नहीं जा सका।',
       updatesAbout: 'अपडेट और परिचय',
       updateNotice:
@@ -258,7 +261,8 @@ export const hindiMessages = {
       goalHeading: 'दक्षता लक्ष्य',
       noGoal: 'इस प्रोफ़ाइल के लिए कोई वैकल्पिक दक्षता लक्ष्य सेट नहीं है।',
       goalProgress: (mastered: number, target: number) => `${target} में से ${mastered} तथ्य दक्ष`,
-      goalComplete: 'लक्ष्य पूरा हुआ। आप अभ्यास जारी रख सकते हैं या जब चाहें नया लक्ष्य चुन सकते हैं।',
+      goalComplete:
+        'लक्ष्य पूरा हुआ। आप अभ्यास जारी रख सकते हैं या जब चाहें नया लक्ष्य चुन सकते हैं।',
       recentSessions: 'हाल के सत्र',
       noSessions: 'अभी कोई सत्र सारांश नहीं है। एक अभ्यास पूरा करने पर यहाँ रिकॉर्ड जुड़ जाएगा।',
       generated: 'बनाया गया अभ्यास',
@@ -282,7 +286,8 @@ export const hindiMessages = {
   shortcuts: {
     open: 'कीबोर्ड शॉर्टकट',
     title: 'कीबोर्ड शॉर्टकट',
-    description: 'इन शॉर्टकट का उपयोग तब करें जब ब्राउज़र या ऑपरेटिंग सिस्टम ने इन्हें आरक्षित न किया हो।',
+    description:
+      'इन शॉर्टकट का उपयोग तब करें जब ब्राउज़र या ऑपरेटिंग सिस्टम ने इन्हें आरक्षित न किया हो।',
     close: 'शॉर्टकट बंद करें',
     helpKey: '?',
     helpDescription: 'यह शॉर्टकट सूची खोलें या बंद करें',

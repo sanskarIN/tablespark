@@ -134,7 +134,10 @@ export function TableGenerator() {
         </label>
       </form>
 
-      <section className="panel worksheet-composer no-print" aria-labelledby="worksheet-composer-title">
+      <section
+        className="panel worksheet-composer no-print"
+        aria-labelledby="worksheet-composer-title"
+      >
         <div className="section-heading">
           <div>
             <h3 id="worksheet-composer-title">{copy.tables.composerHeading}</h3>

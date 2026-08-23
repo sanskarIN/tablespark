@@ -20,7 +20,8 @@ export default defineConfig({
       manifest: {
         name: 'TableSpark',
         short_name: 'TableSpark',
-        description: 'Offline-first multiplication tables, drills, worksheets, and mastery tracking.',
+        description:
+          'Offline-first multiplication tables, drills, worksheets, and mastery tracking.',
         theme_color: '#5b5bd6',
         background_color: '#0f1020',
         display: 'standalone',

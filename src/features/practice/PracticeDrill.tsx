@@ -354,11 +354,7 @@ export function PracticeDrill() {
           <div className="button-row">
             {sessionKind === 'generated' ? (
               <>
-                <button
-                  className="primary-button"
-                  type="button"
-                  onClick={() => resetSession(true)}
-                >
+                <button className="primary-button" type="button" onClick={() => resetSession(true)}>
                   {copy.practice.newRandomDrill}
                 </button>
                 <button

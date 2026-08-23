@@ -118,7 +118,8 @@ export const copy = {
     complete: 'Session complete',
     score: (score: number, total: number) => `Score ${score} of ${total}`,
     seedReplay: (seed: number) => `Seed ${seed} can be reused for the same generated drill.`,
-    reviewCompleteNote: 'This review was built from the unique facts in your saved recent mistakes.',
+    reviewCompleteNote:
+      'This review was built from the unique facts in your saved recent mistakes.',
     newRandomDrill: 'New random drill',
     repeatSeed: 'Repeat this seed',
     backToSetup: 'Back to practice setup',

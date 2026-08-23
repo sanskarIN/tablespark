@@ -4,10 +4,7 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LocaleProvider } from './i18n/LocaleContext';
-import {
-  dispatchPwaOfflineReady,
-  dispatchPwaUpdateAvailable,
-} from './infrastructure/pwaEvents';
+import { dispatchPwaOfflineReady, dispatchPwaUpdateAvailable } from './infrastructure/pwaEvents';
 import { shouldRegisterPwaServiceWorker } from './platform/runtime';
 import { AppStateProvider } from './state/AppStateProvider';
 import './styles.css';

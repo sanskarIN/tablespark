@@ -12,7 +12,7 @@ interface State {
 
 export class ErrorBoundary extends Component<Props, State> {
   public static contextType = LocaleContext;
-  public declare context: ContextType<typeof LocaleContext>;
+  declare public context: ContextType<typeof LocaleContext>;
   public state: State = { hasError: false };
 
   public static getDerivedStateFromError(): State {
@@ -34,11 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <img src="/logo.svg" alt="" width="72" height="72" />
           <h1>{copy.fatalError.title}</h1>
           <p>{copy.fatalError.body}</p>
-          <button
-            className="primary-button"
-            type="button"
-            onClick={() => window.location.reload()}
-          >
+          <button className="primary-button" type="button" onClick={() => window.location.reload()}>
             {copy.fatalError.reload}
           </button>
         </main>

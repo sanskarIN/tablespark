@@ -39,12 +39,16 @@ test('major views keep labeled controls and one main landmark', async ({ page })
   }
 });
 
-test('images expose alt attributes and the shortcut reference is keyboard reachable', async ({ page }) => {
+test('images expose alt attributes and the shortcut reference is keyboard reachable', async ({
+  page,
+}) => {
   await page.goto('/');
 
-  const imagesWithoutAlt = await page.locator('img').evaluateAll((images) =>
-    images.filter((image) => !image.hasAttribute('alt')).map((image) => image.outerHTML),
-  );
+  const imagesWithoutAlt = await page
+    .locator('img')
+    .evaluateAll((images) =>
+      images.filter((image) => !image.hasAttribute('alt')).map((image) => image.outerHTML),
+    );
   expect(imagesWithoutAlt).toEqual([]);
 
   await page.keyboard.press('Shift+/');

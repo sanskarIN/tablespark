@@ -10,7 +10,9 @@ export function validateNativeConfiguration({
 
   if (!cargoVersion) errors.push('src-tauri/Cargo.toml package version is missing.');
   if (cargoVersion && cargoVersion !== packageJson.version) {
-    errors.push(`Cargo version ${cargoVersion} does not match package version ${packageJson.version}.`);
+    errors.push(
+      `Cargo version ${cargoVersion} does not match package version ${packageJson.version}.`,
+    );
   }
 
   if (tauriConfig.version !== '../package.json') {
@@ -33,7 +35,11 @@ export function validateNativeConfiguration({
   }
 
   const capabilities = tauriConfig.app?.security?.capabilities;
-  if (!Array.isArray(capabilities) || capabilities.length !== 1 || capabilities[0] !== 'main-capability') {
+  if (
+    !Array.isArray(capabilities) ||
+    capabilities.length !== 1 ||
+    capabilities[0] !== 'main-capability'
+  ) {
     errors.push('Native security must explicitly select only main-capability.');
   }
 

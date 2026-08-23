@@ -1,8 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import {
-  MAX_MASTERED_FACTS_GOAL,
-  SESSION_HISTORY_LIMIT_OPTIONS,
-} from '../../domain/sessions';
+import { MAX_MASTERED_FACTS_GOAL, SESSION_HISTORY_LIMIT_OPTIONS } from '../../domain/sessions';
 import { useLocale } from '../../i18n/LocaleContext';
 import { SUPPORTED_LOCALES, type Locale } from '../../i18n/localePreference';
 import { canSpeak } from '../../infrastructure/speech';

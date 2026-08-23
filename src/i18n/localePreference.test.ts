@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  isLocale,
-  readLocalePreference,
-  writeLocalePreference,
-} from './localePreference';
+import { isLocale, readLocalePreference, writeLocalePreference } from './localePreference';
 
 describe('locale preference', () => {
   beforeEach(() => {

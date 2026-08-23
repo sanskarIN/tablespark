@@ -195,13 +195,7 @@ export function AppStateProvider({ children }: { readonly children: ReactNode })
           ),
         })),
     }),
-    [
-      activeProfile,
-      persistenceAvailable,
-      state,
-      storageReadUnavailable,
-      unreadableStoredState,
-    ],
+    [activeProfile, persistenceAvailable, state, storageReadUnavailable, unreadableStoredState],
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

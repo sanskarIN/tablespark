@@ -20,7 +20,9 @@ test('practice worksheet keeps configured paper and columns in print mode', asyn
 
   await page.emulateMedia({ media: 'print' });
   await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeHidden();
-  await expect(page.getByRole('heading', { name: 'TableSpark multiplication worksheet' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'TableSpark multiplication worksheet' }),
+  ).toBeVisible();
   await expect(page.getByText('Name: ______________________________')).toBeVisible();
   await expect(page.getByText('Date: ______________________________')).toBeVisible();
 });
@@ -29,7 +31,9 @@ test('answer key omits learner metadata in print mode', async ({ page }) => {
   await page.getByRole('combobox', { name: 'Printable output' }).selectOption('answer-key');
   await page.emulateMedia({ media: 'print' });
 
-  await expect(page.getByRole('heading', { name: 'TableSpark multiplication answer key' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'TableSpark multiplication answer key' }),
+  ).toBeVisible();
   await expect(page.getByText('Name: ______________________________')).toHaveCount(0);
   await expect(page.getByText('Date: ______________________________')).toHaveCount(0);
   await expect(page.getByText('2 × 1 = 2')).toBeVisible();

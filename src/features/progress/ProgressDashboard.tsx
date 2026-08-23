@@ -1,10 +1,6 @@
 import { useMemo, useState } from 'react';
 import { masteryPercent, profileAccuracy } from '../../domain/mastery';
-import {
-  filterMasteryStats,
-  isMastered,
-  type MasteryFilter,
-} from '../../domain/progress';
+import { filterMasteryStats, isMastered, type MasteryFilter } from '../../domain/progress';
 import { useLocale } from '../../i18n/LocaleContext';
 import { useAppState } from '../../state/useAppState';
 
@@ -178,9 +174,7 @@ export function ProgressDashboard() {
                   </time>
                 </div>
                 <span>
-                  {session.mode === 'timed'
-                    ? learning.progress.timed
-                    : learning.progress.untimed}
+                  {session.mode === 'timed' ? learning.progress.timed : learning.progress.untimed}
                 </span>
                 <span>
                   {learning.progress.sessionScore(session.correctCount, session.questionCount)}

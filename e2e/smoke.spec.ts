@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('generate a table, compose a worksheet, and complete a deterministic practice question', async ({ page }) => {
+test('generate a table, compose a worksheet, and complete a deterministic practice question', async ({
+  page,
+}) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Multiplication tables' })).toBeVisible();
 
@@ -51,7 +53,9 @@ test('unreadable stored state remains intact until explicit discard', async ({ p
 
   page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: 'Discard unreadable local data' }).click();
-  await expect(page.getByText('Unreadable local data discarded. Local saving has resumed.')).toBeVisible();
+  await expect(
+    page.getByText('Unreadable local data discarded. Local saving has resumed.'),
+  ).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('tablespark.state.v1')))
     .not.toBe('{broken');

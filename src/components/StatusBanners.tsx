@@ -109,11 +109,7 @@ export function StatusBanners() {
             <span>{copy.status.updateBody}</span>
           </div>
           <div className="banner-actions">
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => void applyUpdate()}
-            >
+            <button className="primary-button" type="button" onClick={() => void applyUpdate()}>
               {copy.status.updateNow}
             </button>
             <button className="text-button" type="button" onClick={() => setApplyUpdate(null)}>
