@@ -6,13 +6,16 @@ function validFixture() {
   return {
     packageJson: {
       version: '2.0.12',
+      packageManager: 'npm@10.9.0',
       scripts: {
         'native:icons': 'tauri icon public/logo.svg',
         'native:prepare': 'npm run native:icons',
         'native:dev': 'tauri dev',
         'native:build': 'npm run native:prepare && tauri build',
         'native:build:ci': 'npm run native:prepare && tauri build --no-bundle --no-sign',
-        'check:native': 'native checks',
+        'native:check':
+          'npm run native:prepare && cargo check --locked --manifest-path src-tauri/Cargo.toml',
+        'check:native': 'npm run native:fmt:check && npm run native:check',
         'android:init': 'npm run native:prepare && tauri android init --ci',
         'android:build': 'npm run native:prepare && tauri android build',
         'android:build:debug': 'npm run native:prepare && tauri android build --debug --apk',
@@ -71,4 +74,15 @@ test('reports version, security, icon, and target drift', () => {
   assert.ok(errors.some((error) => error.includes('Android minSdkVersion')));
   assert.ok(errors.some((error) => error.includes('iOS minimumSystemVersion')));
   assert.ok(errors.some((error) => error.includes('native bundle icon declaration')));
+});
+
+test('reports deterministic npm and Cargo toolchain drift', () => {
+  const fixture = validFixture();
+  fixture.packageJson.packageManager = 'npm@11.0.0';
+  fixture.packageJson.scripts['native:check'] =
+    'npm run native:prepare && cargo check --manifest-path src-tauri/Cargo.toml';
+
+  const errors = validateNativeConfiguration(fixture);
+  assert.ok(errors.some((error) => error.includes('npm@10.9.0')));
+  assert.ok(errors.some((error) => error.includes('cargo check --locked')));
 });
