@@ -16,7 +16,7 @@ async function prepareApp(page: Page) {
 async function selectTheme(page: Page, theme: 'light' | 'dark') {
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('combobox', { name: 'Theme' }).selectOption(theme);
-  await page.getByRole('button', { name: 'Tables' }).click();
+  await page.getByRole('button', { name: 'Tables', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
 }
 
