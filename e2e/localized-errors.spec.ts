@@ -21,7 +21,9 @@ test('practice setup failure stays localized in Hindi', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'अधिकतम' }).fill('2');
   await page.getByRole('button', { name: 'अभ्यास शुरू करें' }).click();
 
-  await expect(page.getByRole('status')).toContainText('अभ्यास शुरू नहीं हो सका।');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'अभ्यास शुरू नहीं हो सका।' }),
+  ).toBeVisible();
 });
 
 test('invalid backup feedback stays localized in Hindi', async ({ page }) => {
@@ -34,5 +36,5 @@ test('invalid backup feedback stays localized in Hindi', async ({ page }) => {
     buffer: Buffer.from('{invalid-json'),
   });
 
-  await expect(page.getByRole('status')).toContainText('आयात विफल हुआ।');
+  await expect(page.getByRole('status').filter({ hasText: 'आयात विफल हुआ।' })).toBeVisible();
 });
