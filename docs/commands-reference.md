@@ -13,8 +13,10 @@ Supported baseline:
 
 ```text
 Node >= 22.12.0
-npm >= 10
+npm 10.9.0
 ```
+
+`package.json` declares `packageManager: npm@10.9.0`. Normal setup and automated verification use the committed `package-lock.json` rather than resolving a fresh JavaScript dependency graph on each run.
 
 Native work additionally needs Rust and the target platform SDK/toolchain.
 
@@ -26,17 +28,21 @@ rustup --version
 
 ## Dependency installation
 
-```bash
-npm install
-```
-
-CI uses:
+Normal repository setup:
 
 ```bash
-npm install --no-fund --no-audit
+npm ci
 ```
 
-The explicit production advisory audit is run separately rather than being duplicated during installation.
+CI/release automation uses:
+
+```bash
+npm ci --no-fund --no-audit
+```
+
+`npm ci` must fail if `package.json` and `package-lock.json` drift. Do not replace it with a mutable install merely to make verification green. The explicit production advisory audit is run separately rather than being duplicated during installation.
+
+Rust/Tauri dependency resolution is committed in `src-tauri/Cargo.lock`; native verification uses Cargo's locked mode.
 
 ## Web development
 
@@ -196,7 +202,8 @@ npm run native:config:check
 
 Checks maintained native invariants including:
 
-- version consistency;
+- package/Cargo version consistency;
+- pinned `npm@10.9.0` package-manager contract;
 - Tauri version source;
 - application identifier;
 - frontend paths;
@@ -204,6 +211,7 @@ Checks maintained native invariants including:
 - explicit `main-capability` selection;
 - bundle icons;
 - required scripts/dependencies;
+- locked Cargo verification command;
 - Android/iOS minimum versions.
 
 These checks do not require Rust or platform SDKs.
@@ -299,7 +307,13 @@ npm run native:fmt
 npm run native:check
 ```
 
-Expands to a Cargo check against `src-tauri/Cargo.toml`.
+Expands to:
+
+```bash
+npm run native:prepare && cargo check --locked --manifest-path src-tauri/Cargo.toml
+```
+
+The `--locked` flag rejects `Cargo.toml` / `src-tauri/Cargo.lock` dependency drift instead of silently resolving a different graph.
 
 ## Aggregate Rust/native check
 
@@ -307,7 +321,7 @@ Expands to a Cargo check against `src-tauri/Cargo.toml`.
 npm run check:native
 ```
 
-Runs native Rust formatting verification followed by `cargo check`.
+Runs native Rust formatting verification followed by the locked Cargo check above.
 
 ## Compile current desktop host without installers/signing
 
@@ -489,9 +503,13 @@ The checksum proves byte identity relative to the workflow-produced digest; it i
 
 Install/fix supported Node/npm and reopen terminal.
 
-## Node engine warning
+## Node/npm toolchain mismatch
 
-Use Node 22.12.0 or newer according to `package.json`/`.nvmrc`.
+Use Node 22.12.0 or newer and npm 10.9.0 according to `package.json` / `.nvmrc` before running locked repository installation.
+
+## `npm ci` reports lockfile drift
+
+Treat this as a dependency-integrity failure. Intentionally update `package.json` and `package-lock.json` together using the pinned npm toolchain; do not switch verification back to `npm install` to bypass it.
 
 ## Port 5173 in use
 
@@ -511,6 +529,10 @@ npm run check:native
 ```
 
 Inspect the first system/toolchain/compiler error rather than changing unrelated application code.
+
+## `cargo check --locked` reports lockfile drift
+
+Regenerate `src-tauri/Cargo.lock` only for an intentional Rust dependency update, review the resolved changes, and commit the manifest and lockfile together.
 
 ## Linux native library failure
 
@@ -548,5 +570,7 @@ src-tauri/target/
 src-tauri/gen/
 src-tauri/icons/
 ```
+
+The committed reproducibility files `package-lock.json` and `src-tauri/Cargo.lock` are source-controlled dependency metadata and must not be added to the generated-output ignore list.
 
 Also never commit production signing material such as Android keystores, Apple private keys/certificates, provisioning profiles, or signing passwords.
