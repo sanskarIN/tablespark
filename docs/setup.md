@@ -8,7 +8,7 @@ Every contributor needs:
 
 - Git;
 - Node.js `22.12.0` or newer;
-- npm `10` or newer;
+- npm `10.9.0` for the repository-pinned toolchain;
 - a modern browser.
 
 Recommended editor:
@@ -23,15 +23,17 @@ node --version
 npm --version
 ```
 
-The repository’s Node requirement is also recorded in `.nvmrc` and `package.json`.
+The repository’s Node requirement is also recorded in `.nvmrc` and `package.json`. The exact npm toolchain is declared by `packageManager`, while `package-lock.json` and `src-tauri/Cargo.lock` are committed so normal verification does not silently re-resolve dependencies.
 
 ## 2. Clone and install JavaScript dependencies
 
 ```bash
 git clone https://github.com/sanskarIN/tablespark.git
 cd tablespark
-npm install
+npm ci
 ```
+
+`npm ci` is the normal setup/CI path because it rejects dependency metadata that has drifted from `package-lock.json`. Use an intentional dependency-update workflow when changing package versions instead of regenerating the lockfile during ordinary setup.
 
 Configure the requested project-local commit email if using a normal checkout:
 
@@ -127,7 +129,7 @@ rustup update stable
 rustup default stable
 ```
 
-Check the current Tauri environment after `npm install`:
+Check the current Tauri environment after `npm ci`:
 
 ```bash
 npm run native:info
@@ -140,11 +142,13 @@ npm run test:native-config
 npm run native:config:check
 ```
 
-Check Rust formatting/types:
+Check Rust formatting/types using the committed Cargo dependency lock:
 
 ```bash
 npm run check:native
 ```
+
+The `native:check` script uses `cargo check --locked`, so a stale `src-tauri/Cargo.lock` fails instead of being rewritten implicitly.
 
 ## 7. Native icons
 
@@ -173,7 +177,7 @@ Required native pieces include:
 After prerequisites:
 
 ```powershell
-npm install
+npm ci
 npm run native:info
 npm run check:native
 npm run native:dev
@@ -200,7 +204,7 @@ Install/verify Xcode command-line/native build tools plus Rust.
 ```bash
 xcodebuild -version
 rustc --version
-npm install
+npm ci
 npm run native:info
 npm run native:dev
 ```
@@ -240,7 +244,7 @@ sudo apt-get install -y \
 Then:
 
 ```bash
-npm install
+npm ci
 npm run native:info
 npm run check:native
 npm run native:dev
@@ -432,6 +436,14 @@ Reopen the terminal after installation and verify `PATH`.
 
 Use Node `22.12.0` or newer according to `package.json`/`.nvmrc`.
 
+### npm version does not match the repository toolchain
+
+Use npm `10.9.0`, matching `package.json` and GitHub Actions, before running `npm ci`.
+
+### `npm ci` reports lockfile drift
+
+Do not bypass the error with a mutable install during normal verification. Confirm that `package.json` and `package-lock.json` were intentionally updated together in the dependency-change commit.
+
 ### Port 5173 is busy
 
 TableSpark uses a strict Vite port. Stop the conflicting process rather than silently changing ports, because Tauri `devUrl` expects 5173.
@@ -451,6 +463,10 @@ npx playwright install --with-deps chromium
 ### `cargo` / `rustup` unavailable
 
 Install Rust before native work. Web/PWA development itself still does not require Rust.
+
+### `cargo check --locked` reports lockfile drift
+
+Regenerate `src-tauri/Cargo.lock` only as part of an intentional Rust dependency update, review the resolved changes, and commit the manifest and lockfile together.
 
 ### Tauri Linux build reports missing WebKit/GTK libraries
 
