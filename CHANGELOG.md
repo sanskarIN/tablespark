@@ -21,12 +21,15 @@ The source/package/UI version is prepared as **2.0.12**. The `v2.0.12` Git tag a
 - Narrowly scoped native opener permission for the maintained TableSpark GitHub, funding, and support destinations.
 - Runtime platform abstraction that distinguishes web/PWA from packaged native builds.
 - Native-safe external-link handling that opens supported destinations through the operating system.
-- Native configuration validation and dedicated Node tests that detect version, identifier, icon, path, mobile-minimum, dependency, and script drift.
+- Native configuration validation and dedicated Node tests that detect version, identifier, icon, path, mobile-minimum, dependency, script, npm-toolchain, and Cargo-lock drift.
 - Native Cross-Platform GitHub Actions workflow compiling desktop targets on Windows, macOS, and Linux, an Android debug APK, and an iOS simulator application.
 - Android minimum SDK 24 configuration.
 - iOS minimum system version 14.0 configuration.
 - Tauri mobile development host handling through `TAURI_DEV_HOST` for physical-device development.
 - Native signing/store credential ignore rules for Android keystores, Apple keys/certificates, and provisioning profiles.
+- Committed `package-lock.json` and `src-tauri/Cargo.lock` dependency-resolution files for deterministic JavaScript and Rust/Tauri verification.
+- Repository package-manager metadata pinning the maintained npm toolchain to npm 10.9.0.
+- Dedicated strict `tsconfig.e2e.json` browser-context TypeScript project so Playwright DOM code remains type-checked without leaking into Node-only configuration compilation.
 - Responsive light, dark, and system themes.
 - Custom multiplication table ranges, multiplier ranges, and step sizes.
 - A 5,000-row generation budget that protects the runtime from oversized worksheet rendering.
@@ -76,7 +79,7 @@ The source/package/UI version is prepared as **2.0.12**. The `v2.0.12` Git tag a
 - Web/PWA builds continue to register the service worker; packaged native builds deliberately skip PWA service-worker registration and use the native package/store lifecycle.
 - UI copy describing local data, speech availability, updates, and the About screen is platform-neutral rather than assuming a browser-only runtime.
 - Native builds hand maintained external destinations to the operating system instead of navigating the application webview away from TableSpark.
-- Generated native mobile projects, Rust target output, and generated native icons are reproducible build artifacts and are not tracked in Git.
+- Generated native mobile projects, Rust target output, and generated native icons are reproducible build artifacts and are not tracked in Git; the npm and Cargo lockfiles are intentionally tracked reproducibility metadata.
 - Browser/PWA and installed native applications keep separate platform-managed local-storage sandboxes; validated backup export/import is the supported portability boundary.
 - Practice sessions no longer begin from the same fixed seed; the generated seed remains visible so a session can be repeated exactly.
 - Mistake review selects unique commutative facts instead of repeating equivalent recent mistakes.
@@ -87,6 +90,9 @@ The source/package/UI version is prepared as **2.0.12**. The `v2.0.12` Git tag a
 - Startup storage handling distinguishes empty storage, validated state, an existing returned value that is invalid, and storage whose read operation is unavailable.
 - Automatic writes remain paused when startup storage could not be read.
 - Backup replacement is transactional: a validated replacement must be durably saved before it replaces current in-memory state or reports success.
+- Maintained GitHub Actions JavaScript installation paths now use `npm ci --no-fund --no-audit` against the committed lockfile instead of mutable dependency resolution.
+- CodeQL now explicitly installs the locked dependency graph and builds the application before JavaScript/TypeScript analysis.
+- Native verification now uses `cargo check --locked` so Cargo manifest/lockfile drift fails instead of silently resolving a different graph.
 - Release packaging still publishes the canonical web ZIP/checksum automatically; signed native installers/APK/AAB/Apple distribution remain explicit platform-release operations requiring repository-owner signing credentials.
 
 ### Security
@@ -104,6 +110,7 @@ The source/package/UI version is prepared as **2.0.12**. The `v2.0.12` Git tag a
 - Repository CI tests/runs credential-pattern scanning without printing matched values.
 - GitHub Actions use scoped permissions.
 - Production dependency auditing and CodeQL remain security gates.
+- Committed npm/Cargo dependency resolution plus locked verification reduce accidental supply-chain drift between developer, CI, security-analysis, native-build, and release paths.
 
 ### Accessibility
 
@@ -129,6 +136,11 @@ The source/package/UI version is prepared as **2.0.12**. The `v2.0.12` Git tag a
 - Invalid backup feedback uses localized generic copy instead of embedding raw parser/schema exception messages.
 - Onboarding/locale preference failures and speech synthesis exceptions remain non-fatal.
 - Seed and practice response validation enforce supported bounds.
+- Browser keyboard-shortcut help now opens for `Shift+/` whether the browser reports the resulting key as `?` or `/` plus the Shift modifier.
+- Browser E2E selectors for Practice, Tables, localized live-region feedback, and release screenshot capture now target the intended semantic element without ambiguous matches.
+- The visible About version E2E assertion now follows rendered semantics even though the version label/value are split by markup.
+- Clean-checkout native checks generate required reproducible icon assets before Cargo/Tauri context validation.
+- Browser-context Playwright source is no longer incorrectly compiled by the Node-only TypeScript project.
 
 ## [0.1.0] - 2026-08-19
 
