@@ -4,7 +4,7 @@ This document describes TableSpark 2.0.12 configuration as one synchronized web/
 
 ## Configuration areas
 
-1. product/runtime metadata and package scripts;
+1. product/runtime metadata, dependency locks, and package scripts;
 2. TypeScript/Vite/PWA build behavior;
 3. cross-platform Tauri/Rust configuration;
 4. Android/iOS target overrides;
@@ -28,20 +28,24 @@ name: tablespark
 version: 2.0.12
 type: module
 license: MIT
+packageManager: npm@10.9.0
 ```
 
 The semantic product version is separate from persisted learner `schemaVersion: 2` and the stable `tablespark.state.v1` storage key.
 
 Project metadata also records repository/support/funding information and describes the product as supporting web, desktop, Android, and iOS.
 
-## Runtime engines
+## Runtime engines/toolchain
 
 ```text
 node >=22.12.0
 npm >=10.0.0
+repository packageManager: npm@10.9.0
 ```
 
-Synchronize Node changes with `.nvmrc`, Actions workflows, setup docs, and any release environment assumptions.
+The engines range expresses minimum compatibility while `packageManager` identifies the exact npm toolchain used by maintained CI/reproducibility documentation.
+
+Synchronize Node/npm changes with `.nvmrc`, `package-lock.json` as applicable, Actions workflows, setup/command docs, the native configuration validator/fixture, and release-environment assumptions.
 
 ## Web scripts
 
@@ -76,6 +80,14 @@ native:fmt:check
 native:check
 check:native
 ```
+
+`native:check` prepares generated native icons and then runs:
+
+```bash
+cargo check --locked --manifest-path src-tauri/Cargo.toml
+```
+
+The locked flag is a maintained reproducibility invariant and is checked by `scripts/native-config.mjs`.
 
 ## Native build scripts
 
@@ -131,11 +143,13 @@ format:check
 
 Native Rust/mobile compilation remains separate because it requires platform SDKs.
 
-## Dependencies
+## JavaScript dependencies and lockfile
 
 Runtime/shared application dependencies include React, React DOM, Zod, and the Tauri opener plugin.
 
 Development dependencies include TypeScript/Vite/Vitest/Playwright/ESLint/Prettier plus the Tauri CLI.
+
+`package-lock.json` is committed source-controlled dependency metadata. Normal setup and all maintained CI/CodeQL/visual/native/release JavaScript installation paths use `npm ci`; a manifest/lock mismatch is expected to fail rather than be silently repaired during verification.
 
 Tauri JavaScript and Rust package versions should be reviewed together when upgrading so CLI/runtime/plugin compatibility remains intentional.
 
@@ -149,7 +163,7 @@ Keep synchronized with `package.json` engines and Actions setup values.
 
 ## `tsconfig.json`
 
-Project-reference root for application and Node/config TypeScript projects.
+Project-reference root for application, Node/config, and browser-E2E TypeScript projects.
 
 ## `tsconfig.app.json`
 
@@ -174,7 +188,13 @@ These are Vite-defined build constants used by `src/platform/runtime.ts`.
 
 ## `tsconfig.node.json`
 
-Covers Node/config TypeScript such as Vite/Playwright/Vitest configuration.
+Covers Node/config TypeScript such as Vite/Playwright/Vitest configuration files. It intentionally does not own browser-context E2E source.
+
+## `tsconfig.e2e.json`
+
+Strict Playwright browser-context project with the DOM/Node types required by `e2e/**/*.ts`.
+
+Keeping E2E source in its own project prevents browser globals from being incorrectly compiled under the Node-only tooling project while still keeping E2E source inside root `tsc -b` verification.
 
 # `vite.config.ts`
 
@@ -258,6 +278,12 @@ Dependencies currently include:
 Release profile favors a small packaged binary with abort panic behavior, LTO, single codegen unit, size optimization, and stripping.
 
 The Cargo package version is validated against `package.json` by the native config gate.
+
+## `src-tauri/Cargo.lock`
+
+Committed Rust/Tauri dependency resolution.
+
+It is part of the application reproducibility contract, not generated cleanup output. Intentional Rust dependency changes should update/review `Cargo.toml` and `Cargo.lock` together. `native:check` uses `cargo check --locked` so drift fails verification rather than silently rewriting resolution.
 
 ## `src-tauri/build.rs`
 
@@ -416,6 +442,8 @@ src-tauri/icons/
 
 Do not hand-edit these as repository source of truth.
 
+The committed `src-tauri/Cargo.lock` is deliberately not in this generated-output list.
+
 # `vitest.config.ts`
 
 Configures jsdom-based application/unit/integration tests and V8 coverage behavior.
@@ -466,6 +494,8 @@ src-tauri/icons/
 keystore.properties
 ```
 
+`package-lock.json` and `src-tauri/Cargo.lock` remain tracked and must not be added to ignore rules.
+
 Ignore rules are defense in depth. Never intentionally place real signing secrets in ignored repository paths and assume that alone is secure handling.
 
 # Environment placeholders
@@ -478,7 +508,7 @@ Native signing credentials are a separate protected release-operations concern a
 
 # GitHub Actions configuration
 
-Important workflow files:
+Important maintained workflow files:
 
 ```text
 .github/workflows/ci.yml
@@ -488,7 +518,7 @@ Important workflow files:
 .github/workflows/visual-evidence.yml
 ```
 
-`native.yml` adds cross-platform compile verification while retaining read-only repository permissions and avoiding production signing secrets.
+All maintained JavaScript install paths use the committed lockfile through `npm ci --no-fund --no-audit`. `native.yml` adds cross-platform compile verification while retaining read-only repository permissions and avoiding production signing secrets. CodeQL explicitly installs/builds the locked application before analysis.
 
 See `docs/ci-cd.md`.
 
@@ -502,7 +532,9 @@ scripts/native-config-check.mjs
 scripts/native-config.test.mjs
 ```
 
-The validator is deliberately Node-based so critical native config drift can fail the shared quality gate without requiring every contributor/web CI job to install Rust/mobile SDKs.
+The validator is deliberately Node-based so critical native/toolchain config drift can fail the shared quality gate without requiring every contributor/web CI job to install Rust/mobile SDKs.
+
+Current reproducibility checks include the pinned npm package-manager declaration and locked Cargo check command in addition to version/identity/security/platform invariants.
 
 If you add a new cross-platform invariant that can be checked statically, extend this gate and its regression fixture.
 
@@ -519,6 +551,29 @@ Update/review:
 - native config fixture/assertions.
 
 `src-tauri/tauri.conf.json` should continue sourcing version from `../package.json`.
+
+## Change Node/npm toolchain or npm dependencies
+
+Update/review as applicable:
+
+- `.nvmrc`;
+- `package.json` engines / `packageManager` / dependency entries;
+- `package-lock.json`;
+- native config validator/tests when the package-manager invariant changes;
+- all workflow Node/npm setup/install paths;
+- setup/commands/CI documentation.
+
+Do not bypass an `npm ci` mismatch by mutating the lockfile during verification.
+
+## Change Rust/Tauri dependencies
+
+Update/review:
+
+- `src-tauri/Cargo.toml`;
+- `src-tauri/Cargo.lock`;
+- Tauri JavaScript CLI/plugin compatibility;
+- native build/CI behavior;
+- capability/CSP/security changes introduced by the dependency update.
 
 ## Change app identifier
 
