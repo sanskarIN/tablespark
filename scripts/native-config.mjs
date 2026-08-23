@@ -15,6 +15,10 @@ export function validateNativeConfiguration({
     );
   }
 
+  if (packageJson.packageManager !== 'npm@10.9.0') {
+    errors.push('packageManager must pin the CI npm toolchain to npm@10.9.0.');
+  }
+
   if (tauriConfig.version !== '../package.json') {
     errors.push('Tauri version must be sourced from ../package.json.');
   }
@@ -62,6 +66,7 @@ export function validateNativeConfiguration({
     'native:dev',
     'native:build',
     'native:build:ci',
+    'native:check',
     'check:native',
     'android:init',
     'android:build',
@@ -72,6 +77,11 @@ export function validateNativeConfiguration({
   ];
   for (const script of requiredScripts) {
     if (!packageJson.scripts?.[script]) errors.push(`Missing package script: ${script}.`);
+  }
+
+  const nativeCheck = packageJson.scripts?.['native:check'];
+  if (typeof nativeCheck !== 'string' || !nativeCheck.includes('cargo check --locked')) {
+    errors.push('native:check must enforce the committed Cargo.lock with cargo check --locked.');
   }
 
   if (!packageJson.devDependencies?.['@tauri-apps/cli']) {
