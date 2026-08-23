@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -19,6 +19,14 @@ describe('TableSpark application', () => {
     renderApp();
     expect(screen.getByRole('heading', { name: 'Multiplication tables' })).toBeInTheDocument();
     expect(screen.getByText('2 × 1 = 2')).toBeInTheDocument();
+  });
+
+  it('opens keyboard shortcut help when shifted slash is reported as slash', () => {
+    renderApp();
+
+    fireEvent.keyDown(window, { key: '/', shiftKey: true });
+
+    expect(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
   });
 
   it('includes printable learner metadata without exposing the active profile name', () => {
