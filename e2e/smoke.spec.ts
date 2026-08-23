@@ -13,7 +13,7 @@ test('generate a table, compose a worksheet, and complete a deterministic practi
   await page.getByRole('combobox', { name: 'Answer blank style' }).selectOption('box');
   await expect(page.getByText('9 × 1 = □')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Practice' }).click();
+  await page.getByRole('button', { name: 'Practice', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Minimum' }).fill('5');
   await page.getByRole('spinbutton', { name: 'Maximum' }).fill('5');
   await page.getByRole('spinbutton', { name: 'Questions' }).fill('1');
