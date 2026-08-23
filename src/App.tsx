@@ -56,7 +56,7 @@ export default function App() {
 
       if (isEditableTarget(event.target)) return;
 
-      if (event.key === '?') {
+      if (event.key === '?' || (event.shiftKey && event.key === '/')) {
         event.preventDefault();
         setShowShortcuts((current) => !current);
         return;
