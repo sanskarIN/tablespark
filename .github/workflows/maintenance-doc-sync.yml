@@ -1,0 +1,170 @@
+name: One-shot Documentation Sync
+
+on:
+  push:
+    branches: [feat/roadmap-refinement-2026-08-19]
+    paths:
+      - .github/workflows/maintenance-doc-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout release-candidate branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/roadmap-refinement-2026-08-19
+          fetch-depth: 0
+
+      - name: Configure commit identity
+        run: |
+          git config user.name "Sanskar"
+          git config user.email "sanskarin@outlook.in"
+
+      - name: Synchronize exhaustive tracked-file inventory
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('docs/repository-file-reference.md')
+          text = path.read_text(encoding='utf-8')
+
+          text = text.replace(
+              'The inventory below contains **171 explicitly listed tracked files**. Directories are not counted separately. The previous documentation checkpoint contained 156 tracked files; this cross-platform phase added exactly 15 tracked files and removed none.',
+              'The inventory below contains **173 explicitly listed tracked files**. Directories are not counted separately. The previous cross-platform checkpoint contained 171 tracked files; reproducibility hardening adds exactly two committed dependency lockfiles.',
+          )
+          text = text.replace(
+              '# 1. Root configuration and repository metadata — 16 files',
+              '# 1. Root configuration and repository metadata — 17 files',
+          )
+          text = text.replace(
+              '# 45. Tauri native source/configuration — 8 new files',
+              '# 45. Tauri native source/configuration — 9 files',
+          )
+          text = text.replace(
+              'At this cross-platform documentation checkpoint this reference lists **171 tracked files: the previous 156 plus exactly 15 new cross-platform files**. Generated Tauri/mobile/icon/build output is deliberately not included.',
+              'At this reproducibility-hardening checkpoint this reference lists **173 tracked files: the previous 171-file cross-platform checkpoint plus `package-lock.json` and `src-tauri/Cargo.lock`**. Generated Tauri/mobile/icon/build output is deliberately not included.',
+          )
+          text = text.replace(
+              '`docs/repository-file-reference.md` — this exhaustive 171-file map.',
+              '`docs/repository-file-reference.md` — this exhaustive 173-file map.',
+          )
+
+          lines = text.splitlines()
+          package_index = next(i for i, line in enumerate(lines) if '`package.json` —' in line)
+          if not any('`package-lock.json` —' in line for line in lines):
+              lines.insert(
+                  package_index + 1,
+                  '0. `package-lock.json` — committed npm dependency resolution used by `npm ci` in setup, CI, CodeQL, visual evidence, native builds, and release automation.',
+              )
+
+          cargo_index = next(i for i, line in enumerate(lines) if '`src-tauri/Cargo.toml` —' in line)
+          if not any('`src-tauri/Cargo.lock` —' in line for line in lines):
+              lines.insert(
+                  cargo_index + 1,
+                  '0. `src-tauri/Cargo.lock` — committed Rust/Tauri dependency resolution enforced by `cargo check --locked` during native verification.',
+              )
+
+          stop = lines.index('# Cross-file synchronization checklist')
+          number = 0
+          for i in range(stop):
+              if re.match(r'^\d+\. `', lines[i]):
+                  number += 1
+                  lines[i] = re.sub(r'^\d+\.', f'{number}.', lines[i], count=1)
+
+          if number != 173:
+              raise SystemExit(f'Expected 173 inventory entries, found {number}')
+
+          path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+          git add docs/repository-file-reference.md
+          git commit -m "docs: sync lockfile repository inventory"
+
+      - name: Record continuation handoff
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('what_changed.md')
+          existing = path.read_text(encoding='utf-8')
+          section = '''# 2026-08-23 — Release-gate continuation: deterministic installs and browser regression fixes
+
+## Scope completed in this continuation
+
+This continuation stayed release-gate driven instead of adding speculative product scope. The exact prior candidate evidence was inspected first, real failures were reproduced from GitHub Actions logs, and each identified failure was corrected with focused commits.
+
+### Exact prior-head evidence inspected
+
+For candidate `141e1a87e48348640cff29cab8aad0f70fbb69a3`:
+
+- Native Cross-Platform run `32353757342` completed successfully across the maintained native matrix.
+- CodeQL run `32353757407` completed successfully.
+- CI run `32353757367` failed because `format:check` reported 25 files requiring repository-pinned Prettier formatting and browser E2E exposed five strict-selector/keyboard-version assertions.
+- Release Visual Evidence run `32353757320` failed because all four screenshot cases used an ambiguous `Tables` button locator, so no screenshot artifact was produced.
+
+Those failures are now treated as concrete regression evidence rather than being described as passed or ignored.
+
+## Browser/E2E fixes implemented
+
+- normalized keyboard shortcut detection so `Shift+/` works whether the browser reports `event.key` as `?` or `/` with `shiftKey`;
+- added a React regression test for the shifted-slash fallback;
+- changed About version E2E assertions to validate visible main-content text rather than requiring a standalone text node split by markup;
+- disambiguated localized Hindi status assertions from the simultaneous offline-ready live region;
+- made the worksheet smoke test select the exact `Practice` navigation button instead of also matching `Print practice worksheet`;
+- made release screenshot capture select the exact `Tables` navigation button rather than also matching the branded `Go to multiplication tables` control.
+
+## Deterministic dependency/toolchain hardening
+
+- applied the repository-pinned Prettier formatter to the 25 files identified by CI;
+- committed `package-lock.json` generated by Node 22.12.0 / npm 10.9.0 tooling;
+- committed `src-tauri/Cargo.lock` generated from the maintained Rust/Tauri manifest;
+- declared `packageManager: npm@10.9.0` in `package.json`;
+- changed shared CI, visual-evidence CI, native CI, tagged release automation, and CodeQL builds to install JavaScript dependencies with `npm ci --no-fund --no-audit`;
+- replaced CodeQL autobuild with explicit Node 22.12.0 + locked dependency install + application build before analysis;
+- changed `native:check` to `cargo check --locked` so Rust dependency drift fails instead of silently re-resolving;
+- extended native-config validation/tests so the pinned npm toolchain and locked Cargo check cannot silently regress.
+
+## Temporary maintenance safety
+
+A branch-only write-enabled canonicalization workflow was used solely to let GitHub's pinned runner generate the formatter output and both real lockfiles. It was removed immediately after those commits landed. A second branch-only documentation synchronization workflow mechanically updates the exhaustive inventory and this handoff, then deletes itself before pushing its final documentation commits. Neither helper is intended to remain in the final tracked tree.
+
+## Documentation synchronized
+
+- `docs/setup.md` now uses `npm ci`, documents npm 10.9.0, explains the two committed lockfiles, and includes npm/Cargo lock-drift troubleshooting.
+- `docs/repository-file-reference.md` is updated from 171 to 173 tracked files and explicitly includes both permanent lockfiles.
+
+## Verification state at this handoff edit
+
+The new exact-head GitHub Actions runs were still queued/pending while this documentation was being written. Do **not** claim the new candidate passed until the latest head has completed CI, browser E2E, Release Visual Evidence, CodeQL, and Native Cross-Platform successfully. Older successful Native/CodeQL runs are useful diagnostic evidence but are not final exact-head evidence after lockfile/toolchain changes.
+
+## Next safe work
+
+1. Inspect the latest exact-head workflow runs after this documentation synchronization lands.
+2. Fix only real failures from those logs; do not expand product scope while automated release gates are red.
+3. If all automated gates pass, update PR #4 evidence with the immutable final candidate SHA and exact run IDs/results.
+4. Keep PR #4 draft/unmerged until the intended manual accessibility, Hindi, production-origin/PWA, installed-native, physical-device, signing/notarization/store, and downloaded-artifact checks are completed by the repository owner.
+5. Do not create `v2.0.12` until those applicable release gates are satisfied.
+
+---
+
+'''
+          if existing.startswith('# 2026-08-23 — Release-gate continuation: deterministic installs and browser regression fixes'):
+              raise SystemExit('Handoff section already exists')
+          path.write_text(section + existing, encoding='utf-8')
+          PY
+          git add what_changed.md
+          git commit -m "docs: record deterministic release hardening"
+
+      - name: Remove one-shot workflow
+        run: |
+          git rm .github/workflows/maintenance-doc-sync.yml
+          git commit -m "chore: remove one-shot documentation sync workflow"
+
+      - name: Push documentation commits
+        run: git push origin HEAD:feat/roadmap-refinement-2026-08-19
