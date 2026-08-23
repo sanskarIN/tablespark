@@ -8,18 +8,20 @@ TableSpark currently has five GitHub Actions workflows:
 
 1. **CI** — shared web/application quality, security, documentation, native-configuration checks, production web build/audit, and Chromium E2E.
 2. **Native Cross-Platform** — Tauri/Rust desktop compilation on Windows/macOS/Linux plus Android debug APK and iOS simulator compilation.
-3. **CodeQL** — JavaScript/TypeScript static security analysis.
-4. **Release** — verifies a version tag, packages the canonical web artifact, creates SHA-256 metadata, and publishes a GitHub Release.
+3. **CodeQL** — JavaScript/TypeScript static security analysis using an explicit locked install/build path.
+4. **Release** — verifies a version tag, verifies/builds from locked dependencies, packages the canonical web artifact, creates SHA-256 metadata, and publishes a GitHub Release.
 5. **Release Visual Evidence** — captures real Chromium screenshots for release-candidate review.
 
-Other automation/configuration includes Dependabot, generated-release-note categories, issue/PR templates, and funding configuration.
+Other automation/configuration includes Dependabot for npm, Cargo and GitHub Actions, generated-release-note categories, issue/PR templates, and funding configuration.
 
-## Automation security principles
+## Automation security and reproducibility principles
 
 - Keep GitHub token permissions minimal.
 - Never make production native signing credentials available to pull-request jobs.
 - Treat workflow YAML as executable code.
-- Pin/track supported Node and toolchain baselines deliberately.
+- Pin/track supported Node/npm/toolchain baselines deliberately.
+- Use the committed `package-lock.json` with `npm ci` in automated JavaScript installation paths.
+- Keep `src-tauri/Cargo.lock` committed and reject unintended Rust dependency re-resolution during native verification.
 - Never use a green job from an older SHA as final candidate evidence.
 - Debug/unsigned/simulator artifacts prove build viability, not production signing/store readiness.
 
@@ -30,6 +32,8 @@ Current workflow permission intent:
 - Visual Evidence — `contents: read`;
 - CodeQL — `contents: read`, `security-events: write`;
 - Release — `contents: write` for release creation/assets.
+
+No temporary branch-maintenance workflow is part of the maintained automation set.
 
 # 1. CI workflow
 
@@ -54,7 +58,7 @@ Baseline setup:
 - `actions/checkout@v7`;
 - `actions/setup-node@v7`;
 - Node `22.12.0`;
-- `npm install --no-fund --no-audit`.
+- `npm ci --no-fund --no-audit` against the committed lockfile.
 
 The maintained shared quality path verifies formatting, linting, strict TypeScript, application tests, repository security tests/scanning, documentation links, native configuration consistency, production web build, and production dependency audit.
 
@@ -74,13 +78,14 @@ npm run build
 npm audit --omit=dev --audit-level=high
 ```
 
-`npm run check` includes the first maintained aggregate sequence through the production build, including the Node-based native configuration tests/check.
+`npm run check` includes the maintained aggregate sequence through the production build, including the Node-based native configuration tests/check.
 
-### Native configuration coverage inside ordinary CI
+### Native/reproducibility configuration coverage inside ordinary CI
 
 The native configuration gate does not require Rust/Android/Xcode and verifies:
 
 - package/Cargo version consistency;
+- `packageManager: npm@10.9.0`;
 - Tauri version source;
 - `in.sanskar.tablespark` identifier;
 - Vite build/development paths;
@@ -88,10 +93,11 @@ The native configuration gate does not require Rust/Android/Xcode and verifies:
 - explicit selection of only `main-capability`;
 - native bundle icon declarations;
 - required desktop/mobile scripts;
+- `native:check` retaining `cargo check --locked`;
 - Tauri CLI/opener dependencies;
 - Android/iOS minimum versions.
 
-This lets ordinary CI catch cross-platform configuration drift before the heavier native workflow starts compiling SDK-specific targets.
+This lets ordinary CI catch cross-platform/toolchain configuration drift before the heavier native workflow starts compiling SDK-specific targets.
 
 ### Production web artifact
 
@@ -101,7 +107,7 @@ The job uploads the built `dist/` tree as the `tablespark-web` CI artifact. It i
 
 Runner: `ubuntu-latest`.
 
-The job installs Chromium/system dependencies and runs `npm run test:e2e` against the production preview.
+The job installs the same locked npm dependency graph, installs Chromium/system dependencies, and runs `npm run test:e2e` against the production preview.
 
 Normal E2E covers product smoke flows, stable accessibility semantics, English/Hindi localization and error paths, print-media behavior, and visible 2.0.12 version presentation. Release screenshot capture remains opt-in to the dedicated visual-evidence workflow.
 
@@ -139,8 +145,8 @@ Each job:
 2. sets up Node 22.12.0;
 3. installs Linux Tauri system libraries on Ubuntu;
 4. updates/selects stable Rust;
-5. installs JavaScript dependencies;
-6. runs `npm run check:native`;
+5. installs locked JavaScript dependencies with `npm ci --no-fund --no-audit`;
+6. runs `npm run check:native`, whose Cargo check uses `--locked`;
 7. runs `npm run native:build:ci`.
 
 `native:build:ci` generates TableSpark native icons from `public/logo.svg`, invokes the configured frontend build, and compiles the host native application using `--no-bundle --no-sign`.
@@ -181,7 +187,7 @@ Setup includes:
 Build flow:
 
 ```bash
-npm install --no-fund --no-audit
+npm ci --no-fund --no-audit
 npm run android:init -- --skip-targets-install
 npm run android:build:debug
 ```
@@ -207,7 +213,7 @@ Setup includes:
 Build flow:
 
 ```bash
-npm install --no-fund --no-audit
+npm ci --no-fund --no-audit
 npm run ios:init -- --skip-targets-install
 npm run ios:build:simulator
 ```
@@ -235,6 +241,17 @@ contents: read
 security-events: write
 ```
 
+The analysis job explicitly:
+
+1. checks out source;
+2. selects Node 22.12.0;
+3. initializes JavaScript/TypeScript CodeQL;
+4. runs `npm ci --no-fund --no-audit`;
+5. runs `npm run build`;
+6. runs CodeQL analysis.
+
+This avoids an opaque dependency/build resolution path and makes CodeQL analyze the same locked application dependency graph used by other automation.
+
 CodeQL complements strict TypeScript, linting, dependency audit, native capability/CSP review, Rust/native compilation, and repository secret scanning.
 
 For a real alert, investigate data flow/reachability, fix the smallest responsible boundary, add a regression test when practical, and rerun analysis rather than dismissing solely to satisfy branch protection.
@@ -255,12 +272,13 @@ The current tagged-release automation publishes the canonical **web/PWA package*
 
 1. checks out the tagged commit;
 2. sets up Node 22.12.0;
-3. installs dependencies;
-4. runs `npm run check`;
-5. builds `dist/`;
-6. creates `tablespark-web.zip`;
-7. creates `tablespark-web.zip.sha256`;
-8. creates the GitHub Release with generated notes/assets.
+3. verifies the pushed tag exactly equals `v${package.json.version}`;
+4. installs the committed dependency graph with `npm ci --no-fund --no-audit`;
+5. runs `npm run check`;
+6. builds `dist/`;
+7. creates `tablespark-web.zip`;
+8. creates `tablespark-web.zip.sha256`;
+9. creates the GitHub Release with generated notes/assets and verifies the tag exists.
 
 Native signed artifacts are deliberately not published by this workflow yet because public Windows/macOS/Android/iOS distribution requires owner-controlled signing identities/release-channel credentials. Do not add those secrets to ordinary or fork PR workflow contexts.
 
@@ -290,7 +308,7 @@ File:
 
 Triggers on PRs targeting `main` and manual dispatch, with `contents: read`.
 
-It installs Chromium, sets `CAPTURE_RELEASE_EVIDENCE=1`, runs the dedicated screenshot spec, and uploads `tablespark-release-visual-evidence` containing light/dark compact/wide PNGs.
+It installs the locked npm dependency graph, installs Chromium, sets `CAPTURE_RELEASE_EVIDENCE=1`, runs the dedicated screenshot spec, and uploads `tablespark-release-visual-evidence` containing light/dark compact/wide PNGs.
 
 A green screenshot workflow proves only that browser captures were generated. Human review is still required and it does not prove native app rendering or signed distribution.
 
@@ -302,18 +320,23 @@ File:
 .github/dependabot.yml
 ```
 
-Maintains npm and GitHub Actions dependencies weekly.
+Maintains these dependency ecosystems weekly:
 
-The current configuration does not imply Rust Cargo dependency automation. If Cargo updates are added later, document/review that ecosystem separately.
+- npm at repository root;
+- Cargo under `/src-tauri`;
+- GitHub Actions.
 
-For Tauri/native/toolchain updates, review:
+Dependency update pull requests remain review-gated. For Tauri/native/Rust/toolchain updates, review:
 
+- `Cargo.toml` / `Cargo.lock` resolution changes;
 - breaking/migration notes;
 - new permissions/capabilities;
 - changed system prerequisites;
 - platform minimum-version changes;
 - signing/distribution implications;
 - supply-chain provenance/ownership.
+
+For npm updates, review `package.json` and `package-lock.json` together and require `npm ci` plus normal quality/security gates.
 
 # 7. Generated release notes
 
@@ -345,11 +368,11 @@ Avoid hard-coding a purported “final SHA” into a tracked file when that edit
 
 ## Shared CI
 
-Find the first responsible command and reproduce it locally when practical. Do not suppress a global gate to hide an isolated failure.
+Find the first responsible command and reproduce it locally when practical. Do not suppress a global gate to hide an isolated failure. A lockfile mismatch is a dependency-integrity failure, not a reason to replace `npm ci` with a mutable install.
 
 ## Native desktop
 
-Check platform libraries/toolchain, Rust/Tauri compatibility, generated icons, frontend build, CSP/capability parsing, and host linker/compiler output.
+Check platform libraries/toolchain, Rust/Tauri compatibility, committed Cargo resolution, generated icons, frontend build, CSP/capability parsing, and host linker/compiler output.
 
 ## Android
 
@@ -365,16 +388,24 @@ Simulator/source failures belong in repository code/tooling. Production signing 
 
 ## Native configuration gate
 
-Correct the maintained source-of-truth invariant named by the failure (version, identifier, CSP, capability, icon, script, dependency, mobile minimum) rather than relaxing the checker to accept unintended divergence.
+Correct the maintained source-of-truth invariant named by the failure (version, package manager, locked Cargo command, identifier, CSP, capability, icon, script, dependency, mobile minimum) rather than relaxing the checker to accept unintended divergence.
 
 # 11. Automation synchronization matrix
 
-When changing Node support, synchronize:
+When changing Node/npm support, synchronize:
 
 - `.nvmrc`;
-- `package.json` engines;
-- workflow Node setup values;
-- setup/configuration documentation.
+- `package.json` engines and `packageManager`;
+- `package-lock.json` when dependency metadata changes;
+- workflow Node/setup/install values;
+- setup/configuration/command documentation.
+
+When changing Rust dependencies, synchronize:
+
+- `src-tauri/Cargo.toml`;
+- `src-tauri/Cargo.lock`;
+- native configuration fixtures/checks when commands or packages change;
+- native CI/build documentation where applicable.
 
 When changing product/native identity/version, synchronize:
 
