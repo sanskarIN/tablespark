@@ -14,15 +14,19 @@ Thank you for helping improve TableSpark. Contributions should strengthen learni
 git clone https://github.com/sanskarIN/tablespark.git
 cd tablespark
 git config user.email "sanskarin@outlook.in"
-npm install
+npm ci
 npm run dev
 ```
+
+Use Node 22.12.0 or newer and the repository-pinned npm 10.9.0 toolchain. `npm ci` intentionally consumes the committed `package-lock.json` and fails when dependency metadata drifts.
 
 Install the Playwright browser if you will run end-to-end tests:
 
 ```bash
 npx playwright install chromium
 ```
+
+Native contributors also need Rust plus the platform SDK/toolchain described in `docs/setup.md`. Rust dependency resolution is committed in `src-tauri/Cargo.lock` and native verification uses Cargo locked mode.
 
 ## Development rules
 
@@ -34,22 +38,28 @@ npx playwright install chromium
 - Preserve offline behavior for core learning workflows.
 - Surface durability failures rather than silently implying local data was saved.
 - Add or update automated tests for behavior changes and bug fixes.
-- Add user-facing product strings to `src/i18n/en.ts` instead of scattering them through feature components.
+- Add user-facing product strings to the typed locale catalogs instead of scattering untranslated copy through feature components.
 - Keep domain validation messages near domain code when they are part of non-UI behavior contracts.
 - Keep optional funding references non-intrusive.
 - Do not add a dependency when the platform or existing code can provide a small, testable implementation.
+- Update `package.json` and `package-lock.json` together for intentional npm dependency changes.
+- Update `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock` together for intentional Rust dependency changes.
+- Do not bypass `npm ci` or Cargo `--locked` merely to make verification green.
 
 ## Persisted-data invariants
 
 Current persisted state intentionally enforces:
 
-- schema version `1`;
+- schema version `2`;
+- supported migration from schema version `1`;
 - a shared 2 MB persistence/backup budget;
-- maximum supported offline-profile capacity;
+- maximum 100 offline profiles;
 - unique profile IDs and a valid active profile;
 - mathematically valid stored multiplication questions;
 - attempt correctness consistent with the saved response;
-- mastery counters that cannot exceed their totals.
+- mastery counters that cannot exceed their totals;
+- validated bounded session-history and goal settings;
+- preservation/recovery behavior for known-invalid stored state.
 
 If a new feature stores data, update the type model, validator, runtime state logic, tests, privacy documentation, and migration plan together.
 
@@ -78,12 +88,18 @@ For a broad local check run:
 npm run check
 ```
 
-That command covers formatting, linting, strict types, application tests, security-scanner tests, repository credential-pattern scanning, and the production build.
+That command covers formatting, linting, strict types, application tests, security-scanner tests, repository credential-pattern scanning, documentation-link tests/check, native-configuration tests/check, and the production web build.
 
 For changes to primary user journeys, also run:
 
 ```bash
 npm run test:e2e
+```
+
+For native source/configuration changes, run the applicable native check/build commands from `docs/commands-reference.md`; at minimum, when the host supports Rust/Tauri development:
+
+```bash
+npm run check:native
 ```
 
 Review production dependency security separately:
@@ -112,7 +128,8 @@ A good pull request:
 - includes screenshots for visible UI changes when useful;
 - has no unrelated formatting churn;
 - passes repository quality checks;
-- does not expose learner data or secrets in logs, screenshots, fixtures, or comments.
+- does not expose learner data or secrets in logs, screenshots, fixtures, artifacts, or comments;
+- keeps production signing credentials outside untrusted PR automation.
 
 ## Accessibility review
 
@@ -126,7 +143,7 @@ For user-interface changes, manually check:
 - reduced motion where animation exists;
 - mobile/touch target sizing;
 - status messages that do not rely only on color;
-- unsupported-platform fallback when using progressive browser APIs;
+- unsupported-platform fallback when using progressive browser/native APIs;
 - print output when the feature affects classroom worksheets.
 
 See `docs/accessibility.md` for the full checklist.
@@ -138,14 +155,14 @@ Persisted state is versioned. Do not silently change stored JSON semantics. If t
 1. update domain/types;
 2. increment the schema version;
 3. add an explicit migration;
-4. update Zod validation and runtime constraints;
+4. update validation and runtime constraints;
 5. add migration and malformed-input tests;
 6. update backup/import/privacy documentation;
 7. document compatibility in `CHANGELOG.md` and `what_changed.md`.
 
 ## Security issues
 
-Do not publish a vulnerability as a normal issue. Follow `SECURITY.md` and report it privately. Never paste a real secret into a reproduction, test, issue, pull request, or log.
+Do not publish a vulnerability as a normal issue. Follow `SECURITY.md` and report it privately. Never paste a real secret into a reproduction, test, issue, pull request, artifact, or log.
 
 If a real credential is accidentally committed, rotate/revoke it first. A later deletion or passing secret scan does not make the exposed credential safe again.
 
