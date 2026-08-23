@@ -48,8 +48,8 @@ jobs:
         run: |
           rustup update stable
           rustup default stable
-      - name: Install JavaScript dependencies
-        run: npm install --no-fund --no-audit
+      - name: Install locked JavaScript dependencies
+        run: npm ci --no-fund --no-audit
       - name: Check Rust formatting and types
         run: npm run check:native
       - name: Compile native application without installers
@@ -87,8 +87,8 @@ jobs:
           NDK_DIR="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           test -n "$NDK_DIR"
           echo "NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
-      - name: Install JavaScript dependencies
-        run: npm install --no-fund --no-audit
+      - name: Install locked JavaScript dependencies
+        run: npm ci --no-fund --no-audit
       - name: Generate Android project
         run: npm run android:init -- --skip-targets-install
       - name: Compile Android debug APK
@@ -115,8 +115,8 @@ jobs:
         run: |
           xcodebuild -version
           pod --version
-      - name: Install JavaScript dependencies
-        run: npm install --no-fund --no-audit
+      - name: Install locked JavaScript dependencies
+        run: npm ci --no-fund --no-audit
       - name: Generate iOS project
         run: npm run ios:init -- --skip-targets-install
       - name: Compile iOS simulator application
