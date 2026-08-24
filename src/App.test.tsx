@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -19,6 +19,14 @@ describe('TableSpark application', () => {
     renderApp();
     expect(screen.getByRole('heading', { name: 'Multiplication tables' })).toBeInTheDocument();
     expect(screen.getByText('2 × 1 = 2')).toBeInTheDocument();
+  });
+
+  it('opens keyboard shortcut help when shifted slash is reported as slash', () => {
+    renderApp();
+
+    fireEvent.keyDown(window, { key: '/', shiftKey: true });
+
+    expect(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
   });
 
   it('includes printable learner metadata without exposing the active profile name', () => {
@@ -53,17 +61,32 @@ describe('TableSpark application', () => {
     expect(screen.getByText('9 × 1 = 9')).toBeInTheDocument();
   });
 
-  it('switches between solved study sheets and blank worksheets', async () => {
+  it('composes practice worksheets, blank styles, and answer keys', async () => {
     const user = userEvent.setup();
     renderApp();
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Hide answers for practice worksheet' }),
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Printable output' }),
+      'worksheet',
     );
     expect(screen.getByText('2 × 1 = ______')).toBeInTheDocument();
     expect(screen.queryByText('2 × 1 = 2')).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'TableSpark multiplication worksheet' }),
     ).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Answer blank style' }), 'box');
+    expect(screen.getByText('2 × 1 = □')).toBeInTheDocument();
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Printable output' }),
+      'answer-key',
+    );
+    expect(screen.getByText('2 × 1 = 2')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'TableSpark multiplication answer key' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Name: ______________________________')).not.toBeInTheDocument();
   });
 
   it('searches and filters practiced facts on the progress dashboard', async () => {
@@ -166,7 +189,9 @@ describe('TableSpark application', () => {
     await user.click(screen.getByRole('button', { name: 'Check answer' }));
 
     expect(
-      screen.getByText('This review was built from the unique facts in your saved recent mistakes.'),
+      screen.getByText(
+        'This review was built from the unique facts in your saved recent mistakes.',
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Repeat this seed' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Back to practice setup' })).toBeInTheDocument();
@@ -177,7 +202,9 @@ describe('TableSpark application', () => {
     renderApp();
     await user.click(screen.getByRole('button', { name: 'Settings' }));
     expect(screen.getByRole('checkbox', { name: 'Text-to-speech controls' })).toBeDisabled();
-    expect(screen.getByText('Text-to-speech is not available in this browser.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Text-to-speech is not available in this browser.'),
+    ).toBeInTheDocument();
   });
 
   it('preserves unreadable local data until the user explicitly discards it', async () => {

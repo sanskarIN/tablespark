@@ -1,7 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const desktopChrome = devices['Desktop Chrome'];
-if (!desktopChrome) throw new Error('Playwright Desktop Chrome device profile is unavailable.');
 
 export default defineConfig({
   testDir: './e2e',
@@ -20,7 +19,5 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
-  projects: [
-    { name: 'chromium', use: { ...desktopChrome } },
-  ],
+  projects: [{ name: 'chromium', use: { ...desktopChrome } }],
 });

@@ -8,6 +8,8 @@ const profile: Profile = {
   createdAt: '2026-08-19T00:00:00.000Z',
   mastery: {},
   mistakes: [],
+  sessions: [],
+  masteredFactsGoal: null,
 };
 
 function attempt(correct: boolean): Attempt {
@@ -34,6 +36,29 @@ describe('mastery tracking', () => {
     expect(second.mastery['4x7']?.streak).toBe(0);
     expect(second.mistakes).toHaveLength(1);
     expect(profileAccuracy(second)).toBe(50);
+  });
+
+  it('preserves session history and profile goals while recording attempts', () => {
+    const withLearningMetadata: Profile = {
+      ...profile,
+      masteredFactsGoal: 12,
+      sessions: [
+        {
+          id: 'session-1',
+          kind: 'generated',
+          mode: 'untimed',
+          completedAt: '2026-08-19T00:00:00.000Z',
+          questionCount: 10,
+          correctCount: 8,
+          elapsedMs: 1000,
+          seed: 42,
+        },
+      ],
+    };
+
+    const result = applyAttempt(withLearningMetadata, attempt(true));
+    expect(result.sessions).toEqual(withLearningMetadata.sessions);
+    expect(result.masteredFactsGoal).toBe(12);
   });
 
   it('calculates rounded mastery percentages', () => {

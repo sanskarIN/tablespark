@@ -40,9 +40,9 @@ describe('question generation', () => {
     expect(() => generateQuestions({ min: 2, max: 12, count: 10, seed: -1 })).toThrow(
       'Seed must be an integer',
     );
-    expect(() =>
-      generateQuestions({ min: 2, max: 12, count: 10, seed: MAX_SEED + 1 }),
-    ).toThrow('Seed must be an integer');
+    expect(() => generateQuestions({ min: 2, max: 12, count: 10, seed: MAX_SEED + 1 })).toThrow(
+      'Seed must be an integer',
+    );
     expect(() => generateQuestions({ min: 2, max: 12, count: 10, seed: 1.5 })).toThrow(
       'Seed must be an integer',
     );

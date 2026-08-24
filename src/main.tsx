@@ -3,21 +3,38 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { LocaleProvider } from './i18n/LocaleContext';
+import { dispatchPwaOfflineReady, dispatchPwaUpdateAvailable } from './infrastructure/pwaEvents';
+import { shouldRegisterPwaServiceWorker } from './platform/runtime';
 import { AppStateProvider } from './state/AppStateProvider';
 import './styles.css';
 import './status.css';
+import './shortcuts.css';
+import './learning.css';
 
-registerSW({ immediate: true });
+if (shouldRegisterPwaServiceWorker()) {
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      dispatchPwaUpdateAvailable(updateSW);
+    },
+    onOfflineReady() {
+      dispatchPwaOfflineReady();
+    },
+  });
+}
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Application root element was not found.');
 
 createRoot(root).render(
   <StrictMode>
-    <ErrorBoundary>
-      <AppStateProvider>
-        <App />
-      </AppStateProvider>
-    </ErrorBoundary>
+    <LocaleProvider>
+      <ErrorBoundary>
+        <AppStateProvider>
+          <App />
+        </AppStateProvider>
+      </ErrorBoundary>
+    </LocaleProvider>
   </StrictMode>,
 );

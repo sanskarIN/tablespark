@@ -1,26 +1,39 @@
 # Testing Strategy
 
-TableSpark uses multiple test layers so a passing UI smoke test cannot hide broken multiplication rules, and isolated unit tests cannot hide broken user journeys.
+TableSpark uses layered verification so a passing web smoke test cannot hide broken domain/persistence/native configuration, and a successful native compile cannot be mistaken for a signed production release.
 
-## Test layers
+## Verification layers
 
-### Domain unit tests
+```text
+domain invariants
+→ infrastructure/persistence/localization tests
+→ React integration
+→ repository security/docs/native-config gates
+→ browser E2E
+→ native desktop/mobile compilation
+→ manual accessibility/language/print/device review
+→ signed distribution verification
+```
 
-Location: `src/domain/*.test.ts`
+## Domain unit/property tests
 
-These verify:
+Location: `src/domain/*.test.ts`.
 
-- table generation order, step sizes, and output budget;
-- input validation;
-- equation formatting;
-- bounded practice-response validation;
-- deterministic question generation and seed bounds;
-- random-session seed helpers;
-- mastery-key normalization;
-- mastery accuracy, streak, and mistake behavior;
-- deduplicated mistake-review selection;
-- mastery search/filter rules and mastery classification;
-- worksheet prompt construction.
+Coverage includes:
+
+- table range/order/step and 5,000-row budget;
+- bounded practice responses;
+- deterministic seeded questions and seed bounds;
+- difficulty presets;
+- canonical commutative mastery keys;
+- mastery accuracy/streak/mistake behavior;
+- deduplicated mistake review;
+- progress search/filter/classification;
+- worksheet modes/blank styles;
+- session retention/prepend/trim;
+- optional goal bounds.
+
+`fast-check` expands bounded question-generation coverage beyond a small hand-written example set.
 
 Run:
 
@@ -28,81 +41,176 @@ Run:
 npm run test
 ```
 
-### Property-based tests
+## Persistence and infrastructure tests
 
-`src/domain/questions.test.ts` uses `fast-check` to generate many bounded numeric cases and verify that generated operands remain in range and products remain mathematically correct.
+Location: `src/infrastructure/*.test.ts` plus state/integration suites.
 
-Property tests are useful where the input space is larger than a small hand-written example set.
+Important coverage:
 
-### Persistence and migration tests
+- local-storage round trip;
+- four startup outcomes: `empty`, `loaded`, `invalid`, `unavailable`;
+- blocked startup read does not trigger known-invalid recovery and suppresses automatic writes;
+- raw known-invalid value preservation/recovery;
+- ordinary write failure;
+- shared 2 MB state/import budget;
+- schema-1-to-schema-2 migration;
+- profile identity and 100-profile capacity;
+- semantic mastery/question/attempt/mistake validation;
+- session summary/retention/seed semantics;
+- optional goal validation;
+- transactional destructive backup replacement success/failure;
+- browser preference resilience;
+- PWA lifecycle/install-prompt adapters;
+- structured logging redaction;
+- speech fallback behavior.
 
-Location: `src/infrastructure/*.test.ts`
+The batched-profile regression verifies two additions fired from a 99-profile render still stop at 100 because capacity is enforced inside the current functional state updater.
 
-These cover:
+## Localization tests
 
-- local-storage round trips;
-- portable JSON export/import;
-- corrupted storage classification without raw-value destruction;
-- raw recovery-state reads;
-- storage write failures;
-- malformed and oversized backup rejection;
-- profile identity validation;
-- canonical mastery keys and mastery-counter invariants;
-- multiplication-answer and attempt-correctness invariants;
-- mistake-history semantics;
-- unsupported schema versions;
-- migration boundary behavior;
-- safe lightweight browser preference flags;
-- structured log redaction;
-- progressive speech-synthesis behavior.
+Tests verify:
 
-### React integration tests
+- English/Hindi catalog shape parity;
+- no blank static Hindi messages;
+- stored/fallback locale recognition;
+- locale-storage failure containment;
+- runtime English/Hindi switching;
+- persisted Hindi restoration;
+- `<html lang>` updates;
+- locale preference remains outside learner backup JSON;
+- visible English/Hindi version remains synchronized with `package.json` (`2.0.12`).
 
-Location: `src/App.test.tsx`
+Automation does not certify natural Hindi terminology quality. Fluent/native review remains manual evidence.
 
-Testing Library verifies the application through accessible roles and labels rather than implementation details. Current coverage includes:
+## Cross-platform runtime tests
 
-- primary navigation;
-- generator updates;
-- solved/blank worksheet mode;
-- printable worksheet metadata;
-- mastery search and filters;
-- mistake-review completion behavior;
-- unavailable speech fallback UI;
-- user-visible persistence-write failure warning;
-- unreadable local-state preservation and explicit discard recovery.
+`src/platform/runtime.test.ts` verifies the ordinary unit-test/non-Tauri environment safely resolves to:
 
-The unreadable-state regression specifically verifies that an invalid stored value survives initial render unchanged until the user confirms discard.
+```text
+runtimePlatform = web
+isNativeShell = false
+isMobileNativeShell = false
+PWA service worker registration = enabled
+```
 
-### Security-scanner tests
+This regression matters because Vite/Tauri compile-time globals are not guaranteed to exist in every test/tooling context.
 
-The dependency-free repository secret scanner has its own Node test suite:
+Native builds receive explicit platform metadata through Vite and disable PWA service-worker registration.
+
+## React integration tests
+
+Testing Library exercises the shared React application through accessible roles/labels.
+
+Coverage includes:
+
+- navigation;
+- table/worksheet updates;
+- print metadata;
+- practice/mistake-review completion;
+- mastery filtering/search;
+- session-history persistence/retention;
+- optional goals;
+- persistence warnings/recovery;
+- transactional backup replacement;
+- keyboard shortcut help;
+- speech unavailable fallback;
+- PWA notices;
+- English/Hindi switching/persistence;
+- version presentation.
+
+Because web and Tauri package the same React product, these tests protect shared behavior for every target. They do not replace host-webview/device verification.
+
+## Repository secret-scanner tests
 
 ```bash
 npm run test:security
-```
-
-The tests verify ordinary text stays clean, supported credential patterns are recognized, and findings do not echo the matched credential value.
-
-Scan the repository itself with:
-
-```bash
 npm run secret:scan
 ```
 
-The scanner is defense in depth, not a replacement for secret rotation or repository-history cleanup after an accidental real-secret commit.
+The scanner recognizes a bounded set of high-risk credential signatures and reports metadata without echoing matched values.
 
-### Browser end-to-end tests
+It is defense in depth. A real exposed credential/signing key must be revoked/rotated even if later removed from source.
 
-Location: `e2e/`
+## Documentation integrity tests
 
-Playwright starts a production preview server and verifies primary user journeys in Chromium:
+```bash
+npm run test:docs
+```
 
-- generate a table;
-- switch to blank worksheet mode;
-- configure and complete a deterministic practice session;
-- create an offline profile;
-- change large-text accessibility settings.
+This:
+
+1. tests the Markdown-link checker implementation;
+2. validates supported repository-local Markdown links.
+
+It does not crawl arbitrary external sites and cannot automatically determine whether a newly tracked file has received an explanatory entry in the manual exhaustive repository-file inventory.
+
+## Native configuration tests
+
+Files:
+
+```text
+scripts/native-config.mjs
+scripts/native-config-check.mjs
+scripts/native-config.test.mjs
+```
+
+Run:
+
+```bash
+npm run test:native-config
+npm run native:config:check
+```
+
+The gate verifies maintained cross-platform invariants including:
+
+- `package.json` / `src-tauri/Cargo.toml` version consistency;
+- Tauri product version sourced from `../package.json`;
+- application identifier `in.sanskar.tablespark`;
+- Vite `frontendDist` and development URL;
+- production/development native CSP presence;
+- explicit selection of only `main-capability`;
+- required TableSpark native icon declarations;
+- required desktop/Android/iOS package scripts;
+- Tauri CLI/opener package presence;
+- Android minimum API 24;
+- iOS minimum system version 14.0.
+
+These checks run in ordinary `npm run check`, so native configuration drift can be caught even on a machine without Rust/Android/Xcode installed.
+
+## Rust/native shell checks
+
+On a host with Rust/Tauri prerequisites:
+
+```bash
+npm run native:fmt:check
+npm run native:check
+npm run check:native
+```
+
+`check:native` verifies Rust formatting plus `cargo check` against `src-tauri/Cargo.toml`.
+
+Compile the current desktop host without installer bundling/signing:
+
+```bash
+npm run native:build:ci
+```
+
+Native build commands generate platform icons from `public/logo.svg` before compiling/package generation.
+
+## Browser end-to-end tests
+
+Location: `e2e/`.
+
+Playwright runs against a production preview build.
+
+Important specs:
+
+- `smoke.spec.ts` — primary user journey;
+- `accessibility.spec.ts` — stable semantic/keyboard invariants;
+- `localization.spec.ts` — Hindi switching/persistence plus 2.0.12 About version presentation;
+- `localized-errors.spec.ts` — localized table/practice/backup failures;
+- `print.spec.ts` — Chromium print-media behavior;
+- `release-evidence.spec.ts` — opt-in real screenshot capture.
 
 Run:
 
@@ -110,108 +218,239 @@ Run:
 npm run test:e2e
 ```
 
-Install Chromium first on a new development machine:
+Install Chromium first when needed:
 
 ```bash
 npx playwright install chromium
 ```
 
-On Linux CI or a minimal Linux machine, Playwright may require:
+Minimal Linux:
 
 ```bash
 npx playwright install --with-deps chromium
 ```
 
-## Coverage
+## Native Cross-Platform CI
 
-Generate coverage:
+Workflow:
+
+```text
+.github/workflows/native.yml
+```
+
+It is intentionally separate from ordinary web CI because native compilation requires platform SDKs/system packages and substantially more execution time.
+
+### Desktop matrix
+
+Runs on:
+
+- `ubuntu-latest`;
+- `windows-latest`;
+- `macos-latest`.
+
+Each job:
+
+1. checks out source;
+2. installs Node 22.12.0;
+3. installs Linux native dependencies where needed;
+4. selects stable Rust;
+5. installs JavaScript dependencies;
+6. runs `npm run check:native`;
+7. runs `npm run native:build:ci`.
+
+This establishes that the maintained native shell/frontend can compile on each desktop host without requiring production signing credentials.
+
+### Android debug APK
+
+The Android job:
+
+- uses Ubuntu;
+- configures Java 17;
+- installs Rust Android targets;
+- resolves the installed Android NDK;
+- initializes generated Android project files;
+- compiles a debug APK with `npm run android:build:debug`.
+
+A debug APK proves build viability for the candidate. It is **not** a production-signed Play Store artifact.
+
+### iOS simulator
+
+The iOS job:
+
+- uses macOS;
+- verifies Xcode/CocoaPods tooling;
+- adds `aarch64-apple-ios-sim` Rust target;
+- initializes generated iOS project files;
+- compiles the iOS simulator app with `npm run ios:build:simulator`.
+
+A simulator build proves source/toolchain compilation. It does **not** prove physical-device signing/provisioning/App Store readiness.
+
+## Standard web CI
+
+`.github/workflows/ci.yml` retains two jobs.
+
+### `quality`
+
+Runs:
+
+- formatting;
+- lint;
+- strict TypeScript;
+- application tests;
+- repository security tests/scan;
+- documentation-link gate;
+- native-configuration tests/check (through `npm run check` or its maintained steps);
+- production web build;
+- production dependency audit;
+- `dist/` artifact upload.
+
+### `e2e`
+
+Installs Chromium/system dependencies and runs normal Playwright specs against a production preview server.
+
+CodeQL and Release Visual Evidence remain separate workflows.
+
+## `npm run check`
+
+Current aggregate order:
+
+```text
+format:check
+→ lint
+→ typecheck
+→ test
+→ test:security
+→ secret:scan
+→ test:docs
+→ test:native-config
+→ native:config:check
+→ build
+```
+
+Browser E2E, Rust/native compilation, and advisory auditing remain separate because they require additional environment/tooling.
+
+## Coverage
 
 ```bash
 npm run test:coverage
 ```
 
-Coverage is a diagnostic, not a substitute for meaningful assertions. New critical domain logic should have direct behavior-focused tests even when overall line coverage is already high.
+Coverage is a diagnostic, not a release-quality score. Critical logic requires behavior-focused assertions even when total line coverage is high.
 
-## Full quality check
+## Manual platform verification boundary
 
-```bash
-npm run check
-```
+Automated compile/tests cannot establish every platform behavior. Before calling a native package publicly released, perform the applicable real-host/device review.
 
-This runs, in order:
+### Windows installed application
 
-1. Prettier formatting check;
-2. ESLint and JSX accessibility rules;
-3. TypeScript type checking;
-4. Vitest application tests;
-5. Node security-scanner tests;
-6. repository secret scan;
-7. production build.
+Verify:
 
-Browser E2E is intentionally a separate script because it requires a browser binary. Production dependency auditing is an additional CI/release gate because it depends on installed package metadata.
+- install/start/restart;
+- local data persistence;
+- backup export/import;
+- print/speech behavior;
+- external link handoff;
+- NVDA/Narrator as intended;
+- signed publisher identity;
+- update/reinstall/uninstall behavior.
 
-## CI behavior
+### macOS installed application
 
-The CI workflow has two jobs.
+Verify:
 
-### `quality`
+- signing/notarization or chosen distribution path;
+- install/start/restart/local persistence;
+- VoiceOver;
+- print/speech/external links;
+- replacement/upgrade behavior.
 
-- installs dependencies;
-- verifies formatting;
-- runs lint;
-- runs TypeScript checks;
-- runs Vitest;
-- tests the repository secret scanner;
-- scans repository files for supported credential patterns;
-- builds the PWA;
-- audits production dependencies for high-severity findings;
-- uploads the built `dist/` directory as an artifact.
+### Linux installed package
 
-### `e2e`
+Verify representative intended distributions/package formats rather than extrapolating from one Ubuntu CI image.
 
-- installs dependencies;
-- installs Chromium and required CI libraries;
-- runs Playwright against a production preview build.
+### Android physical device
 
-CodeQL is maintained in a separate security workflow.
+Verify:
+
+- signed release APK/AAB identity;
+- install/upgrade/restart/local persistence;
+- backup transfer;
+- printing/file behavior;
+- touch/TalkBack/speech;
+- external links/email;
+- store privacy declarations if Play distribution is intended.
+
+### iPhone/iPad physical devices
+
+Verify:
+
+- Apple signing/provisioning/team ownership;
+- physical iPhone and iPad install;
+- restart/local persistence;
+- backup transfer;
+- printing/file behavior;
+- touch/VoiceOver/speech;
+- external links/email;
+- App Store metadata/privacy when applicable.
+
+## Signing-security test boundary
+
+Pull-request CI must not receive production signing credentials.
+
+Do not use successful unsigned/debug/simulator compilation as proof that a platform signing/store configuration exists.
+
+Signing evidence belongs to protected release operations and `docs/release-evidence.md`.
+
+## Accessibility automation boundary
+
+Browser semantic tests and shared React markup are useful signals, but they do not prove WCAG conformance or screen-reader success in every system webview.
+
+Record NVDA/Narrator/VoiceOver/TalkBack results only after human-assisted execution.
+
+## Localization automation boundary
+
+Typed catalog/browser tests catch structural and selected rendering/error regressions. Fluent/native Hindi terminology, narrow native layout, print, and screen-reader pronunciation still need human review.
+
+## Print automation boundary
+
+Chromium print-media tests do not prove every native system webview/printer dialog. Verify print behavior on intended release platforms.
+
+## Release-evidence rule
+
+A result is valid only for the immutable final candidate SHA.
+
+Do not count a workflow as passing when it is:
+
+- queued;
+- pending/in progress;
+- cancelled;
+- skipped;
+- from an older SHA;
+- a different debug/simulator/signed artifact than the one being claimed.
+
+Record final evidence in PR/check/release metadata and `docs/release-evidence.md` without creating self-invalidating “final SHA” commits.
 
 ## Regression-test rule
 
 When fixing a bug:
 
-1. reproduce it with a failing automated test when practical;
+1. reproduce with an automated test when practical;
 2. fix the smallest responsible layer;
 3. keep the regression test;
-4. run related tests;
-5. run the full quality suite before release-level work.
+4. run focused related checks;
+5. run full relevant web/native gates before release.
+
+For a native configuration/security regression, extend `scripts/native-config.test.mjs` when the invariant can be checked without platform SDKs.
 
 ## Determinism
 
 Tests must not depend on:
 
-- production credentials;
-- external APIs;
+- production credentials/signing keys;
+- external learner APIs;
 - real learner data;
-- clock-sensitive remote state;
-- random values without a controlled source/seed.
+- uncontrolled remote state;
+- uncontrolled random values;
+- unknown machine locale where a controlled test preference can be used.
 
-Practice generation supports a seed specifically so sessions can be reproduced. Random-seed helper tests inject a deterministic random function instead of depending on `Math.random()` output.
-
-## Manual release checks
-
-Automated tests do not replace final manual checks. Before a release, inspect:
-
-- keyboard navigation;
-- light/dark/system themes;
-- large-text mode;
-- reduced motion;
-- narrow and wide layouts;
-- print preview including blank Name/Date worksheet metadata;
-- offline behavior after initial load;
-- PWA installability on the release origin;
-- backup export and re-import;
-- persistence-write failure warning behavior where practical;
-- unreadable-state recovery download/import/discard behavior;
-- text-to-speech availability/fallback behavior.
-
-Record release-candidate results in `what_changed.md`.
+Practice generation uses explicit seeds. Documentation/config tests remain local/offline. Native pull-request CI uses debug/unsigned/simulator-safe outputs rather than production signing material.

@@ -4,7 +4,10 @@
 .banner > div { display: grid; gap: .2rem; }
 .banner span { color: var(--muted); }
 .banner.warning { border-color: color-mix(in srgb, #d97706 55%, var(--border)); }
+.banner.update { border-color: color-mix(in srgb, var(--brand) 58%, var(--border)); box-shadow: var(--shadow); }
+.banner.ready { border-color: color-mix(in srgb, var(--success) 55%, var(--border)); }
 .banner.welcome { box-shadow: var(--shadow); }
+.banner-actions { display: flex !important; grid-auto-flow: column; align-items: center; gap: .5rem !important; flex: 0 0 auto; }
 .help-text { margin: -.35rem 0 .9rem; color: var(--muted); font-size: .9rem; }
 .recovery-panel { margin: 1rem 0; padding: 1rem; border: 1px solid color-mix(in srgb, #d97706 55%, var(--border)); border-radius: var(--radius-md); background: color-mix(in srgb, #d97706 8%, var(--surface)); }
 .recovery-panel h4 { margin: 0 0 .5rem; }
@@ -14,4 +17,6 @@
 
 @media (max-width: 720px) {
   .banner { align-items: flex-start; flex-direction: column; }
+  .banner-actions { grid-auto-flow: row; width: 100%; }
+  .banner-actions .primary-button { width: 100%; }
 }

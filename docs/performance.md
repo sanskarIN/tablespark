@@ -11,7 +11,8 @@ For typical usage on a current desktop or mid-range mobile device:
 - practice answer submission should update synchronously without network delay;
 - navigation should not trigger data fetching;
 - the production bundle should remain small enough for comfortable PWA installation and repeat offline use;
-- print rendering should avoid unnecessarily huge DOM trees.
+- print rendering should avoid unnecessarily huge DOM trees;
+- local session-history rendering should remain bounded and predictable.
 
 ## Current architecture advantages
 
@@ -21,8 +22,10 @@ For typical usage on a current desktop or mid-range mobile device:
 - Mistake-review deduplication is bounded by the saved 100-attempt history.
 - Progress filtering operates on local in-memory mastery statistics.
 - Mastery updates touch one profile and one fact per attempt.
+- Session history stores compact summaries rather than duplicating answer-level attempts.
 - PWA static assets are cached for offline repeat use.
 - Feature state is local and avoids repeated serialization during render; persistence occurs after state changes.
+- English and Hindi message catalogs are bundled static modules rather than fetched remotely at runtime.
 
 ## Guardrails
 
@@ -42,6 +45,14 @@ Random session selection creates only one 32-bit seed. The seeded generator rema
 
 Per-profile recent mistakes are capped at 100 to prevent unbounded local-state growth. Mistake review deduplicates equivalent commutative facts before presenting a review session.
 
+### Session history
+
+Per-profile session history has a hard maximum of 100 compact summaries. Users can select a lower retention value of 10, 25, or 50 as well as 100.
+
+Reducing retention trims older entries immediately, so a profile cannot indefinitely accumulate completed-session summaries. The Progress screen renders at most the first 12 retained summaries in its recent-session list, even when the stored retention limit is larger.
+
+A session summary stores identifiers/outcome metadata and, for generated drills, one replay seed. It does not copy every practice response into a second history structure.
+
 ### Profiles
 
 Offline profiles are capped at 100. This keeps the profile selector usable and aligns runtime behavior with imported-state validation.
@@ -51,6 +62,12 @@ Offline profiles are capped at 100. This keeps the profile selector usable and a
 Persisted state and imported backup text share a **2 MB byte budget**. The budget is checked before JSON parsing on import and before writing current state to browser storage.
 
 This protects both CPU/memory behavior during validation and local-storage quota usage. If a write would exceed the budget, the adapter reports failure and the UI warns that local saving is unavailable rather than pretending the state is durable.
+
+### Localization
+
+Message catalogs are imported modules. Switching between English and Hindi changes the active in-memory catalog and writes one short locale value to local storage; it does not fetch translation files or reprocess learner history.
+
+The locale preference is separate from the learner-state JSON, so changing language does not cause learner backup growth.
 
 ### Search/filtering
 
@@ -90,6 +107,8 @@ Record during release-candidate review when performance-sensitive changes land:
 - generator interaction time for typical and 5,000-row configurations;
 - memory behavior after repeated practice sessions/profile changes;
 - progress filtering responsiveness with a synthetic high-volume mastery profile;
+- recent-session rendering with the maximum retained summary count;
+- English ↔ Hindi switching responsiveness on a low-end mobile device;
 - validation behavior for a near-2 MB backup;
 - print-preview responsiveness for a large supported worksheet.
 
@@ -112,6 +131,7 @@ If the feature set grows, useful microbenchmarks may include:
 - generating 200 deterministic questions;
 - applying thousands of synthetic mastery attempts to an in-memory profile;
 - filtering a synthetic high-volume mastery record;
+- validating a profile containing 100 session summaries;
 - validating a near-2 MB backup file.
 
 A benchmark should have an explicit regression threshold before it becomes a CI gate.

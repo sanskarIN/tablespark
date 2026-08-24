@@ -1,5 +1,6 @@
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type DrillMode = 'timed' | 'untimed';
+export type PracticeSessionKind = 'generated' | 'mistake-review';
 
 export interface TableConfig {
   readonly from: number;
@@ -38,12 +39,25 @@ export interface MasteryStat {
   readonly lastAttemptAt: string;
 }
 
+export interface SessionSummary {
+  readonly id: string;
+  readonly kind: PracticeSessionKind;
+  readonly mode: DrillMode;
+  readonly completedAt: string;
+  readonly questionCount: number;
+  readonly correctCount: number;
+  readonly elapsedMs: number;
+  readonly seed: number | null;
+}
+
 export interface Profile {
   readonly id: string;
   readonly name: string;
   readonly createdAt: string;
   readonly mastery: Record<string, MasteryStat>;
   readonly mistakes: Attempt[];
+  readonly sessions: SessionSummary[];
+  readonly masteredFactsGoal: number | null;
 }
 
 export interface AppSettings {
@@ -53,10 +67,11 @@ export interface AppSettings {
   readonly speechEnabled: boolean;
   readonly defaultQuestionCount: number;
   readonly defaultTimeLimitSeconds: number;
+  readonly sessionHistoryLimit: number;
 }
 
 export interface PersistedState {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly activeProfileId: string;
   readonly profiles: Profile[];
   readonly settings: AppSettings;
