@@ -40,9 +40,8 @@ export function StatusBanners() {
   useEffect(() => {
     const onOfflineReady = () => setOfflineReady(true);
     const onUpdateAvailable = (event: Event) => {
-      const detail = (event as CustomEvent<PwaUpdateAvailableDetail>).detail;
-      if (!detail?.update) return;
-      setApplyUpdate(() => () => detail.update(true));
+      const { update } = (event as CustomEvent<PwaUpdateAvailableDetail>).detail;
+      setApplyUpdate(() => () => update(true));
     };
 
     window.addEventListener(PWA_OFFLINE_READY_EVENT, onOfflineReady);
