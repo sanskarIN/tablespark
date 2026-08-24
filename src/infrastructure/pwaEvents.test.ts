@@ -19,9 +19,7 @@ describe('PWA lifecycle events', () => {
   });
 
   it('dispatches the update callback without calling it', () => {
-    const update = vi
-      .fn<(reloadPage?: boolean) => Promise<void>>()
-      .mockResolvedValue(undefined);
+    const update = vi.fn<(reloadPage?: boolean) => Promise<void>>().mockResolvedValue(undefined);
     const listener = vi.fn((event: Event) => {
       const detail = (event as CustomEvent<PwaUpdateAvailableDetail>).detail;
       expect(detail.update).toBe(update);
