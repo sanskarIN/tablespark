@@ -25,9 +25,7 @@ describe('PWA status banners', () => {
 
   it('offers an explicit update action without applying it automatically', async () => {
     const user = userEvent.setup();
-    const update = vi
-      .fn<(reloadPage?: boolean) => Promise<void>>()
-      .mockResolvedValue(undefined);
+    const update = vi.fn<(reloadPage?: boolean) => Promise<void>>().mockResolvedValue(undefined);
     renderBanners();
 
     window.dispatchEvent(
@@ -45,9 +43,7 @@ describe('PWA status banners', () => {
 
   it('lets the user defer an available update', async () => {
     const user = userEvent.setup();
-    const update = vi
-      .fn<(reloadPage?: boolean) => Promise<void>>()
-      .mockResolvedValue(undefined);
+    const update = vi.fn<(reloadPage?: boolean) => Promise<void>>().mockResolvedValue(undefined);
     renderBanners();
 
     window.dispatchEvent(
