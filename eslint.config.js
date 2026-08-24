@@ -44,10 +44,15 @@ export default tseslint.config(
         'error',
         { checksVoidReturn: { attributes: false } },
       ],
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
     },
   },
   {
     files: ['**/*.test.{ts,tsx}', 'src/test/**/*.{ts,tsx}'],
     rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
+  },
+  {
+    files: ['src/i18n/LocaleContext.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
   },
 );
