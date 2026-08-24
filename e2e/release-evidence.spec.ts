@@ -20,6 +20,16 @@ async function selectTheme(page: Page, theme: 'light' | 'dark') {
   await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
 }
 
+async function expectPrimaryNavigationInViewport(page: Page) {
+  const buttons = page
+    .getByRole('navigation', { name: 'Primary navigation' })
+    .getByRole('button');
+
+  for (let index = 0; index < (await buttons.count()); index += 1) {
+    await expect(buttons.nth(index)).toBeInViewport({ ratio: 1 });
+  }
+}
+
 async function capture(page: Page, filename: string) {
   await mkdir(outputDirectory, { recursive: true });
   await page.screenshot({
@@ -50,6 +60,7 @@ test.describe('release visual evidence', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await prepareApp(page);
     await selectTheme(page, 'light');
+    await expectPrimaryNavigationInViewport(page);
     await capture(page, 'tables-light-compact.png');
   });
 
@@ -57,6 +68,7 @@ test.describe('release visual evidence', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await prepareApp(page);
     await selectTheme(page, 'dark');
+    await expectPrimaryNavigationInViewport(page);
     await capture(page, 'tables-dark-compact.png');
   });
 });
