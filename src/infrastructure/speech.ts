@@ -3,8 +3,8 @@ import { logger } from './logger';
 export function canSpeak(): boolean {
   return (
     typeof window !== 'undefined' &&
-    typeof window.speechSynthesis?.cancel === 'function' &&
-    typeof window.speechSynthesis?.speak === 'function' &&
+    typeof window.speechSynthesis.cancel === 'function' &&
+    typeof window.speechSynthesis.speak === 'function' &&
     typeof SpeechSynthesisUtterance === 'function'
   );
 }
