@@ -13,11 +13,10 @@ import './shortcuts.css';
 import './learning.css';
 
 if (shouldRegisterPwaServiceWorker()) {
-  let updateSW: ReturnType<typeof registerSW> | undefined;
-  updateSW = registerSW({
+  const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
-      if (updateSW) dispatchPwaUpdateAvailable(updateSW);
+      dispatchPwaUpdateAvailable(updateSW);
     },
     onOfflineReady() {
       dispatchPwaOfflineReady();
