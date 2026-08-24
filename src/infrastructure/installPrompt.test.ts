@@ -7,7 +7,7 @@ describe('browser install prompt type guard', () => {
   });
 
   it('accepts an event that exposes a callable prompt method', () => {
-    const prompt = vi.fn(async () => undefined);
+    const prompt = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const event = Object.assign(new Event('beforeinstallprompt'), { prompt });
 
     expect(isBrowserInstallPromptEvent(event)).toBe(true);
