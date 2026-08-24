@@ -2,10 +2,10 @@ import { logger } from '../infrastructure/logger';
 
 export type Locale = 'en' | 'hi';
 
-export const SUPPORTED_LOCALES: ReadonlyArray<{
+export const SUPPORTED_LOCALES: readonly {
   readonly value: Locale;
   readonly label: string;
-}> = [
+}[] = [
   { value: 'en', label: 'English' },
   { value: 'hi', label: 'हिन्दी' },
 ];
