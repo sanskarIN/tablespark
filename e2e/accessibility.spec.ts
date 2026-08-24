@@ -26,18 +26,33 @@ test('primary landmarks and skip navigation remain accessible', async ({ page })
     'href',
     '#main-content',
   );
+  await expectLabeledFormControls(page);
 });
 
-test('interactive form controls have accessible labels', async ({ page }) => {
+test('major views keep labeled controls and one main landmark', async ({ page }) => {
   await page.goto('/');
-  await expectLabeledFormControls(page);
 
-  await page.getByRole('button', { name: 'Practice', exact: true }).click();
-  await expectLabeledFormControls(page);
+  for (const view of ['Practice', 'Progress', 'Settings', 'About']) {
+    await page.getByRole('button', { name: view }).click();
+    await expect(page.getByRole('main')).toHaveCount(1);
+    await expectLabeledFormControls(page);
+  }
+});
 
-  await page.getByRole('button', { name: 'Progress', exact: true }).click();
-  await expectLabeledFormControls(page);
+test('images expose alt attributes and the shortcut reference is keyboard reachable', async ({
+  page,
+}) => {
+  await page.goto('/');
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await expectLabeledFormControls(page);
+  const imagesWithoutAlt = await page
+    .locator('img')
+    .evaluateAll((images) =>
+      images.filter((image) => !image.hasAttribute('alt')).map((image) => image.outerHTML),
+    );
+  expect(imagesWithoutAlt).toEqual([]);
+
+  await page.keyboard.press('Shift+/');
+  await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toHaveCount(0);
 });
