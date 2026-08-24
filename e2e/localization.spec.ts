@@ -16,6 +16,21 @@ test('Hindi interface selection persists across reload', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('lang', 'hi');
 });
 
+test('Hindi compact primary navigation stays fully visible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('combobox', { name: 'Language / भाषा' }).selectOption('hi');
+
+  const buttons = page
+    .getByRole('navigation', { name: 'मुख्य नेविगेशन' })
+    .getByRole('button');
+
+  for (let index = 0; index < (await buttons.count()); index += 1) {
+    await expect(buttons.nth(index)).toBeInViewport({ ratio: 1 });
+  }
+});
+
 test('About exposes version 2.0.12 in English and Hindi', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'About' }).click();
