@@ -42,7 +42,7 @@ export default defineConfig({
     }),
   ],
   server: {
-    host: mobileDevHost || false,
+    host: mobileDevHost ?? false,
     port: 5173,
     strictPort: true,
     hmr: mobileDevHost
