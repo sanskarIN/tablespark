@@ -16,7 +16,7 @@ function shapeOf(value: unknown): unknown {
   return typeof value;
 }
 
-function collectStrings(value: unknown, path = 'messages'): Array<[string, string]> {
+function collectStrings(value: unknown, path = 'messages'): [string, string][] {
   if (typeof value === 'string') return [[path, value]];
   if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
   return Object.entries(value as Record<string, unknown>).flatMap(([key, entry]) =>
