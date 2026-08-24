@@ -68,6 +68,17 @@
 }
 
 @media (max-width: 720px) {
+  .navigation {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow-x: visible;
+  }
+
+  .navigation .nav-button {
+    min-width: 0;
+    padding-inline: .45rem;
+  }
+
   .shortcut-help-button {
     margin-left: 0;
   }
