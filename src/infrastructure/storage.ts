@@ -98,7 +98,7 @@ const attemptSchema = z
     response: z.number().int().nullable(),
     correct: z.boolean(),
     answeredAt: timestampSchema,
-    elapsedMs: z.number().finite().nonnegative(),
+    elapsedMs: z.number().nonnegative(),
   })
   .superRefine((value, context) => {
     const responseMatches = value.response === value.question.answer;
@@ -119,7 +119,7 @@ const sessionSummarySchema = z
     completedAt: timestampSchema,
     questionCount: z.number().int().min(1).max(200),
     correctCount: z.number().int().min(0).max(200),
-    elapsedMs: z.number().finite().nonnegative(),
+    elapsedMs: z.number().nonnegative(),
     seed: z.number().int().min(0).max(MAX_SEED).nullable(),
   })
   .superRefine((value, context) => {
