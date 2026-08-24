@@ -114,7 +114,7 @@ describe('learning records', () => {
       expect(raw).not.toBeNull();
       const stored = JSON.parse(raw ?? '{}') as {
         schemaVersion?: number;
-        profiles?: Array<{ sessions?: unknown[] }>;
+        profiles?: { sessions?: unknown[] }[];
       };
       expect(stored.schemaVersion).toBe(2);
       expect(stored.profiles?.[0]?.sessions).toHaveLength(1);
